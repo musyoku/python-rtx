@@ -10,12 +10,15 @@ using namespace three;
 
 PYBIND11_MODULE(three, module)
 {
-    py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
-        .def(py::init<Geometry*, Material*>(), py::arg("geometry"), py::arg("material"));
+    py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
+    py::class_<Material, std::shared_ptr<Material>>(module, "Material");
 
-    py::class_<SphereGeometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
+    py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
+        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"));
+
+    py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
         .def(py::init<float>(), py::arg("radius"));
 
-    py::class_<MeshStandardMaterial, std::shared_ptr<MeshStandardMaterial>>(module, "MeshStandardMaterial")
+    py::class_<MeshStandardMaterial, Material, std::shared_ptr<MeshStandardMaterial>>(module, "MeshStandardMaterial")
         .def(py::init<>());
 }
