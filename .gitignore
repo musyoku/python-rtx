@@ -1,32 +1,20 @@
-# Prerequisites
-*.d
+# ignore all
+*
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# allow any
+!*/
+!*.py
+!*.h
+!*.c
+!*.hpp
+!*.cpp
+!*.md
+!*.inl
+!.gitignore
+!makefile
+!faces
+!vertices
 
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# ignore
+.vscode
+build
