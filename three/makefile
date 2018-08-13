@@ -3,10 +3,11 @@ INCLUDE = -I./external $(shell pkg-config --cflags glfw3) $(shell python3 -m pyb
 LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -pthread
 CXXFLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -std=c++14 -fPIC
 SOURCES = $(wildcard ./external/gl3w/*.c) \
-		  $(wildcard ./core/classes/*.cpp) \
-		  $(wildcard ./core/geometries/*.cpp) \
-		  $(wildcard ./core/materials/mesh/*.cpp) \
-		  $(wildcard ./core/renderers/cpu/*.cpp) \
+		  $(wildcard ./core/class/*.cpp) \
+		  $(wildcard ./core/geometry/*.cpp) \
+		  $(wildcard ./core/material/mesh/*.cpp) \
+		  $(wildcard ./core/camera/*.cpp) \
+		  $(wildcard ./core/renderer/cpu/*.cpp) \
 		  pybind/three.cpp
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
 EXTENSION = $(shell python3-config --extension-suffix)

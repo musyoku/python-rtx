@@ -1,11 +1,13 @@
-#include "../core/classes/geometry.h"
-#include "../core/classes/material.h"
-#include "../core/classes/mesh.h"
-#include "../core/classes/renderer.h"
-#include "../core/classes/scene.h"
-#include "../core/geometries/sphere.h"
-#include "../core/materials/mesh/standard.h"
-#include "../core/renderers/cpu/ray_tracing.h"
+#include "../core/camera/perspective.h"
+#include "../core/class/camera.h"
+#include "../core/class/geometry.h"
+#include "../core/class/material.h"
+#include "../core/class/mesh.h"
+#include "../core/class/renderer.h"
+#include "../core/class/scene.h"
+#include "../core/geometry/sphere.h"
+#include "../core/material/mesh/standard.h"
+#include "../core/renderer/cpu/ray_tracing.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -16,6 +18,7 @@ PYBIND11_MODULE(three, module)
     py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
     py::class_<Material, std::shared_ptr<Material>>(module, "Material");
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer");
+    py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
     py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
         .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"));
@@ -31,5 +34,11 @@ PYBIND11_MODULE(three, module)
         .def(py::init<>());
 
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
-        .def(py::init<>());
+        .def(py::init<>())
+        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, py::array_t<int, py::array::c_style>)) & RayTracingCPURenderer::render);
+
+    py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
+        .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),
+            py::arg("eye"), py::arg("center"), py::arg("up"), py::arg("fov_rad"), py::arg("aspect_ratio"), py::arg("z_near"), py::arg("z_far"))
+        .def("look_at", &PerspectiveCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
 }

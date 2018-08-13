@@ -1,5 +1,5 @@
 #pragma once
-#include "../classes/geometry.h"
+#include "../class/geometry.h"
 
 namespace three {
 class SphereGeometry : public Geometry {
