@@ -5,10 +5,18 @@ import matplotlib.pyplot as plt
 
 geometry = THREE.SphereGeometry(1)
 material = THREE.MeshStandardMaterial()
-mesh = THREE.Mesh(geometry, material)
+sphere1 = THREE.Mesh(geometry, material)
+
+geometry = THREE.SphereGeometry(1)
+material = THREE.MeshStandardMaterial()
+sphere2 = THREE.Mesh(geometry, material)
+
+sphere1.set_position((0, 1, 0))
+sphere2.set_position((0, 0, -5))
 
 scene = THREE.Scene()
-scene.add(mesh)
+scene.add(sphere2)
+scene.add(sphere1)
 
 screen_width = 128
 screen_height = 128
@@ -28,11 +36,12 @@ camera = THREE.PerspectiveCamera(
 
 buffer = np.zeros((screen_height, screen_width, 3), dtype="int32")
 
-pos = (0, 0, -1)
+# pos = (0, -100, 0)
 while True:
-    mesh.set_position(pos)
+    # sphere2.set_position(pos)
+
     renderer.render(scene, camera, render_options, buffer)
     plt.imshow(buffer, interpolation="none")
     plt.pause(0.1)
 
-    pos = (pos[0], pos[1], pos[2] - 0.01)
+    # pos = (pos[0], pos[1] + 1, pos[2])
