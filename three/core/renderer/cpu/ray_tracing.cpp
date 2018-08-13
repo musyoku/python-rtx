@@ -1,5 +1,8 @@
 #include "ray_tracing.h"
+#include "../../class/ray.h"
 #include <iostream>
+#include <memory>
+#include <vector>
 
 namespace three {
 namespace py = pybind11;
@@ -16,11 +19,21 @@ void RayTracingCPURenderer::render(
     }
     auto pixel = buffer.mutable_unchecked<3>();
 
+    std::vector<std::unique_ptr<Ray>> ray_array;
+
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
-            for (int c = 0; c < channels; c++) {
-                pixel(y, x, c) = (int)(float(x) / float(_width) * 255.0f);
-            }
+            glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+
+            float ray_target_x = 2.0f * float(x) / float(_width) - 1.0f;
+            float ray_target_y = 2.0f * float(y) / float(_height) - 1.0f;
+            glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
+
+            std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
+
+            pixel(y, x, 0) = int((direction.x + 1.0f) * 127.5f);
+            pixel(y, x, 1) = int((direction.y + 1.0f) * 127.5f);
+            pixel(y, x, 2) = 0;
         }
     }
 }

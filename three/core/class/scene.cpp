@@ -3,6 +3,6 @@
 namespace three {
 void Scene::add(std::shared_ptr<Mesh> mesh)
 {
-    _meshes.emplace_back(mesh);
+    _mesh_array.emplace_back(mesh);
 }
 }

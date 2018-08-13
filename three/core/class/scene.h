@@ -6,7 +6,7 @@
 namespace three {
 class Scene {
 public:
-    std::vector<std::shared_ptr<Mesh>> _meshes;
+    std::vector<std::shared_ptr<Mesh>> _mesh_array;
     void add(std::shared_ptr<Mesh> mesh);
 };
 }
