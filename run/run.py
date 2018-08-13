@@ -3,7 +3,6 @@ import numpy as np
 import three as THREE
 import matplotlib.pyplot as plt
 
-
 geometry = THREE.SphereGeometry(1)
 material = THREE.MeshStandardMaterial()
 mesh = THREE.Mesh(geometry, material)
@@ -13,6 +12,9 @@ scene.add(mesh)
 
 screen_width = 128
 screen_height = 128
+
+render_options = THREE.RayTracingOptions()
+render_options.num_rays_per_pixel = 4
 
 renderer = THREE.RayTracingCPURenderer()
 camera = THREE.PerspectiveCamera(
@@ -29,9 +31,8 @@ buffer = np.zeros((screen_height, screen_width, 3), dtype="int32")
 pos = (0, 0, -1)
 while True:
     mesh.set_position(pos)
-    renderer.render(scene, camera, buffer)
+    renderer.render(scene, camera, render_options, buffer)
     plt.imshow(buffer, interpolation="none")
     plt.pause(0.1)
 
     pos = (pos[0], pos[1], pos[2] - 0.01)
-    

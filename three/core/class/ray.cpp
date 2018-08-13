@@ -14,4 +14,9 @@ void Ray::set_direction(glm::vec3 direction)
 {
     _direction = direction;
 }
+
+glm::vec3 Ray::point(float t)
+{
+    return _origin + t * _direction;
+}
 }

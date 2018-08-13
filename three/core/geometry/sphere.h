@@ -6,6 +6,6 @@ class SphereGeometry : public Geometry {
 public:
     float _radius;
     SphereGeometry(float radius);
-    GeometryType type();
+    GeometryType type() override;
 };
 }

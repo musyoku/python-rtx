@@ -7,7 +7,8 @@
 #include "../core/class/scene.h"
 #include "../core/geometry/sphere.h"
 #include "../core/material/mesh/standard.h"
-#include "../core/renderer/cpu/ray_tracing.h"
+#include "../core/renderer/cpu/ray_tracing/renderer.h"
+#include "../core/renderer/options/ray_tracing.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -38,7 +39,11 @@ PYBIND11_MODULE(three, module)
 
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
         .def(py::init<>())
-        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, py::array_t<int, py::array::c_style>)) & RayTracingCPURenderer::render);
+        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<int, py::array::c_style>)) & RayTracingCPURenderer::render);
+
+    py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
+        .def(py::init<>())
+        .def_property("num_rays_per_pixel", &RayTracingOptions::get_num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel);
 
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
         .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),

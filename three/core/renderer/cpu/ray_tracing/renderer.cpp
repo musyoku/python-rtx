@@ -1,7 +1,7 @@
-#include "ray_tracing.h"
-#include "../../class/ray.h"
-#include "../../geometry/sphere.h"
-#include "hit_test.h"
+#include "renderer.h"
+#include "../../../class/ray.h"
+#include "../../../geometry/sphere.h"
+#include "../hit_test.h"
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -11,6 +11,7 @@ namespace py = pybind11;
 void RayTracingCPURenderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
+    std::shared_ptr<RayTracingOptions> options,
     py::array_t<int, py::array::c_style> buffer)
 {
     _height = buffer.shape(0);
@@ -20,10 +21,11 @@ void RayTracingCPURenderer::render(
         throw std::runtime_error("channels != 3");
     }
     auto pixel = buffer.mutable_unchecked<3>();
-    glm::vec<3, int> color(0, 0, 0);
     std::vector<std::unique_ptr<Ray>> ray_array;
 
     for (int y = 0; y < _height; y++) {
+        glm::vec<3, int> color(0, 0, 0);
+
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
 
@@ -33,15 +35,17 @@ void RayTracingCPURenderer::render(
 
             std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
-            for (auto meth : scene->_mesh_array) {
-                auto geometry = meth->_geometry;
+            for (auto mesh : scene->_mesh_array) {
+                auto geometry = mesh->_geometry;
 
                 if (geometry->type() == GeometryTypeSphere) {
                     SphereGeometry* sphere = (SphereGeometry*)geometry.get();
-                    if (cpu::hit_sphere(meth->_position, sphere->_radius, ray)) {
-                        color.r = 255;
-                        color.g = 0;
-                        color.b = 0;
+                    float t = cpu::hit_sphere(mesh->_position, sphere->_radius, ray);
+                    if (t > 0.0f) {
+                        glm::vec3 normal = glm::normalize(ray->point(t) - mesh->_position);
+                        color.r = int((normal.x + 1.0) * 127.5f);
+                        color.g = int((normal.y + 1.0) * 127.5f);
+                        color.b = int((normal.z + 1.0) * 127.5f);
                     } else {
                         color.r = 255;
                         color.g = 255;

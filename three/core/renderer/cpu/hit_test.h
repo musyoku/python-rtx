@@ -5,6 +5,6 @@
 
 namespace three {
 namespace cpu {
-    bool hit_sphere(glm::vec3& center, float radius, std::unique_ptr<Ray> &ray);
+    float hit_sphere(glm::vec3& center, float radius, std::unique_ptr<Ray> &ray);
 }
 }

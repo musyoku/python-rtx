@@ -7,7 +7,9 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/geometry/*.cpp) \
 		  $(wildcard ./core/material/mesh/*.cpp) \
 		  $(wildcard ./core/camera/*.cpp) \
+		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/*.cpp) \
+		  $(wildcard ./core/renderer/options/*.cpp) \
 		  pybind/three.cpp
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
 EXTENSION = $(shell python3-config --extension-suffix)

@@ -15,6 +15,7 @@ C++ & Python 3D library inspired by [three.js](https://github.com/mrdoob/three.j
 - Python 3
 - OpenGL 4.5
 - GLFW 3
+- OpenMP
 - Ubuntu
 - C++14 (gcc-6)
 
