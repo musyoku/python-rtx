@@ -43,7 +43,7 @@ PYBIND11_MODULE(three, module)
 
     py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
         .def(py::init<>())
-        .def_property("num_rays_per_pixel", &RayTracingOptions::get_num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel);
+        .def_property("num_rays_per_pixel", &RayTracingOptions::num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel);
 
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
         .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),

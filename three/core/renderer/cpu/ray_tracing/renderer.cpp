@@ -7,6 +7,7 @@
 #include <random>
 #include <vector>
 
+#include <glm/gtc/matrix_transform.hpp>
 namespace three {
 
 using namespace cpu;
@@ -30,7 +31,7 @@ void RayTracingCPURenderer::render(
     std::default_random_engine generator;
     std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
 
-    int ns = options->get_num_rays_per_pixel();
+    int ns = options->num_rays_per_pixel();
 
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
@@ -39,7 +40,7 @@ void RayTracingCPURenderer::render(
 
             for (int m = 0; m < ns; m++) {
                 float ray_target_x = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-                float ray_target_y = 2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f;
+                float ray_target_y = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
                 glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
 
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
@@ -51,7 +52,9 @@ void RayTracingCPURenderer::render(
 
                     if (geometry->type() == GeometryTypeSphere) {
                         SphereGeometry* sphere = (SphereGeometry*)geometry.get();
-                        float t = hit_sphere(mesh->_position, sphere->_radius, ray);
+                        glm::vec4 homogeneous_position = camera->_view_matrix * mesh->_model_matrix * sphere->_center;
+                        glm::vec3 position = glm::vec3(homogeneous_position.x, homogeneous_position.y, homogeneous_position.z);
+                        float t = hit_sphere(position, sphere->_radius, ray);
                         if (t <= 0.0f) {
                             continue;
                         }
