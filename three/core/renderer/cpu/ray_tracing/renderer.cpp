@@ -4,6 +4,7 @@
 #include "../hit_test.h"
 #include <iostream>
 #include <memory>
+#include <random>
 #include <vector>
 
 namespace three {
@@ -23,40 +24,45 @@ void RayTracingCPURenderer::render(
     auto pixel = buffer.mutable_unchecked<3>();
     std::vector<std::unique_ptr<Ray>> ray_array;
 
-    for (int y = 0; y < _height; y++) {
-        glm::vec<3, int> color(0, 0, 0);
+    std::default_random_engine generator;
+    std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
 
+    for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+            glm::vec<3, int> color(0, 0, 0);
 
-            float ray_target_x = 2.0f * float(x) / float(_width) - 1.0f;
-            float ray_target_y = 2.0f * float(y) / float(_height) - 1.0f;
-            glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
+            int ns = options->get_num_rays_per_pixel();
+            for (int m = 0; m < ns; m++) {
+                float ray_target_x = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+                float ray_target_y = 2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f;
+                glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
 
-            std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
+                std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
-            for (auto mesh : scene->_mesh_array) {
-                auto geometry = mesh->_geometry;
+                for (auto mesh : scene->_mesh_array) {
+                    auto geometry = mesh->_geometry;
 
-                if (geometry->type() == GeometryTypeSphere) {
-                    SphereGeometry* sphere = (SphereGeometry*)geometry.get();
-                    float t = cpu::hit_sphere(mesh->_position, sphere->_radius, ray);
-                    if (t > 0.0f) {
-                        glm::vec3 normal = glm::normalize(ray->point(t) - mesh->_position);
-                        color.r = int((normal.x + 1.0) * 127.5f);
-                        color.g = int((normal.y + 1.0) * 127.5f);
-                        color.b = int((normal.z + 1.0) * 127.5f);
-                    } else {
-                        color.r = 255;
-                        color.g = 255;
-                        color.b = 255;
+                    if (geometry->type() == GeometryTypeSphere) {
+                        SphereGeometry* sphere = (SphereGeometry*)geometry.get();
+                        float t = cpu::hit_sphere(mesh->_position, sphere->_radius, ray);
+                        if (t > 0.0f) {
+                            glm::vec3 normal = glm::normalize(ray->point(t) - mesh->_position);
+                            color.r += (normal.x + 1.0) * 127.5f;
+                            color.g += (normal.y + 1.0) * 127.5f;
+                            color.b += (normal.z + 1.0) * 127.5f;
+                        } else {
+                            color.r += 255;
+                            color.g += 255;
+                            color.b += 255;
+                        }
                     }
                 }
-            }
 
-            pixel(y, x, 0) = color.r;
-            pixel(y, x, 1) = color.g;
-            pixel(y, x, 2) = color.b;
+                pixel(y, x, 0) = int(color.r / float(ns));
+                pixel(y, x, 1) = int(color.y / float(ns));
+                pixel(y, x, 2) = int(color.z / float(ns));
+            }
         }
     }
 }

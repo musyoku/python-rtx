@@ -14,7 +14,7 @@ screen_width = 128
 screen_height = 128
 
 render_options = THREE.RayTracingOptions()
-render_options.num_rays_per_pixel = 4
+render_options.num_rays_per_pixel = 32
 
 renderer = THREE.RayTracingCPURenderer()
 camera = THREE.PerspectiveCamera(
