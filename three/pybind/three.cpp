@@ -21,7 +21,10 @@ PYBIND11_MODULE(three, module)
     py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
     py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
-        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"));
+        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"))
+        .def("set_scale", &Mesh::set_scale)
+        .def("set_position", &Mesh::set_position)
+        .def("set_rotation", &Mesh::set_rotation);
 
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())

@@ -1,5 +1,7 @@
 #include "ray_tracing.h"
 #include "../../class/ray.h"
+#include "../../geometry/sphere.h"
+#include "hit_test.h"
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -18,7 +20,7 @@ void RayTracingCPURenderer::render(
         throw std::runtime_error("channels != 3");
     }
     auto pixel = buffer.mutable_unchecked<3>();
-
+    glm::vec<3, int> color(0, 0, 0);
     std::vector<std::unique_ptr<Ray>> ray_array;
 
     for (int y = 0; y < _height; y++) {
@@ -35,12 +37,22 @@ void RayTracingCPURenderer::render(
                 auto geometry = meth->_geometry;
 
                 if (geometry->type() == GeometryTypeSphere) {
+                    SphereGeometry* sphere = (SphereGeometry*)geometry.get();
+                    if (cpu::hit_sphere(meth->_position, sphere->_radius, ray)) {
+                        color.r = 255;
+                        color.g = 0;
+                        color.b = 0;
+                    } else {
+                        color.r = 255;
+                        color.g = 255;
+                        color.b = 255;
+                    }
                 }
             }
 
-            pixel(y, x, 0) = int((direction.x + 1.0f) * 127.5f);
-            pixel(y, x, 1) = int((direction.y + 1.0f) * 127.5f);
-            pixel(y, x, 2) = 0;
+            pixel(y, x, 0) = color.r;
+            pixel(y, x, 1) = color.g;
+            pixel(y, x, 2) = color.b;
         }
     }
 }

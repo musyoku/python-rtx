@@ -16,8 +16,8 @@ screen_height = 128
 
 renderer = THREE.RayTracingCPURenderer()
 camera = THREE.PerspectiveCamera(
-    eye=(3, 1, 0),
-    center=(0, 0.5, 0),
+    eye=(0, 0, 1),
+    center=(0, 0, 0),
     up=(0, 1, 0),
     fov_rad=math.pi / 2,
     aspect_ratio=screen_width / screen_height,
@@ -26,7 +26,12 @@ camera = THREE.PerspectiveCamera(
 
 buffer = np.zeros((screen_height, screen_width, 3), dtype="int32")
 
-renderer.render(scene, camera, buffer)
+pos = (0, 0, -1)
+while True:
+    mesh.set_position(pos)
+    renderer.render(scene, camera, buffer)
+    plt.imshow(buffer, interpolation="none")
+    plt.pause(0.1)
 
-plt.imshow(buffer, interpolation="none")
-plt.pause(10)
+    pos = (pos[0], pos[1], pos[2] - 0.01)
+    
