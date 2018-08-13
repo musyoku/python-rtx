@@ -31,6 +31,13 @@ void RayTracingCPURenderer::render(
 
             std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
+            for (auto meth : scene->_mesh_array) {
+                auto geometry = meth->_geometry;
+
+                if (geometry->type() == GeometryTypeSphere) {
+                }
+            }
+
             pixel(y, x, 0) = int((direction.x + 1.0f) * 127.5f);
             pixel(y, x, 1) = int((direction.y + 1.0f) * 127.5f);
             pixel(y, x, 2) = 0;
