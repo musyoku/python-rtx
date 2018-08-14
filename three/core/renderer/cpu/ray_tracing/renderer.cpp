@@ -13,11 +13,88 @@ namespace three {
 using namespace cpu;
 namespace py = pybind11;
 
+bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
+    std::shared_ptr<Camera>& camera,
+    std::unique_ptr<Ray>& ray,
+    float& min_distance,
+    glm::vec3& hit_point,
+    glm::vec3& reflection_normal)
+{
+    auto geometry = mesh->_geometry;
+    SphereGeometry* sphere = (SphereGeometry*)geometry.get();
+    glm::vec4 homogeneous_position = camera->_view_matrix * mesh->_model_matrix * sphere->_center;
+    glm::vec3 position = glm::vec3(homogeneous_position.x, homogeneous_position.y, homogeneous_position.z);
+    float t = hit_sphere(position, sphere->_radius, ray);
+    if (t <= 0.0f) {
+        return false;
+    }
+    if (min_distance <= t) {
+        return false;
+    }
+    min_distance = t;
+    hit_point = ray->point(t);
+    reflection_normal = glm::normalize(hit_point - mesh->_position);
+    return true;
+}
+
+bool hit_test(std::shared_ptr<Scene>& scene,
+    std::shared_ptr<Camera>& camera,
+    std::unique_ptr<Ray>& ray,
+    glm::vec3& new_origin,
+    glm::vec3& reflection_normal)
+{
+    bool hit_any = false;
+    glm::vec3 hit_point = glm::vec3(0.0f);
+    float min_distance = FLT_MAX;
+    for (auto mesh : scene->_mesh_array) {
+        auto geometry = mesh->_geometry;
+
+        if (geometry->type() == GeometryTypeSphere) {
+            if (hit_test_sphere(mesh, camera, ray, min_distance, hit_point, reflection_normal)) {
+                new_origin = hit_point;
+                hit_any = true;
+            }
+        }
+    }
+    return hit_any;
+}
+
+glm::vec3 compute_color(std::shared_ptr<Scene>& scene,
+    std::shared_ptr<Camera>& camera,
+    std::unique_ptr<Ray>& ray,
+    int current_reflection,
+    int max_reflextions)
+{
+    if (current_reflection == max_reflextions) {
+        return glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    glm::vec3 new_origin = glm::vec3(0.0f);
+    glm::vec3 reflection_normal = glm::vec3(0.0f);
+    if (hit_test(scene, camera, ray, new_origin, reflection_normal)) {
+        // std::cout << "origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
+        // std::cout << "reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
+        ray->_origin = new_origin;
+
+        std::random_device seed_gen;
+        std::default_random_engine engine(seed_gen());
+        std::normal_distribution<float> distribution(0.0, 1.0);
+        glm::vec3 random_ref_vec = glm::vec3(distribution(engine), distribution(engine), distribution(engine));
+        glm::vec3 random_unit_ref_vec = random_ref_vec / glm::length(random_ref_vec);
+        float dot = glm::dot(reflection_normal, random_unit_ref_vec);
+        if (dot < 0.0f) {
+            random_unit_ref_vec *= -1.0f;
+        }
+        ray->_direction = random_unit_ref_vec;
+        return 0.5f * compute_color(scene, camera, ray, current_reflection + 1, max_reflextions);
+    }
+    return glm::vec3(1.0f);
+}
+
 void RayTracingCPURenderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
     std::shared_ptr<RayTracingOptions> options,
-    py::array_t<int, py::array::c_style> buffer)
+    py::array_t<float, py::array::c_style> buffer)
 {
     _height = buffer.shape(0);
     _width = buffer.shape(1);
@@ -36,52 +113,23 @@ void RayTracingCPURenderer::render(
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
-            glm::vec<3, int> color(0, 0, 0);
+            glm::vec3 pixel_color = glm::vec3(0, 0, 0);
 
             for (int m = 0; m < ns; m++) {
                 float ray_target_x = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
                 float ray_target_y = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
                 glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
-
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
-                bool hit_any = false;
-                float min_distance = FLT_MAX;
-                glm::vec3 reflection_normal;
-                for (auto mesh : scene->_mesh_array) {
-                    auto geometry = mesh->_geometry;
 
-                    if (geometry->type() == GeometryTypeSphere) {
-                        SphereGeometry* sphere = (SphereGeometry*)geometry.get();
-                        glm::vec4 homogeneous_position = camera->_view_matrix * mesh->_model_matrix * sphere->_center;
-                        glm::vec3 position = glm::vec3(homogeneous_position.x, homogeneous_position.y, homogeneous_position.z);
-                        float t = hit_sphere(position, sphere->_radius, ray);
-                        if (t <= 0.0f) {
-                            continue;
-                        }
-                        if (min_distance <= t) {
-                            continue;
-                        }
-                        min_distance = t;
-
-                        reflection_normal = glm::normalize(ray->point(t) - mesh->_position);
-                        hit_any = true;
-                    }
-                }
-
-                if (hit_any) {
-                    color.r += (reflection_normal.x + 1.0) * 127.5f;
-                    color.g += (reflection_normal.y + 1.0) * 127.5f;
-                    color.b += (reflection_normal.z + 1.0) * 127.5f;
-                } else {
-                    color.r += 255.0f;
-                    color.g += 255.0f;
-                    color.b += 255.0f;
-                }
+                glm::vec3 color = compute_color(scene, camera, ray, 0, 5);
+                pixel_color.r += color.r;
+                pixel_color.g += color.g;
+                pixel_color.b += color.b;
             }
 
-            pixel(y, x, 0) = glm::clamp(int(color.r / float(ns)), 0, 255);
-            pixel(y, x, 1) = glm::clamp(int(color.g / float(ns)), 0, 255);
-            pixel(y, x, 2) = glm::clamp(int(color.b / float(ns)), 0, 255);
+            pixel(y, x, 0) = glm::clamp(pixel_color.r / float(ns), 0.0f, 1.0f);
+            pixel(y, x, 1) = glm::clamp(pixel_color.g / float(ns), 0.0f, 1.0f);
+            pixel(y, x, 2) = glm::clamp(pixel_color.b / float(ns), 0.0f, 1.0f);
         }
     }
 }

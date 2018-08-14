@@ -13,10 +13,10 @@ for n in range(27):
     sphere.set_position((shift[n % 3], shift[(n // 3) % 3], shift[n // 9]))
     scene.add(sphere)
 
-geometry = THREE.SphereGeometry(10)
+geometry = THREE.SphereGeometry(100)
 material = THREE.MeshStandardMaterial()
 base = THREE.Mesh(geometry, material)
-base.set_position((0, -11, -1))
+base.set_position((0, -101.5, -1))
 scene.add(base)
 
 screen_width = 128
@@ -35,14 +35,21 @@ camera = THREE.PerspectiveCamera(
     z_near=0.01,
     z_far=100)
 
-buffer = np.zeros((screen_height, screen_width, 3), dtype="int32")
+buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 
-# pos = (0, -100, 0)
+camera_rad = 0
+radius = 2
 while True:
-    # sphere2.set_position(pos)
+    eye = (radius * math.sin(camera_rad), 1.0, radius * math.cos(camera_rad))
+    camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 
     renderer.render(scene, camera, render_options, buffer)
-    plt.imshow(buffer, interpolation="none")
-    plt.pause(0.1)
+    # linear -> sRGB
+    pixels = np.power(buffer, 1.0 / 2.2)
+    # [0, 1] -> [0, 255]
+    pixels = (pixels * 255).astype("uint8")
+    # display
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1.0 / 60.0)
 
-    # pos = (pos[0], pos[1] + 1, pos[2])
+    camera_rad += math.pi / 10

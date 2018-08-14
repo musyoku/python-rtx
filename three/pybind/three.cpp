@@ -39,7 +39,7 @@ PYBIND11_MODULE(three, module)
 
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
         .def(py::init<>())
-        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<int, py::array::c_style>)) & RayTracingCPURenderer::render);
+        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCPURenderer::render);
 
     py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
         .def(py::init<>())
