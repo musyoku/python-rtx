@@ -25,7 +25,7 @@ bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
     glm::vec4 homogeneous_position = camera->_view_matrix * mesh->_model_matrix * sphere->_center;
     glm::vec3 position = glm::vec3(homogeneous_position.x, homogeneous_position.y, homogeneous_position.z);
     float t = hit_sphere(position, sphere->_radius, ray);
-    if (t <= 0.0f) {
+    if (t <= 0.001f) {
         return false;
     }
     if (min_distance <= t) {
@@ -71,8 +71,8 @@ glm::vec3 compute_color(std::shared_ptr<Scene>& scene,
     glm::vec3 new_origin = glm::vec3(0.0f);
     glm::vec3 reflection_normal = glm::vec3(0.0f);
     if (hit_test(scene, camera, ray, new_origin, reflection_normal)) {
-        // std::cout << "origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
-        // std::cout << "reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
+        std::cout << "origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
+        std::cout << "reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
         ray->_origin = new_origin;
 
         std::random_device seed_gen;
@@ -116,12 +116,13 @@ void RayTracingCPURenderer::render(
             glm::vec3 pixel_color = glm::vec3(0, 0, 0);
 
             for (int m = 0; m < ns; m++) {
+                std::cout << "m = " << m << std::endl;
                 float ray_target_x = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
                 float ray_target_y = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
                 glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
-                glm::vec3 color = compute_color(scene, camera, ray, 0, 5);
+                glm::vec3 color = compute_color(scene, camera, ray, 0, options->path_depth());
                 pixel_color.r += color.r;
                 pixel_color.g += color.g;
                 pixel_color.b += color.b;

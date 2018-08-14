@@ -23,7 +23,8 @@ screen_width = 128
 screen_height = 128
 
 render_options = THREE.RayTracingOptions()
-render_options.num_rays_per_pixel = 32
+render_options.num_rays_per_pixel = 1
+render_options.path_depth = 2
 
 renderer = THREE.RayTracingCPURenderer()
 camera = THREE.PerspectiveCamera(
@@ -52,4 +53,4 @@ while True:
     plt.imshow(pixels, interpolation="none")
     plt.pause(1.0 / 60.0)
 
-    camera_rad += math.pi / 10
+    # camera_rad += math.pi / 10

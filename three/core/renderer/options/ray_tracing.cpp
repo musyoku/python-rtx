@@ -13,4 +13,13 @@ void RayTracingOptions::set_num_rays_per_pixel(int num)
 {
     _num_rays_per_pixel = num;
 }
+
+int RayTracingOptions::path_depth()
+{
+    return _path_depth;
+}
+void RayTracingOptions::set_path_depth(int depth)
+{
+    _path_depth = depth;
+}
 }
