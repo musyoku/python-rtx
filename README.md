@@ -5,9 +5,18 @@ C++ & Python 3D library inspired by [three.js](https://github.com/mrdoob/three.j
 **todo**
 
 - [ ] Ray tracing
+    - [ ] CPU
+    - [ ] CUDA
+    - [ ] OpenGL
 - [ ] Bidirectional path tracing
+    - [ ] CPU
+    - [ ] CUDA
+    - [ ] OpenGL
 - [ ] Python3 bindings
 
+progress:
+
+![https://thumbs.gfycat.com/SecondhandReasonableAtlanticblackgoby-size_restricted.gif](https://thumbs.gfycat.com/SecondhandReasonableAtlanticblackgoby-size_restricted.gif)
 
 # Requirements
 

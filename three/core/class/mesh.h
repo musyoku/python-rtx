@@ -17,6 +17,7 @@ public:
     std::shared_ptr<Geometry> _geometry;
     std::shared_ptr<Material> _material;
     Mesh(std::shared_ptr<Geometry> geometry, std::shared_ptr<Material> material);
+    void set_material(std::shared_ptr<Material> material);
     void set_scale(pybind11::tuple scale);
     void set_position(pybind11::tuple position);
     void set_rotation(pybind11::tuple rotation_rad);

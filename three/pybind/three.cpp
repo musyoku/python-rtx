@@ -6,7 +6,8 @@
 #include "../core/class/renderer.h"
 #include "../core/class/scene.h"
 #include "../core/geometry/sphere.h"
-#include "../core/material/mesh/standard.h"
+#include "../core/material/mesh/lambert.h"
+#include "../core/material/mesh/metal.h"
 #include "../core/renderer/cpu/ray_tracing/renderer.h"
 #include "../core/renderer/options/ray_tracing.h"
 #include <pybind11/pybind11.h>
@@ -34,12 +35,15 @@ PYBIND11_MODULE(three, module)
     py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
         .def(py::init<float>(), py::arg("radius"));
 
-    py::class_<MeshStandardMaterial, Material, std::shared_ptr<MeshStandardMaterial>>(module, "MeshStandardMaterial")
-        .def(py::init<>());
+    py::class_<MeshLambertMaterial, Material, std::shared_ptr<MeshLambertMaterial>>(module, "MeshLambertMaterial")
+        .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
+
+    py::class_<MeshMetalMaterial, Material, std::shared_ptr<MeshMetalMaterial>>(module, "MeshMetalMaterial")
+        .def(py::init<float, float>(), py::arg("roughness"), py::arg("specular_reflectance"));
 
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
         .def(py::init<>())
-        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCPURenderer::render);
+        .def("render", &RayTracingCPURenderer::render);
 
     py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
         .def(py::init<>())

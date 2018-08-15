@@ -5,47 +5,31 @@ import matplotlib.pyplot as plt
 
 scene = THREE.Scene()
 
-shift = [-1, 0, 1]
+metal_material = THREE.MeshMetalMaterial(roughness=0.5, specular_reflectance=0.5)
+shift = [-1.125, 0, 1.125]
+colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
 for n in range(27):
+    color = colors[(n + n // 3) % 3]
     geometry = THREE.SphereGeometry(0.5)
-    material = THREE.MeshStandardMaterial()
+    if n % 2 == 0:
+        material = THREE.MeshLambertMaterial(color=color, diffuse_reflectance=0.8)
+    else:
+        material = metal_material
     sphere = THREE.Mesh(geometry, material)
     sphere.set_position((shift[n % 3], shift[(n // 3) % 3], shift[n // 9]))
     scene.add(sphere)
 
 geometry = THREE.SphereGeometry(100)
-material = THREE.MeshStandardMaterial()
+material = THREE.MeshLambertMaterial((1.0, 1.0, 1.0), 0.5)
 base = THREE.Mesh(geometry, material)
 base.set_position((0, -101.5, -1))
 scene.add(base)
-
-
-
-
-# scene = THREE.Scene()
-
-# geometry = THREE.SphereGeometry(0.5)
-# material = THREE.MeshStandardMaterial()
-# base = THREE.Mesh(geometry, material)
-# base.set_position((0, 0, 1))
-# scene.add(base)
-
-# geometry = THREE.SphereGeometry(0.5)
-# material = THREE.MeshStandardMaterial()
-# base = THREE.Mesh(geometry, material)
-# base.set_position((0, 1, 1))
-# scene.add(base)
-
-
-
-
-
 
 screen_width = 128
 screen_height = 128
 
 render_options = THREE.RayTracingOptions()
-render_options.num_rays_per_pixel = 32
+render_options.num_rays_per_pixel = 64
 render_options.path_depth = 4
 
 renderer = THREE.RayTracingCPURenderer()

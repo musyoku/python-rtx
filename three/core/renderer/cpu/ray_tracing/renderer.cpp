@@ -1,10 +1,8 @@
 #include "renderer.h"
-#include "../../../class/ray.h"
 #include "../../../geometry/sphere.h"
 #include "../hit_test.h"
 #include <iostream>
 #include <memory>
-#include <random>
 #include <vector>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -32,14 +30,8 @@ bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
         return false;
     }
     min_distance = t;
-    // std::cout << "  ray:        " << ray->_origin.x << ", " << ray->_origin.y << ", " << ray->_origin.z << std::endl;
-    // std::cout << "  ray:        " << ray->_direction.x << ", " << ray->_direction.y << ", " << ray->_direction.z << std::endl;
     hit_point = ray->point(t);
-    // std::cout << "  t:          " << t << std::endl;
-    // std::cout << "  hit_point:  " << hit_point.x << ", " << hit_point.y << ", " << hit_point.z << std::endl;
-    // std::cout << "  mesh:       " << position.x << ", " << position.y << ", " << position.z << std::endl;
     reflection_normal = glm::normalize(hit_point - position);
-    // std::cout << "  reflection: " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
     return true;
 }
 
@@ -47,9 +39,10 @@ bool hit_test(std::shared_ptr<Scene>& scene,
     std::shared_ptr<Camera>& camera,
     std::unique_ptr<Ray>& ray,
     glm::vec3& new_origin,
-    glm::vec3& reflection_normal)
+    glm::vec3& reflection_normal,
+    std::shared_ptr<Mesh>& hit_mesh)
 {
-    bool hit_any = false;
+    bool did_hit = false;
     glm::vec3 hit_point = glm::vec3(0.0f);
     float min_distance = FLT_MAX;
     for (auto mesh : scene->_mesh_array) {
@@ -58,14 +51,22 @@ bool hit_test(std::shared_ptr<Scene>& scene,
         if (geometry->type() == GeometryTypeSphere) {
             if (hit_test_sphere(mesh, camera, ray, min_distance, hit_point, reflection_normal)) {
                 new_origin = hit_point;
-                hit_any = true;
+                did_hit = true;
+                hit_mesh = mesh;
             }
         }
     }
-    return hit_any;
+    return did_hit;
 }
 
-glm::vec3 compute_color(std::shared_ptr<Scene>& scene,
+RayTracingCPURenderer::RayTracingCPURenderer()
+{
+    std::random_device seed_gen;
+    _normal_engine = std::default_random_engine(seed_gen());
+    _normal_distribution = std::normal_distribution<float>(0.0, 1.0);
+}
+
+glm::vec3 RayTracingCPURenderer::compute_color(std::shared_ptr<Scene>& scene,
     std::shared_ptr<Camera>& camera,
     std::unique_ptr<Ray>& ray,
     int current_reflection,
@@ -76,25 +77,28 @@ glm::vec3 compute_color(std::shared_ptr<Scene>& scene,
     }
     glm::vec3 new_origin = glm::vec3(0.0f);
     glm::vec3 reflection_normal = glm::vec3(0.0f);
-    if (hit_test(scene, camera, ray, new_origin, reflection_normal)) {
-        if(current_reflection == 0){
-            // std::cout << "hit" << std::endl;
-        }
-        // std::cout << "  origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
-        // std::cout << "  reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
+    std::shared_ptr<Mesh> hit_mesh;
+    if (hit_test(scene, camera, ray, new_origin, reflection_normal, hit_mesh)) {
         ray->_origin = new_origin;
 
-        std::random_device seed_gen;
-        std::default_random_engine engine(seed_gen());
-        std::normal_distribution<float> distribution(0.0, 1.0);
-        glm::vec3 random_ref_vec = glm::vec3(distribution(engine), distribution(engine), distribution(engine));
-        glm::vec3 random_unit_ref_vec = random_ref_vec / glm::length(random_ref_vec);
-        float dot = glm::dot(reflection_normal, random_unit_ref_vec);
+        glm::vec3& direction = ray->_direction;
+        auto material = hit_mesh->_material;
+
+        // diffuse
+        glm::vec3 diffuse_vec = glm::vec3(_normal_distribution(_normal_engine), _normal_distribution(_normal_engine), _normal_distribution(_normal_engine));
+        glm::vec3 unit_diffuse_vec = diffuse_vec / glm::length(diffuse_vec);
+        float dot = glm::dot(reflection_normal, unit_diffuse_vec);
         if (dot < 0.0f) {
-            random_unit_ref_vec *= -1.0f;
+            unit_diffuse_vec *= -1.0f;
         }
-        ray->_direction = random_unit_ref_vec;
-        return 0.5f * compute_color(scene, camera, ray, current_reflection + 1, max_reflextions);
+
+        // specular
+        glm::vec3 unit_specular_vec = direction - 2.0f * glm::dot(direction, reflection_normal) * reflection_normal;
+
+        ray->_direction = material->reflect_ray(unit_diffuse_vec, unit_specular_vec);
+
+        glm::vec3 input_color = compute_color(scene, camera, ray, current_reflection + 1, max_reflextions);
+        return material->reflect_color(input_color);
     }
     return glm::vec3(1.0f);
 }

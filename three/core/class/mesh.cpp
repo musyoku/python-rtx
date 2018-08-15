@@ -42,4 +42,9 @@ void Mesh::update_model_matrix()
     _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
     _model_matrix = glm::scale(_model_matrix, _scale);
 }
+
+void Mesh::set_material(std::shared_ptr<Material> material)
+{
+    _material = material;
+}
 }
