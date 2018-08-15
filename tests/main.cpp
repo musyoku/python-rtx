@@ -14,16 +14,16 @@ int main()
 
     std::shared_ptr<SphereGeometry> geometry = std::make_shared<SphereGeometry>(1.0f);
 
-    py::tuple color = py::make_tuple(1.0f, 1.0f, 1.0f);
+    float color[] = { 1.0f, 1.0f, 1.0f };
     std::shared_ptr<MeshLambertMaterial> material = std::make_shared<MeshLambertMaterial>(color, 0.8f);
 
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(geometry, material);
 
     scene->add(mesh);
 
-    py::tuple eye = py::make_tuple(0.0f, 0.0f, 2.0f);
-    py::tuple center = py::make_tuple(0.0f, 0.0f, 0.0f);
-    py::tuple up = py::make_tuple(0.0f, 1.0f, 0.0f);
+    float eye[] = { 0.0f, 0.0f, 2.0f };
+    float center[] = { 0.0f, 0.0f, 0.0f };
+    float up[] = { 0.0f, 1.0f, 0.0f };
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();

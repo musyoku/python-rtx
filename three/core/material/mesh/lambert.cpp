@@ -7,7 +7,14 @@ MeshLambertMaterial::MeshLambertMaterial(pybind11::tuple color,
     _color.r = color[0].cast<float>();
     _color.g = color[1].cast<float>();
     _color.b = color[2].cast<float>();
+    _diffuse_reflectance = diffuse_reflectance;
+}
 
+MeshLambertMaterial::MeshLambertMaterial(float (&color)[3], float diffuse_reflectance)
+{
+    _color.r = color[0];
+    _color.g = color[1];
+    _color.b = color[2];
     _diffuse_reflectance = diffuse_reflectance;
 }
 glm::vec3 MeshLambertMaterial::reflect_color(glm::vec3& input_color) const

@@ -11,5 +11,7 @@ public:
     float _z_far;
     PerspectiveCamera(pybind11::tuple eye, pybind11::tuple center, pybind11::tuple up,
         float fov_rad, float aspect_ratio, float z_near, float z_far);
+    PerspectiveCamera(float (&eye)[3], float (&center)[3], float (&up)[3],
+        float fov_rad, float aspect_ratio, float z_near, float z_far);
 };
 }
