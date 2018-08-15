@@ -9,13 +9,21 @@ namespace cpu {
         float a = glm::dot(ray->_direction, ray->_direction);
         float b = 2.0f * glm::dot(ray->_direction, oc);
         float c = glm::dot(oc, oc) - pow2(radius);
-        float d = b * b - 4 * a * c;
+        float d = b * b - 4.0f * a * c;
 
-        if (d < 0) {
+        if (d <= 0) {
             return -1.0f;
-        } else {
-            return (-b - sqrtf(d)) / (2.0f * a);
         }
+        float root = sqrtf(d);
+        float t = (-b - root) / (2.0f * a);
+        if (t > 0.001f) {
+            return t;
+        }
+        t = (-b + root) / (2.0f * a);
+        if (t > 0.001f) {
+            return t;
+        }
+        return -1.0f;
     }
 }
 }

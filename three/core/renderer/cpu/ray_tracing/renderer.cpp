@@ -32,8 +32,14 @@ bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
         return false;
     }
     min_distance = t;
+    // std::cout << "  ray:        " << ray->_origin.x << ", " << ray->_origin.y << ", " << ray->_origin.z << std::endl;
+    // std::cout << "  ray:        " << ray->_direction.x << ", " << ray->_direction.y << ", " << ray->_direction.z << std::endl;
     hit_point = ray->point(t);
-    reflection_normal = glm::normalize(hit_point - mesh->_position);
+    // std::cout << "  t:          " << t << std::endl;
+    // std::cout << "  hit_point:  " << hit_point.x << ", " << hit_point.y << ", " << hit_point.z << std::endl;
+    // std::cout << "  mesh:       " << position.x << ", " << position.y << ", " << position.z << std::endl;
+    reflection_normal = glm::normalize(hit_point - position);
+    // std::cout << "  reflection: " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
     return true;
 }
 
@@ -71,8 +77,11 @@ glm::vec3 compute_color(std::shared_ptr<Scene>& scene,
     glm::vec3 new_origin = glm::vec3(0.0f);
     glm::vec3 reflection_normal = glm::vec3(0.0f);
     if (hit_test(scene, camera, ray, new_origin, reflection_normal)) {
-        std::cout << "origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
-        std::cout << "reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
+        if(current_reflection == 0){
+            // std::cout << "hit" << std::endl;
+        }
+        // std::cout << "  origin:       " << new_origin.x << ", " << new_origin.y << ", " << new_origin.z << std::endl;
+        // std::cout << "  reflection:   " << reflection_normal.x << ", " << reflection_normal.y << ", " << reflection_normal.z << std::endl;
         ray->_origin = new_origin;
 
         std::random_device seed_gen;
@@ -116,10 +125,9 @@ void RayTracingCPURenderer::render(
             glm::vec3 pixel_color = glm::vec3(0, 0, 0);
 
             for (int m = 0; m < ns; m++) {
-                std::cout << "m = " << m << std::endl;
                 float ray_target_x = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
                 float ray_target_y = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
-                glm::vec3 direction = glm::vec3(ray_target_x, ray_target_y, -1.0f);
+                glm::vec3 direction = glm::normalize(glm::vec3(ray_target_x, ray_target_y, -1.0f));
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
                 glm::vec3 color = compute_color(scene, camera, ray, 0, options->path_depth());
