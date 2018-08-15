@@ -24,9 +24,9 @@ PYBIND11_MODULE(three, module)
 
     py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
         .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"))
-        .def("set_scale", &Mesh::set_scale)
-        .def("set_position", &Mesh::set_position)
-        .def("set_rotation", &Mesh::set_rotation);
+        .def("set_scale", (void (Mesh::*)(py::tuple)) & Mesh::set_scale)
+        .def("set_position", (void (Mesh::*)(py::tuple)) & Mesh::set_position)
+        .def("set_rotation", (void (Mesh::*)(py::tuple)) & Mesh::set_rotation);
 
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())
@@ -53,5 +53,5 @@ PYBIND11_MODULE(three, module)
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
         .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),
             py::arg("eye"), py::arg("center"), py::arg("up"), py::arg("fov_rad"), py::arg("aspect_ratio"), py::arg("z_near"), py::arg("z_far"))
-        .def("look_at", &PerspectiveCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
+        .def("look_at", (void (PerspectiveCamera::*)(py::tuple, py::tuple, py::tuple)) & PerspectiveCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
 }

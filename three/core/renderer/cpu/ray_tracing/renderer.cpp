@@ -18,11 +18,8 @@ bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
     glm::vec3& hit_point,
     glm::vec3& reflection_normal)
 {
-    auto geometry = mesh->_geometry;
-    SphereGeometry* sphere = (SphereGeometry*)geometry.get();
-    glm::vec4 homogeneous_position = camera->_view_matrix * mesh->_model_matrix * sphere->_center;
-    glm::vec3 position = glm::vec3(homogeneous_position.x, homogeneous_position.y, homogeneous_position.z);
-    float t = hit_sphere(position, sphere->_radius, ray);
+    SphereGeometry* sphere = static_cast<SphereGeometry*>(mesh->_geometry.get());
+    float t = hit_sphere(sphere->_center, sphere->_radius, ray);
     if (t <= 0.001f) {
         return false;
     }
@@ -31,11 +28,11 @@ bool hit_test_sphere(std::shared_ptr<Mesh>& mesh,
     }
     min_distance = t;
     hit_point = ray->point(t);
-    reflection_normal = glm::normalize(hit_point - position);
+    reflection_normal = glm::normalize(hit_point - sphere->_center);
     return true;
 }
 
-bool hit_test(std::shared_ptr<Scene>& scene,
+bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
     std::shared_ptr<Camera>& camera,
     std::unique_ptr<Ray>& ray,
     glm::vec3& new_origin,
@@ -45,7 +42,7 @@ bool hit_test(std::shared_ptr<Scene>& scene,
     bool did_hit = false;
     glm::vec3 hit_point = glm::vec3(0.0f);
     float min_distance = FLT_MAX;
-    for (auto mesh : scene->_mesh_array) {
+    for (auto mesh : mesh_array) {
         auto geometry = mesh->_geometry;
 
         if (geometry->type() == GeometryTypeSphere) {
@@ -66,7 +63,7 @@ RayTracingCPURenderer::RayTracingCPURenderer()
     _normal_distribution = std::normal_distribution<float>(0.0, 1.0);
 }
 
-glm::vec3 RayTracingCPURenderer::compute_color(std::shared_ptr<Scene>& scene,
+glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>>& mesh_array,
     std::shared_ptr<Camera>& camera,
     std::unique_ptr<Ray>& ray,
     int current_reflection,
@@ -78,7 +75,7 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::shared_ptr<Scene>& scene,
     glm::vec3 new_origin = glm::vec3(0.0f);
     glm::vec3 reflection_normal = glm::vec3(0.0f);
     std::shared_ptr<Mesh> hit_mesh;
-    if (hit_test(scene, camera, ray, new_origin, reflection_normal, hit_mesh)) {
+    if (hit_test(mesh_array, camera, ray, new_origin, reflection_normal, hit_mesh)) {
         ray->_origin = new_origin;
 
         glm::vec3& direction = ray->_direction;
@@ -97,7 +94,7 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::shared_ptr<Scene>& scene,
 
         ray->_direction = material->reflect_ray(unit_diffuse_vec, unit_specular_vec);
 
-        glm::vec3 input_color = compute_color(scene, camera, ray, current_reflection + 1, max_reflextions);
+        glm::vec3 input_color = compute_color(mesh_array, camera, ray, current_reflection + 1, max_reflextions);
         return material->reflect_color(input_color);
     }
     return glm::vec3(1.0f);
@@ -123,6 +120,22 @@ void RayTracingCPURenderer::render(
 
     int ns = options->num_rays_per_pixel();
 
+    std::vector<std::shared_ptr<Mesh>> mesh_array;
+    for (auto mesh : scene->_mesh_array) {
+        auto geometry = mesh->_geometry;
+        if (geometry->type() == GeometryTypeSphere) {
+            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+            std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+
+            glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+            glm::vec4 homogeneous_center_in_view_space = camera->_view_matrix * mesh->_model_matrix * homogeneous_center;
+            geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+
+            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+            mesh_array.emplace_back(mesh_in_view_space);
+        }
+    }
+
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -134,7 +147,7 @@ void RayTracingCPURenderer::render(
                 glm::vec3 direction = glm::normalize(glm::vec3(ray_target_x, ray_target_y, -1.0f));
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
-                glm::vec3 color = compute_color(scene, camera, ray, 0, options->path_depth());
+                glm::vec3 color = compute_color(mesh_array, camera, ray, 0, options->path_depth());
                 pixel_color.r += color.r;
                 pixel_color.g += color.g;
                 pixel_color.b += color.b;
@@ -168,6 +181,22 @@ void RayTracingCPURenderer::render(
 
     int ns = options->num_rays_per_pixel();
 
+    std::vector<std::shared_ptr<Mesh>> mesh_array;
+    for (auto mesh : scene->_mesh_array) {
+        auto geometry = mesh->_geometry;
+        if (geometry->type() == GeometryTypeSphere) {
+            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+            std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+
+            glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+            glm::vec4 homogeneous_center_in_view_space = camera->_view_matrix * mesh->_model_matrix * homogeneous_center;
+            geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+
+            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+            mesh_array.emplace_back(mesh_in_view_space);
+        }
+    }
+
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -179,7 +208,7 @@ void RayTracingCPURenderer::render(
                 glm::vec3 direction = glm::normalize(glm::vec3(ray_target_x, ray_target_y, -1.0f));
                 std::unique_ptr<Ray> ray = std::make_unique<Ray>(origin, direction);
 
-                glm::vec3 color = compute_color(scene, camera, ray, 0, options->path_depth());
+                glm::vec3 color = compute_color(mesh_array, camera, ray, 0, options->path_depth());
                 pixel_color.r += color.r;
                 pixel_color.g += color.g;
                 pixel_color.b += color.b;

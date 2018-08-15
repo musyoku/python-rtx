@@ -6,7 +6,7 @@ namespace three {
 class SphereGeometry : public Geometry {
 public:
     float _radius;
-    glm::vec4 _center;
+    glm::vec3 _center;
     SphereGeometry(float radius);
     GeometryType type() override;
 };
