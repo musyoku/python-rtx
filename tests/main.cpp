@@ -21,11 +21,10 @@ int main()
 
     scene->add(mesh);
 
-    std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(
-        py::make_tuple(0.0f, 0.0f, 2.0f),
-        py::make_tuple(0.0f, 0.0f, 0.0f),
-        py::make_tuple(0.0f, 1.0f, 0.0f),
-        1.0f, 1.0f, 1.0f, 1.0f);
+    py::tuple eye = py::make_tuple(0.0f, 0.0f, 2.0f);
+    py::tuple center = py::make_tuple(0.0f, 0.0f, 0.0f);
+    py::tuple up = py::make_tuple(0.0f, 1.0f, 0.0f);
+    std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
     options->set_num_rays_per_pixel(64);
