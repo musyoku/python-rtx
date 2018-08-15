@@ -27,7 +27,7 @@ public:
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
         std::shared_ptr<RayTracingOptions> options,
-        float*** buffer,
+        unsigned char* buffer,
         int height,
         int width,
         int channels);

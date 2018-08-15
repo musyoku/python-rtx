@@ -26,6 +26,14 @@ void Mesh::set_position(py::tuple position)
     _position[2] = position[2].cast<float>();
     update_model_matrix();
 }
+
+void Mesh::set_position(float (&position)[3])
+{
+    _position[0] = position[0];
+    _position[1] = position[1];
+    _position[2] = position[2];
+    update_model_matrix();
+}
 void Mesh::set_rotation(py::tuple rotation_rad)
 {
     _rotation_rad[0] = rotation_rad[0].cast<float>();

@@ -151,7 +151,7 @@ void RayTracingCPURenderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
     std::shared_ptr<RayTracingOptions> options,
-    float*** buffer,
+    unsigned char* buffer,
     int height,
     int width,
     int channels)
@@ -185,9 +185,10 @@ void RayTracingCPURenderer::render(
                 pixel_color.b += color.b;
             }
 
-            buffer[y][x][0] = glm::clamp(pixel_color.r / float(ns), 0.0f, 1.0f);
-            buffer[y][x][1] = glm::clamp(pixel_color.g / float(ns), 0.0f, 1.0f);
-            buffer[y][x][2] = glm::clamp(pixel_color.b / float(ns), 0.0f, 1.0f);
+            int index = y * width * channels + x * channels;
+            buffer[index + 0] = glm::clamp((int)(pixel_color.r / float(ns) * 255.0f), 0, 255);
+            buffer[index + 1] = glm::clamp((int)(pixel_color.g / float(ns) * 255.0f), 0, 255);
+            buffer[index + 2] = glm::clamp((int)(pixel_color.b / float(ns) * 255.0f), 0, 255);
         }
     }
 }

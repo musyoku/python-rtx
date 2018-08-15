@@ -21,5 +21,6 @@ public:
     void set_scale(pybind11::tuple scale);
     void set_position(pybind11::tuple position);
     void set_rotation(pybind11::tuple rotation_rad);
+    void set_position(float (&position)[3]);
 };
 }
