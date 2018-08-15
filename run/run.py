@@ -20,13 +20,17 @@ for n in range(27):
     scene.add(sphere)
 
 geometry = THREE.SphereGeometry(100)
-material = THREE.MeshLambertMaterial((1.0, 1.0, 1.0), 0.5)
+material = THREE.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
 base = THREE.Mesh(geometry, material)
 base.set_position((0, -101.5, -1))
-scene.add(base)
+# scene.add(base)
 
-screen_width = 128
-screen_height = 128
+
+
+
+
+screen_width = 512
+screen_height = 512
 
 render_options = THREE.RayTracingOptions()
 render_options.num_rays_per_pixel = 64
