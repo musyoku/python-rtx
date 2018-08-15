@@ -16,7 +16,7 @@ C++ & Python 3D library inspired by [three.js](https://github.com/mrdoob/three.j
 
 progress:
 
-![https://thumbs.gfycat.com/SecondhandReasonableAtlanticblackgoby-size_restricted.gif](https://thumbs.gfycat.com/SecondhandReasonableAtlanticblackgoby-size_restricted.gif)
+![https://thumbs.gfycat.com/HandyIllegalDodo-size_restricted.gif](https://thumbs.gfycat.com/HandyIllegalDodo-size_restricted.gif)
 
 # Requirements
 

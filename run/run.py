@@ -29,8 +29,8 @@ base.set_position((0, -101.5, -1))
 
 
 
-screen_width = 128
-screen_height = 128
+screen_width = 256
+screen_height = 256
 
 render_options = THREE.RayTracingOptions()
 render_options.num_rays_per_pixel = 64
