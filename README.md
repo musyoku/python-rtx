@@ -4,11 +4,11 @@ C++ & Python 3D library inspired by [three.js](https://github.com/mrdoob/three.j
 
 **todo**
 
-- [ ] Ray tracing
+- [ ] Monte Carlo Ray Tracing
     - [ ] CPU
     - [ ] CUDA
     - [ ] OpenGL
-- [ ] Bidirectional path tracing
+- [ ] Bidirectional Path Tracing
     - [ ] CPU
     - [ ] CUDA
     - [ ] OpenGL
