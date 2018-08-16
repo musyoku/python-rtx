@@ -2,7 +2,8 @@
 
 enum GeometryType {
     GeometryTypeUnknown = 0,
-    GeometryTypeSphere = 1,
+    GeometryTypeStandard = 1,
+    GeometryTypeSphere = 2,
 };
 
 namespace three {

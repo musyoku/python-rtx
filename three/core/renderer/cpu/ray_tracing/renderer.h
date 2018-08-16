@@ -13,7 +13,6 @@ private:
     std::default_random_engine _normal_engine;
     std::normal_distribution<float> _normal_distribution;
     glm::vec3 compute_color(std::vector<std::shared_ptr<Mesh>>& mesh_array,
-        std::shared_ptr<Camera>& camera,
         std::unique_ptr<Ray>& ray,
         int current_reflection,
         int max_reflextions);

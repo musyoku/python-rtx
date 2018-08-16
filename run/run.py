@@ -5,14 +5,16 @@ import matplotlib.pyplot as plt
 
 scene = THREE.Scene()
 
-metal_material = THREE.MeshMetalMaterial(roughness=0.5, specular_reflectance=0.5)
+metal_material = THREE.MeshMetalMaterial(
+    roughness=0.8, specular_reflectance=0.8)
 shift = [-1.125, 0, 1.125]
 colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
 for n in range(27):
     color = colors[(n + n // 3) % 3]
     geometry = THREE.SphereGeometry(0.5)
     if n % 2 == 0:
-        material = THREE.MeshLambertMaterial(color=color, diffuse_reflectance=0.8)
+        material = THREE.MeshLambertMaterial(
+            color=color, diffuse_reflectance=0.8)
     else:
         material = metal_material
     sphere = THREE.Mesh(geometry, material)
@@ -25,9 +27,17 @@ base = THREE.Mesh(geometry, material)
 base.set_position((0, -101.5, -1))
 # scene.add(base)
 
-
-
-
+scene = THREE.Scene()
+faces = np.array([[0, 1, 2]], dtype="int32")
+vertices = np.array(
+    [
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0],
+    ], dtype="float32")
+geometry = THREE.StandardGeometry(faces, vertices)
+triangle = THREE.Mesh(geometry, material)
+scene.add(triangle)
 
 screen_width = 256
 screen_height = 256
