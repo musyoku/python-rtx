@@ -1,7 +1,7 @@
 CXX = g++
 INCLUDE = -I./external $(shell pkg-config --cflags glfw3) $(shell python3 -m pybind11 --includes)
-LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -pthread
-CXXFLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -std=c++14 -fPIC
+LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -pthread -fopenmp
+CXXFLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -std=c++14 -fPIC -fopenmp
 SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/class/*.cpp) \
 		  $(wildcard ./core/geometry/*.cpp) \

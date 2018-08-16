@@ -42,6 +42,12 @@ sudo apt install libglfw3-dev
 pip3 install pybind11 --user
 ```
 
+**OpenMP**
+
+```
+sudo apt install libomp-dev
+```
+
 # Reference
 
 - [レイトレーシング入門１「光線の基本と反射」](https://qiita.com/mebiusbox2/items/89e2db3b24e4c39502fe)

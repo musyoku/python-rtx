@@ -3,6 +3,7 @@
 #include "../hit_test.h"
 #include <iostream>
 #include <memory>
+#include <omp.h>
 #include <vector>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -42,8 +43,8 @@ bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
     bool did_hit = false;
     glm::vec3 hit_point = glm::vec3(0.0f);
     float min_distance = FLT_MAX;
-    for (auto mesh : mesh_array) {
-        auto geometry = mesh->_geometry;
+    for (auto& mesh : mesh_array) {
+        auto& geometry = mesh->_geometry;
 
         if (geometry->type() == GeometryTypeSphere) {
             if (hit_test_sphere(mesh, camera, ray, min_distance, hit_point, reflection_normal)) {
@@ -79,7 +80,7 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>
         ray->_origin = new_origin;
 
         glm::vec3& direction = ray->_direction;
-        auto material = hit_mesh->_material;
+        auto& material = hit_mesh->_material;
 
         // diffuse
         glm::vec3 diffuse_vec = glm::vec3(_normal_distribution(_normal_engine), _normal_distribution(_normal_engine), _normal_distribution(_normal_engine));
@@ -106,6 +107,9 @@ void RayTracingCPURenderer::render(
     std::shared_ptr<RayTracingOptions> options,
     py::array_t<float, py::array::c_style> buffer)
 {
+
+    py::gil_scoped_release release;
+
     _height = buffer.shape(0);
     _width = buffer.shape(1);
     int channels = buffer.shape(2);
@@ -121,8 +125,8 @@ void RayTracingCPURenderer::render(
     int ns = options->num_rays_per_pixel();
 
     std::vector<std::shared_ptr<Mesh>> mesh_array;
-    for (auto mesh : scene->_mesh_array) {
-        auto geometry = mesh->_geometry;
+    for (auto& mesh : scene->_mesh_array) {
+        auto& geometry = mesh->_geometry;
         if (geometry->type() == GeometryTypeSphere) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
@@ -136,6 +140,7 @@ void RayTracingCPURenderer::render(
         }
     }
 
+#pragma omp parallel for
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
