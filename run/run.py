@@ -27,16 +27,38 @@ base = THREE.Mesh(geometry, material)
 base.set_position((0, -101.5, -1))
 # scene.add(base)
 
-scene = THREE.Scene()
-faces = np.array([[0, 1, 2]], dtype="int32")
+# scene = THREE.Scene()
+faces = np.array(
+    [
+        [0, 2, 1],
+        [2, 3, 1],
+        [0, 1, 4],
+        [4, 1, 5],
+        [2, 0, 4],
+        [6, 2, 4],
+        [7, 2, 6],
+        [7, 3, 2],
+        [1, 7, 5],
+        [1, 3, 7],
+        [4, 5, 6],
+        [6, 5, 7],
+    ], dtype="int32")
 vertices = np.array(
     [
-        [0, 0, 0],
-        [1, 0, 0],
-        [0, 1, 0],
-    ], dtype="float32")
+        [0.5, 0.0, 0.5],
+        [0.5, 0.0, -0.5],
+        [-0.5, 0.0, 0.5],
+        [-0.5, 0.0, -0.5],
+        [0.5, 1.0, 0.5],
+        [0.5, 1.0, -0.5],
+        [-0.5, 1.0, 0.5],
+        [-0.5, 1.0, -0.5],
+    ],
+    dtype="float32")
 geometry = THREE.StandardGeometry(faces, vertices)
 triangle = THREE.Mesh(geometry, material)
+triangle.set_position((0, 0, 1))
+triangle.set_scale((2.0, 2.0, 2.0))
 scene.add(triangle)
 
 screen_width = 256
@@ -58,7 +80,8 @@ camera = THREE.PerspectiveCamera(
 
 buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 
-camera_rad = 0
+camera_rad = math.pi / 5
+# camera_rad = 0
 radius = 2
 while True:
     eye = (radius * math.sin(camera_rad), 1.0, radius * math.cos(camera_rad))

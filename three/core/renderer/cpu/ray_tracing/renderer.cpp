@@ -58,7 +58,7 @@ bool hit_test_triangle(
 bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
     std::unique_ptr<Ray>& ray,
     glm::vec3& new_origin,
-    glm::vec3& face_normal,
+    glm::vec3& hit_face_normal,
     std::shared_ptr<Mesh>& hit_mesh)
 {
     bool did_hit = false;
@@ -69,7 +69,7 @@ bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
 
         if (geometry->type() == GeometryTypeSphere) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-            if (hit_test_sphere(sphere->_center, sphere->_radius, ray, min_distance, hit_point, face_normal)) {
+            if (hit_test_sphere(sphere->_center, sphere->_radius, ray, min_distance, hit_point, hit_face_normal)) {
                 new_origin = hit_point;
                 did_hit = true;
                 hit_mesh = mesh;
@@ -88,7 +88,7 @@ bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
                     new_origin = hit_point;
                     did_hit = true;
                     hit_mesh = mesh;
-                    face_normal = triangle_face_normal;
+                    hit_face_normal = triangle_face_normal;
                 }
             }
         }
@@ -112,9 +112,9 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>
         return glm::vec3(1.0f, 0.0f, 0.0f);
     }
     glm::vec3 new_origin = glm::vec3(0.0f);
-    glm::vec3 face_normal = glm::vec3(0.0f);
+    glm::vec3 hit_face_normal = glm::vec3(0.0f);
     std::shared_ptr<Mesh> hit_mesh;
-    if (hit_test(mesh_array, ray, new_origin, face_normal, hit_mesh)) {
+    if (hit_test(mesh_array, ray, new_origin, hit_face_normal, hit_mesh)) {
         ray->_origin = new_origin;
 
         glm::vec3& direction = ray->_direction;
@@ -123,13 +123,13 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>
         // diffuse
         glm::vec3 diffuse_vec = glm::vec3(_normal_distribution(_normal_engine), _normal_distribution(_normal_engine), _normal_distribution(_normal_engine));
         glm::vec3 unit_diffuse_vec = diffuse_vec / glm::length(diffuse_vec);
-        float dot = glm::dot(face_normal, unit_diffuse_vec);
+        float dot = glm::dot(hit_face_normal, unit_diffuse_vec);
         if (dot < 0.0f) {
             unit_diffuse_vec *= -1.0f;
         }
 
         // specular
-        glm::vec3 unit_specular_vec = direction - 2.0f * glm::dot(direction, face_normal) * face_normal;
+        glm::vec3 unit_specular_vec = direction - 2.0f * glm::dot(direction, hit_face_normal) * hit_face_normal;
 
         ray->_direction = material->reflect_ray(unit_diffuse_vec, unit_specular_vec);
 
@@ -160,8 +160,6 @@ void RayTracingCPURenderer::render(
     std::default_random_engine generator;
     std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
 
-    int ns = options->num_rays_per_pixel();
-
     std::vector<std::shared_ptr<Mesh>> mesh_array;
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
@@ -169,8 +167,10 @@ void RayTracingCPURenderer::render(
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
 
+            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+
             glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
-            glm::vec4 homogeneous_center_in_view_space = camera->_view_matrix * mesh->_model_matrix * homogeneous_center;
+            glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
             geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
 
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
@@ -180,12 +180,20 @@ void RayTracingCPURenderer::render(
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
             standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
-            standard_geometry_in_view_space->_face_normal_array = standard_geometry->_face_normal_array;
+
+            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
 
             for (auto& vertex : standard_geometry->_vertex_array) {
                 glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
-                glm::vec4 homogeneous_vertex_in_view_space = camera->_view_matrix * mesh->_model_matrix * homogeneous_vertex;
+                glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
                 standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+            }
+
+            for (auto& face_normal : standard_geometry->_face_normal_array) {
+                glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+                glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+                glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+                standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
             }
 
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
@@ -193,7 +201,9 @@ void RayTracingCPURenderer::render(
         }
     }
 
-#pragma omp parallel for
+    int ns = options->num_rays_per_pixel();
+
+    // #pragma omp parallel for
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);

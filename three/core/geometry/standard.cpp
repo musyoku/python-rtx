@@ -1,4 +1,5 @@
 #include "standard.h"
+#include <iostream>
 
 namespace three {
 namespace py = pybind11;
@@ -16,9 +17,6 @@ StandardGeometry::StandardGeometry(pybind11::array_t<int, pybind11::array::c_sty
     int num_faces = np_face_vertex_indeces.shape(0);
     int num_vertices = np_vertices.shape(0);
     int ndim_vertex = np_vertices.shape(1);
-    if (num_vertices != 3) {
-        throw std::runtime_error("num_vertices != 3");
-    }
     if (ndim_vertex != 3) {
         throw std::runtime_error("ndim_vertex != 3");
     }
