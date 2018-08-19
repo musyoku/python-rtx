@@ -43,7 +43,7 @@ bool hit_test_triangle(
     float& min_distance,
     glm::vec3& hit_point)
 {
-    float t = intersect_triangle(va, vb, vc, face_normal, ray);
+    float t = intersect_triangle(va, vb, vc, ray);
     if (t <= 0.001f) {
         return false;
     }

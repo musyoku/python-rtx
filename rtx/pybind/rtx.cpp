@@ -5,6 +5,7 @@
 #include "../core/class/mesh.h"
 #include "../core/class/renderer.h"
 #include "../core/class/scene.h"
+#include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
 #include "../core/material/mesh/lambert.h"
@@ -37,6 +38,8 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<float>(), py::arg("radius"));
     py::class_<StandardGeometry, Geometry, std::shared_ptr<StandardGeometry>>(module, "StandardGeometry")
         .def(py::init<py::array_t<int, py::array::c_style>, py::array_t<float, py::array::c_style>>(), py::arg("face_vertex_indeces"), py::arg("vertices"));
+    py::class_<PlainGeometry, Geometry, std::shared_ptr<PlainGeometry>>(module, "PlainGeometry")
+        .def(py::init<float, float>(), py::arg("width"), py::arg("height"));
 
     py::class_<MeshLambertMaterial, Material, std::shared_ptr<MeshLambertMaterial>>(module, "MeshLambertMaterial")
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
