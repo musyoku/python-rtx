@@ -1,16 +1,16 @@
-#include "../three/core/camera/perspective.h"
-#include "../three/core/class/scene.h"
-#include "../three/core/geometry/sphere.h"
-#include "../three/core/material/mesh/lambert.h"
-#include "../three/core/renderer/cpu/ray_tracing/renderer.h"
-#include "../three/core/renderer/options/ray_tracing.h"
+#include "../rtx/core/camera/perspective.h"
+#include "../rtx/core/class/scene.h"
+#include "../rtx/core/geometry/sphere.h"
+#include "../rtx/core/material/mesh/lambert.h"
+#include "../rtx/core/renderer/cpu/ray_tracing/renderer.h"
+#include "../rtx/core/renderer/options/ray_tracing.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_write.h"
 
-using namespace three;
+using namespace rtx;
 namespace py = pybind11;
 
 int main()

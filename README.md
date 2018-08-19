@@ -1,6 +1,6 @@
-# three.py
+# Python RTX
 
-C++ & Python 3D library inspired by [three.js](https://github.com/mrdoob/three.js/)
+C++ & Python Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
 **todo**
 

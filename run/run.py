@@ -1,33 +1,33 @@
 import math
 import numpy as np
-import three as THREE
+import rtx as RTX
 import matplotlib.pyplot as plt
 
-scene = THREE.Scene()
+scene = RTX.Scene()
 
-metal_material = THREE.MeshMetalMaterial(
+metal_material = RTX.MeshMetalMaterial(
     roughness=0.8, specular_reflectance=0.8)
 shift = [-1.125, 0, 1.125]
 colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
 for n in range(27):
     color = colors[(n + n // 3) % 3]
-    geometry = THREE.SphereGeometry(0.5)
+    geometry = RTX.SphereGeometry(0.5)
     if n % 2 == 0:
-        material = THREE.MeshLambertMaterial(
+        material = RTX.MeshLambertMaterial(
             color=color, diffuse_reflectance=0.8)
     else:
         material = metal_material
-    sphere = THREE.Mesh(geometry, material)
+    sphere = RTX.Mesh(geometry, material)
     sphere.set_position((shift[n % 3], shift[(n // 3) % 3], shift[n // 9]))
     scene.add(sphere)
 
-geometry = THREE.SphereGeometry(100)
-material = THREE.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
-base = THREE.Mesh(geometry, material)
+geometry = RTX.SphereGeometry(100)
+material = RTX.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+base = RTX.Mesh(geometry, material)
 base.set_position((0, -101.5, -1))
 # scene.add(base)
 
-# scene = THREE.Scene()
+# scene = RTX.Scene()
 faces = np.array(
     [
         [0, 2, 1],
@@ -55,8 +55,8 @@ vertices = np.array(
         [-0.5, 1.0, -0.5],
     ],
     dtype="float32")
-geometry = THREE.StandardGeometry(faces, vertices)
-triangle = THREE.Mesh(geometry, material)
+geometry = RTX.StandardGeometry(faces, vertices)
+triangle = RTX.Mesh(geometry, material)
 triangle.set_position((0, 0, 1))
 triangle.set_scale((2.0, 2.0, 2.0))
 scene.add(triangle)
@@ -64,12 +64,12 @@ scene.add(triangle)
 screen_width = 256
 screen_height = 256
 
-render_options = THREE.RayTracingOptions()
+render_options = RTX.RayTracingOptions()
 render_options.num_rays_per_pixel = 64
-render_options.path_depth = 4
+render_options.path_depth = 6
 
-renderer = THREE.RayTracingCPURenderer()
-camera = THREE.PerspectiveCamera(
+renderer = RTX.RayTracingCPURenderer()
+camera = RTX.PerspectiveCamera(
     eye=(0, 0, 2),
     center=(0, 0, 0),
     up=(0, 1, 0),
