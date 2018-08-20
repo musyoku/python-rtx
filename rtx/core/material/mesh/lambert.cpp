@@ -26,6 +26,10 @@ glm::vec3 MeshLambertMaterial::reflect_ray(glm::vec3& diffuse_vec, glm::vec3& sp
 {
     return diffuse_vec;
 }
+glm::vec3 MeshLambertMaterial::emit_color() const
+{
+    throw std::runtime_error("Not implemented");
+};
 MaterialType MeshLambertMaterial::type() const
 {
     return MaterialTypeLambert;

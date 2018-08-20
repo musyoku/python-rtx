@@ -1,6 +1,6 @@
 #include "intersect.h"
 #include "../../class/math.h"
-#include <iostream>
+#include <xmmintrin.h>
 
 namespace rtx {
 namespace cpu {
@@ -9,7 +9,7 @@ namespace cpu {
         const float radius,
         const std::unique_ptr<Ray>& ray)
     {
-        glm::vec3 oc = ray->_origin - center;
+        const glm::vec3 oc = ray->_origin - center;
         const float a = glm::dot(ray->_direction, ray->_direction);
         const float b = 2.0f * glm::dot(ray->_direction, oc);
         const float c = glm::dot(oc, oc) - pow2(radius);
@@ -19,13 +19,13 @@ namespace cpu {
             return -1.0f;
         }
         const float root = sqrtf(d);
-        float t = (-b - root) / (2.0f * a);
-        if (t > 0.001f) {
-            return t;
+        const float t0 = (-b - root) / (2.0f * a);
+        if (t0 > 0.001f) {
+            return t0;
         }
-        t = (-b + root) / (2.0f * a);
-        if (t > 0.001f) {
-            return t;
+        const float t1 = (-b + root) / (2.0f * a);
+        if (t1 > 0.001f) {
+            return t1;
         }
         return -1.0f;
     }

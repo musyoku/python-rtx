@@ -8,6 +8,7 @@
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
+#include "../core/material/mesh/emissive.h"
 #include "../core/material/mesh/lambert.h"
 #include "../core/material/mesh/metal.h"
 #include "../core/renderer/cpu/ray_tracing/renderer.h"
@@ -45,6 +46,8 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
     py::class_<MeshMetalMaterial, Material, std::shared_ptr<MeshMetalMaterial>>(module, "MeshMetalMaterial")
         .def(py::init<float, float>(), py::arg("roughness"), py::arg("specular_reflectance"));
+    py::class_<MeshEmissiveMaterial, Material, std::shared_ptr<MeshEmissiveMaterial>>(module, "MeshEmissiveMaterial")
+        .def(py::init<py::tuple>(), py::arg("color"));
 
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
         .def(py::init<>())

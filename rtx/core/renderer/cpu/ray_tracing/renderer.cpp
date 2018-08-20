@@ -109,34 +109,45 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>
     int max_reflextions)
 {
     if (current_reflection == max_reflextions) {
-        return glm::vec3(1.0f, 0.0f, 0.0f);
+        return glm::vec3(0.0f, 0.0f, 0.0f);
     }
     glm::vec3 new_origin = glm::vec3(0.0f);
     glm::vec3 hit_face_normal = glm::vec3(0.0f);
     std::shared_ptr<Mesh> hit_mesh;
     if (hit_test(mesh_array, ray, new_origin, hit_face_normal, hit_mesh)) {
         ray->_origin = new_origin;
+        glm::vec3 face_normal = hit_face_normal;
 
-        glm::vec3& direction = ray->_direction;
-        auto& material = hit_mesh->_material;
+        const auto& material = hit_mesh->_material;
+        if (material->type() == MaterialTypeEmissive) {
+            return material->emit_color();
+        }
+
+        // detect backface
+        const float t = glm::dot(hit_face_normal, ray->_direction);
+        if (t > 0.0f) {
+            face_normal *= -1.0f;
+        }
 
         // diffuse
         glm::vec3 diffuse_vec = glm::vec3(_normal_distribution(_normal_engine), _normal_distribution(_normal_engine), _normal_distribution(_normal_engine));
         glm::vec3 unit_diffuse_vec = diffuse_vec / glm::length(diffuse_vec);
-        float dot = glm::dot(hit_face_normal, unit_diffuse_vec);
+        const float dot = glm::dot(face_normal, unit_diffuse_vec);
         if (dot < 0.0f) {
             unit_diffuse_vec *= -1.0f;
         }
 
         // specular
-        glm::vec3 unit_specular_vec = direction - 2.0f * glm::dot(direction, hit_face_normal) * hit_face_normal;
+        glm::vec3 unit_specular_vec = ray->_direction - 2.0f * glm::dot(ray->_direction, face_normal) * face_normal;
 
         ray->_direction = material->reflect_ray(unit_diffuse_vec, unit_specular_vec);
 
         glm::vec3 input_color = compute_color(mesh_array, ray, current_reflection + 1, max_reflextions);
+
+        // return (unit_diffuse_vec + 1.0f) * 0.5f;
         return material->reflect_color(input_color);
     }
-    return glm::vec3(1.0f);
+    return glm::vec3(0.0f);
 }
 
 void RayTracingCPURenderer::render(

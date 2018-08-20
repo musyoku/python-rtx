@@ -57,18 +57,21 @@ scene.add(ceil)
 shift = [-1, 0, 1]
 colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
 for n in range(27):
-    color = colors[(n + n // 3) % 3]
+    color = colors[(n + n // 3 + n // 9) % 3]
     geometry = rtx.SphereGeometry(0.5)
-    material = rtx.MeshLambertMaterial(color=color, diffuse_reflectance=0.8)
+    material = rtx.MeshLambertMaterial(color=color, diffuse_reflectance=1.0)
+    if n % 5 == 0:
+        material = rtx.MeshEmissiveMaterial(color=(1.0, 1.0, 1.0))
     sphere = rtx.Mesh(geometry, material)
-    sphere.set_position((shift[n % 3], shift[(n // 3) % 3] - 1.5, shift[n // 9]))
+    sphere.set_position((shift[n % 3], shift[(n // 3) % 3] - 1.5,
+                         shift[n // 9]))
     scene.add(sphere)
 
-screen_width = 128
-screen_height = 128
+screen_width = 256
+screen_height = 256
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 64
+render_options.num_rays_per_pixel = 1024
 render_options.path_depth = 6
 
 renderer = rtx.RayTracingCPURenderer()
@@ -84,6 +87,7 @@ camera = rtx.PerspectiveCamera(
 buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 
 camera_rad = 0
+camera_rad = math.pi / 10
 radius = 2
 while True:
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))

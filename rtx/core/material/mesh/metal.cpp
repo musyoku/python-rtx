@@ -15,6 +15,10 @@ glm::vec3 MeshMetalMaterial::reflect_ray(glm::vec3& diffuse_vec, glm::vec3& spec
 {
     return (1.0f - _roughness) * diffuse_vec + _roughness * specular_vec;
 }
+glm::vec3 MeshMetalMaterial::emit_color() const
+{
+    throw std::runtime_error("Not implemented");
+};
 MaterialType MeshMetalMaterial::type() const
 {
     return MaterialTypeMetal;
