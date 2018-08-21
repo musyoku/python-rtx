@@ -2,12 +2,12 @@
 #include "../../../geometry/sphere.h"
 #include "../../../geometry/standard.h"
 #include "../intersect.h"
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <memory>
 #include <omp.h>
 #include <vector>
 
-#include <glm/gtc/matrix_transform.hpp>
 namespace rtx {
 
 using namespace cpu;
@@ -156,7 +156,6 @@ void RayTracingCPURenderer::render(
     std::shared_ptr<RayTracingOptions> options,
     py::array_t<float, py::array::c_style> buffer)
 {
-
     py::gil_scoped_release release;
 
     _height = buffer.shape(0);

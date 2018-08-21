@@ -1,6 +1,7 @@
 CXX = g++
 INCLUDE = -I./external $(shell pkg-config --cflags glfw3) $(shell python3 -m pybind11 --includes)
-LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -pthread -fopenmp
+LIBRARIES = -L/usr/local/cuda-9.1/lib64
+LDFLAGS = $(shell pkg-config --static --libs glfw3) -shared -fopenmp
 CXXFLAGS = -O3 -DNDEBUG -Wall -Wformat -march=native -std=c++14 -fPIC -fopenmp
 SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/class/*.cpp) \
@@ -9,9 +10,11 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/camera/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/*.cpp) \
+		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cpp) \
+		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cu) \
 		  $(wildcard ./core/renderer/options/*.cpp) \
 		  pybind/rtx.cpp
-OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES)))
+OBJS = $(patsubst %.cu,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES))))
 EXTENSION = $(shell python3-config --extension-suffix)
 OUTPUT = ../run
 TARGET = $(OUTPUT)/rtx$(EXTENSION)
@@ -25,13 +28,16 @@ ifeq ($(UNAME), Darwin)
 endif
 
 $(TARGET): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(LIBRARIES) -lcudart 
 
 .c.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+./core/renderer/cuda/ray_tracing/kernel.o: ./core/renderer/cuda/ray_tracing/kernel.cu
+	nvcc -ccbin=$(CXX) -Xcompiler "-fPIC" -c $< -o $@
 
 .PHONY: clean
 clean:

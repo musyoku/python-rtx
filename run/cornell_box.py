@@ -67,11 +67,11 @@ for n in range(27):
                          shift[n // 9]))
     scene.add(sphere)
 
-screen_width = 128
-screen_height = 128
+screen_width = 256
+screen_height = 256
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 128
+render_options.num_rays_per_pixel = 32
 render_options.path_depth = 6
 
 renderer = rtx.RayTracingCPURenderer()

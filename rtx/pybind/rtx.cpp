@@ -12,6 +12,7 @@
 #include "../core/material/mesh/lambert.h"
 #include "../core/material/mesh/metal.h"
 #include "../core/renderer/cpu/ray_tracing/renderer.h"
+#include "../core/renderer/cuda/ray_tracing/renderer.h"
 #include "../core/renderer/options/ray_tracing.h"
 #include <pybind11/pybind11.h>
 
@@ -52,6 +53,10 @@ PYBIND11_MODULE(rtx, module)
     py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
         .def(py::init<>())
         .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCPURenderer::render);
+    py::class_<RayTracingCUDARenderer, Renderer, std::shared_ptr<RayTracingCUDARenderer>>(module, "RayTracingCUDARenderer")
+        .def(py::init<>())
+        .def("render", (void (RayTracingCUDARenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCUDARenderer::render);
+        
     py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
         .def(py::init<>())
         .def_property("num_rays_per_pixel", &RayTracingOptions::num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel)
