@@ -13,6 +13,7 @@ void rtx_cuda_alloc(
     const float* face_vertices,
     const int* object_types,
     const int num_rays,
+    const int rays_stride,
     const int num_faces,
     const int faces_stride,
     const int num_pixels,
@@ -20,7 +21,7 @@ void rtx_cuda_alloc(
 void rtx_cuda_delete(
     float*& gpu_rays,
     float*& gpu_face_vertices,
-    float*& gpu_object_types,
+    int*& gpu_object_types,
     float*& gpu_color_per_ray);
 
 void rtx_cuda_ray_tracing_render(

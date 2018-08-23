@@ -1,5 +1,6 @@
 #include "camera.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
 namespace rtx {
 namespace py = pybind11;

@@ -66,9 +66,7 @@ void RayTracingCUDARenderer::render(
             if (geometry->type() == GeometryTypeSphere) {
                 SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
                 std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
-
                 glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-
                 glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
                 glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
                 geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
@@ -190,6 +188,7 @@ void RayTracingCUDARenderer::render(
             _face_vertices,
             _object_types,
             num_rays,
+            rays_stride,
             num_faces,
             faces_stride,
             num_pixels,
@@ -209,7 +208,7 @@ void RayTracingCUDARenderer::render(
         num_pixels,
         num_rays_per_pixel);
 
-    _initialized = true;
+    // _initialized = true;
 
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
@@ -228,10 +227,10 @@ void RayTracingCUDARenderer::render(
         }
     }
 
-    // rtx_cuda_delete(_gpu_face_vertices, _gpu_color_per_ray);
-    // delete[] _face_vertices;
-    // delete[] _object_types;
-    // delete[] _rays;
-    // delete[] _color_per_ray;
+    rtx_cuda_delete(_gpu_rays, _gpu_face_vertices, _gpu_object_types, _gpu_color_per_ray);
+    delete[] _face_vertices;
+    delete[] _object_types;
+    delete[] _rays;
+    delete[] _color_per_ray;
 }
 }
