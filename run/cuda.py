@@ -86,3 +86,19 @@ camera = rtx.PerspectiveCamera(
 
 buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 renderer.render(scene, camera, render_options, buffer)
+
+camera_rad = 0
+camera_rad = math.pi / 10
+radius = 2
+while True:
+    eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
+    camera.look_at(eye=eye, center=(0, -1, 0), up=(0, 1, 0))
+
+    renderer.render(scene, camera, render_options, buffer)
+    # linear -> sRGB
+    pixels = np.power(buffer, 1.0 / 2.2)
+    # display
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1.0 / 60.0)
+
+    camera_rad += math.pi / 10

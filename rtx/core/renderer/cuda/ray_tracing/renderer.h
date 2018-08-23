@@ -9,6 +9,14 @@
 
 namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
+private:
+    float* _face_vertices;
+    int* _object_types;
+    float* _rays;
+    float* _color_per_ray;
+    bool _initialized;
+    float* _gpu_face_vertices;
+    float* _gpu_color_per_ray;
 public:
     RayTracingCUDARenderer();
     void render(std::shared_ptr<Scene> scene,
