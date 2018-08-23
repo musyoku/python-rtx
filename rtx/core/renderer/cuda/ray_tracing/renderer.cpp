@@ -16,7 +16,9 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _object_types = nullptr;
     _rays = nullptr;
     _color_per_ray = nullptr;
+    _gpu_rays = nullptr;
     _gpu_face_vertices = nullptr;
+    _gpu_object_types = nullptr;
     _gpu_color_per_ray = nullptr;
     _initialized = false;
 }
@@ -58,8 +60,50 @@ void RayTracingCUDARenderer::render(
         _face_vertices = new float[num_faces * faces_stride];
         _object_types = new int[num_faces];
 
-        int face_index = 0;
+        std::vector<std::shared_ptr<Mesh>> mesh_array;
         for (auto& mesh : scene->_mesh_array) {
+            auto& geometry = mesh->_geometry;
+            if (geometry->type() == GeometryTypeSphere) {
+                SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+                std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+
+                glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+
+                glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+                glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
+                geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+
+                std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+                mesh_array.emplace_back(mesh_in_view_space);
+            }
+            if (geometry->type() == GeometryTypeStandard) {
+                StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+                std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
+                standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
+
+                glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+
+                for (auto& vertex : standard_geometry->_vertex_array) {
+                    glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
+                    glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
+                    standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+                }
+
+                for (auto& face_normal : standard_geometry->_face_normal_array) {
+                    glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+                    glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+                    glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+                    standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
+                }
+
+                std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
+                mesh_array.emplace_back(mesh_in_view_space);
+            }
+        }
+
+        
+        int face_index = 0;
+        for (auto& mesh : mesh_array) {
             int index = face_index * faces_stride;
             auto& geometry = mesh->_geometry;
             if (geometry->type() == GeometryTypeSphere) {
@@ -137,28 +181,33 @@ void RayTracingCUDARenderer::render(
     }
 
     if (_initialized == false) {
-        rtx_cuda_alloc(_gpu_face_vertices,
+        rtx_cuda_alloc(
+            _gpu_rays,
+            _gpu_face_vertices,
+            _gpu_object_types,
+            _gpu_color_per_ray,
+            _rays,
             _face_vertices,
+            _object_types,
+            num_rays,
             num_faces,
             faces_stride,
-            _gpu_color_per_ray,
             num_pixels,
             num_rays_per_pixel);
     }
 
     rtx_cuda_ray_tracing_render(
-        _rays,
+        _gpu_rays,
+        _gpu_face_vertices,
+        _gpu_object_types,
+        _gpu_color_per_ray,
+        _color_per_ray,
         num_rays,
-        _face_vertices,
-        _object_types,
         num_faces,
         faces_stride,
         options->path_depth(),
-        _color_per_ray,
         num_pixels,
-        num_rays_per_pixel,
-        _gpu_face_vertices,
-        _gpu_color_per_ray);
+        num_rays_per_pixel);
 
     _initialized = true;
 

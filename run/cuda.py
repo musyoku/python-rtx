@@ -71,7 +71,7 @@ screen_width = 128
 screen_height = 128
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 512
+render_options.num_rays_per_pixel = 1
 render_options.path_depth = 6
 
 renderer = rtx.RayTracingCUDARenderer()
@@ -96,7 +96,7 @@ while True:
 
     renderer.render(scene, camera, render_options, buffer)
     # linear -> sRGB
-    pixels = np.power(buffer, 1.0 / 2.2)
+    pixels = np.power(np.clip(buffer, 0, 1), 1.0 / 2.2)
     # display
     plt.imshow(pixels, interpolation="none")
     plt.pause(1.0 / 60.0)

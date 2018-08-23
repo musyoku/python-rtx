@@ -15,7 +15,9 @@ private:
     float* _rays;
     float* _color_per_ray;
     bool _initialized;
+    float* _gpu_rays;
     float* _gpu_face_vertices;
+    int* _gpu_object_types;
     float* _gpu_color_per_ray;
 public:
     RayTracingCUDARenderer();
