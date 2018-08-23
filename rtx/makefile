@@ -11,7 +11,7 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/*.cpp) \
 		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cpp) \
-		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cu) \
+		  $(wildcard ./core/renderer/cuda/kernel/*.cu) \
 		  $(wildcard ./core/renderer/options/*.cpp) \
 		  pybind/rtx.cpp
 OBJS = $(patsubst %.cu,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES))))
@@ -36,7 +36,7 @@ $(TARGET): $(OBJS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
-./core/renderer/cuda/ray_tracing/kernel.o: ./core/renderer/cuda/ray_tracing/kernel.cu
+./core/renderer/cuda/kernel/%.o: ./core/renderer/cuda/kernel/%.cu
 	nvcc -ccbin=$(CXX) -Xcompiler "-fPIC" -c $< -o $@
 
 .PHONY: clean

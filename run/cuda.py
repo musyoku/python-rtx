@@ -5,6 +5,68 @@ import matplotlib.pyplot as plt
 
 scene = rtx.Scene()
 
+box_size = 6
+
+# 1
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+wall = rtx.Mesh(geometry, material)
+wall.set_position((0, 0, -box_size / 2))
+scene.add(wall)
+
+# 2
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((1.0, 0.0, 0.0), 0.8)
+wall = rtx.Mesh(geometry, material)
+wall.set_rotation((0, math.pi / 2, 0))
+wall.set_position((box_size / 2, 0, 0))
+scene.add(wall)
+
+# 3
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((0.0, 1.0, 0.0), 0.8)
+wall = rtx.Mesh(geometry, material)
+wall.set_rotation((0, -math.pi / 2, 0))
+wall.set_position((-box_size / 2, 0, 0))
+scene.add(wall)
+
+# 4
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+wall = rtx.Mesh(geometry, material)
+wall.set_position((0, 0, box_size / 2))
+scene.add(wall)
+
+# ceil
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+ceil = rtx.Mesh(geometry, material)
+ceil.set_rotation((-math.pi / 2, 0, 0))
+ceil.set_position((0, box_size / 2, 0))
+scene.add(ceil)
+
+# floor
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+ceil = rtx.Mesh(geometry, material)
+ceil.set_rotation((math.pi / 2, 0, 0))
+ceil.set_position((0, -box_size / 2, 0))
+scene.add(ceil)
+
+# place balls
+shift = [-1, 0, 1]
+colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
+for n in range(27):
+    color = colors[(n + n // 3 + n // 9) % 3]
+    geometry = rtx.SphereGeometry(0.5)
+    material = rtx.MeshLambertMaterial(color=color, diffuse_reflectance=1.0)
+    if n % 5 == 0:
+        material = rtx.MeshEmissiveMaterial(color=(1.0, 1.0, 1.0))
+    sphere = rtx.Mesh(geometry, material)
+    sphere.set_position((shift[n % 3], shift[(n // 3) % 3] - 1.5,
+                         shift[n // 9]))
+    scene.add(sphere)
+
 screen_width = 128
 screen_height = 128
 
