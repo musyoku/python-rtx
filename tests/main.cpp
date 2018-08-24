@@ -3,9 +3,9 @@
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/mesh/lambert.h"
 #include "../rtx/core/renderer/cpu/ray_tracing/renderer.h"
+#include "../rtx/core/renderer/cuda/header/ray_tracing.h"
 #include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
 #include "../rtx/core/renderer/options/ray_tracing.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
@@ -51,7 +51,8 @@ int main()
         render->render(scene, camera, options, pixels, height, width, channels);
     }
     stbi_write_bmp("render.bmp", width, height, 3, pixels);
-
     delete[] pixels;
+
+    cuda_device_reset();
     return 0;
 }

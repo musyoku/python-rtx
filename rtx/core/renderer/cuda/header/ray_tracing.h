@@ -36,3 +36,5 @@ void rtx_cuda_ray_tracing_render(
     const int path_depth,
     const int num_pixels,
     const int num_rays_per_pixel);
+
+void cuda_device_reset();
