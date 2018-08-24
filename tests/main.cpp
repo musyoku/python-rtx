@@ -3,6 +3,7 @@
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/mesh/lambert.h"
 #include "../rtx/core/renderer/cpu/ray_tracing/renderer.h"
+#include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
 #include "../rtx/core/renderer/options/ray_tracing.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -40,13 +41,15 @@ int main()
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
     options->set_num_rays_per_pixel(64);
     options->set_path_depth(4);
-    std::shared_ptr<RayTracingCPURenderer> render = std::make_shared<RayTracingCPURenderer>();
+    std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
     int width = 128;
     int height = 128;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    render->render(scene, camera, options, pixels, height, width, channels);
+    for(int i = 0;i < 10;i++){
+        render->render(scene, camera, options, pixels, height, width, channels);
+    }
     stbi_write_bmp("render.bmp", width, height, 3, pixels);
 
     delete[] pixels;

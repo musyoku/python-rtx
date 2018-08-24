@@ -71,10 +71,10 @@ screen_width = 128
 screen_height = 128
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 512
+render_options.num_rays_per_pixel = 1
 render_options.path_depth = 6
 
-renderer = rtx.RayTracingCPURenderer()
+renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(
     eye=(0, 0, -1),
     center=(0, 0, 0),
