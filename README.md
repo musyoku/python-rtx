@@ -16,7 +16,7 @@ C++ & Python Ray Tracing library inspired by [three.js](https://github.com/mrdoo
 
 progress:
 
-![https://thumbs.gfycat.com/WastefulGlisteningHusky-size_restricted.gif](https://thumbs.gfycat.com/WastefulGlisteningHusky-size_restricted.gif)
+![https://thumbs.gfycat.com/UniformAnimatedDuckling-size_restricted.gif](https://thumbs.gfycat.com/UniformAnimatedDuckling-size_restricted.gif)
 
 # Requirements
 
