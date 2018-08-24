@@ -26,7 +26,10 @@ glm::vec3 MeshEmissiveMaterial::reflect_ray(glm::vec3& diffuse_vec, glm::vec3& s
 {
     throw std::runtime_error("Not implemented");
 };
-
+glm::vec3 MeshEmissiveMaterial::color() const
+{
+    return _color;
+}
 MaterialType MeshEmissiveMaterial::type() const
 {
     return MaterialTypeEmissive;

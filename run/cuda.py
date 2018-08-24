@@ -71,8 +71,8 @@ screen_width = 128
 screen_height = 128
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 1
-render_options.path_depth = 6
+render_options.num_rays_per_pixel = 32
+render_options.path_depth = 5
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(
@@ -99,6 +99,6 @@ while True:
     pixels = np.power(np.clip(buffer, 0, 1), 1.0 / 2.2)
     # display
     plt.imshow(pixels, interpolation="none")
-    plt.pause(1.0 / 60.0)
+    plt.pause(1e-8)
 
     camera_rad += math.pi / 10

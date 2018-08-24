@@ -6,6 +6,7 @@
 #include "../rtx/core/renderer/cuda/header/ray_tracing.h"
 #include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
 #include "../rtx/core/renderer/options/ray_tracing.h"
+#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
@@ -39,16 +40,17 @@ int main()
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
-    options->set_num_rays_per_pixel(64);
-    options->set_path_depth(4);
+    options->set_num_rays_per_pixel(512);
+    options->set_path_depth(5);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
     int width = 128;
     int height = 128;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    for(int i = 0;i < 10;i++){
+    for (int i = 0; i < 20; i++) {
         render->render(scene, camera, options, pixels, height, width, channels);
+        std::cout << i << std::endl;
     }
     stbi_write_bmp("render.bmp", width, height, 3, pixels);
     delete[] pixels;

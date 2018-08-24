@@ -11,13 +11,17 @@ namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
 private:
     float* _face_vertices;
+    float* _face_colors;
     int* _object_types;
+    int* _material_types;
     float* _rays;
     float* _color_per_ray;
     bool _initialized;
     float* _gpu_rays;
     float* _gpu_face_vertices;
+    float* _gpu_face_colors;
     int* _gpu_object_types;
+    int* _gpu_material_types;
     float* _gpu_color_per_ray;
 public:
     RayTracingCUDARenderer();

@@ -19,6 +19,10 @@ glm::vec3 MeshMetalMaterial::emit_color() const
 {
     throw std::runtime_error("Not implemented");
 };
+glm::vec3 MeshMetalMaterial::color() const
+{
+    throw std::runtime_error("Not implemented");
+};
 MaterialType MeshMetalMaterial::type() const
 {
     return MaterialTypeMetal;
