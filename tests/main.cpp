@@ -6,6 +6,7 @@
 #include "../rtx/core/renderer/cuda/header/ray_tracing.h"
 #include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
 #include "../rtx/core/renderer/options/ray_tracing.h"
+#include <chrono>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -48,10 +49,16 @@ int main()
     int height = 128;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    for (int i = 0; i < 20; i++) {
+    render->render(scene, camera, options, pixels, height, width, channels);
+    auto start = std::chrono::system_clock::now();
+    int repeat = 100;
+    for (int i = 0; i < repeat; i++) {
         render->render(scene, camera, options, pixels, height, width, channels);
-        std::cout << i << std::endl;
     }
+    auto end = std::chrono::system_clock::now();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "fps: " << (double(repeat) / elapsed * 1000) << std::endl;
+
     stbi_write_bmp("render.bmp", width, height, 3, pixels);
     delete[] pixels;
 
