@@ -45,13 +45,13 @@ int main()
     options->set_path_depth(5);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
-    int width = 128;
-    int height = 128;
+    int width = 64;
+    int height = 64;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
     render->render(scene, camera, options, pixels, height, width, channels);
     auto start = std::chrono::system_clock::now();
-    int repeat = 100;
+    int repeat = 50;
     for (int i = 0; i < repeat; i++) {
         render->render(scene, camera, options, pixels, height, width, channels);
     }

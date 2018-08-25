@@ -61,6 +61,7 @@ void RayTracingCUDARenderer::render(
     int faces_stride = 4 * 3;
     int color_stride = 3;
     if (_initialized == false) {
+        std::cout << num_faces << " * " << faces_stride << std::endl;
         _face_vertices = new float[num_faces * faces_stride];
         _face_colors = new float[num_faces * color_stride];
         _object_types = new int[num_faces];
