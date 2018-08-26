@@ -73,7 +73,7 @@ screen_width = 512
 screen_height = 512
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 64
+render_options.num_rays_per_pixel = 256
 render_options.path_depth = 5
 
 renderer = rtx.RayTracingCUDARenderer()

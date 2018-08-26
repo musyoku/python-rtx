@@ -179,6 +179,7 @@ void RayTracingCUDARenderer::render(
         PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(camera.get());
         origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
     }
+    float aspect_ratio = float(_width) / float(_height);
 
     for (int y = 0; y < _height; y++) {
         for (int x = 0; x < _width; x++) {
@@ -188,7 +189,7 @@ void RayTracingCUDARenderer::render(
 
                 // direction
                 _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-                _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
+                _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f) / aspect_ratio;
                 _rays[index + 2] = -origin.z;
 
                 // origin

@@ -7,16 +7,14 @@ C++ & Python Ray Tracing library inspired by [three.js](https://github.com/mrdoo
 - [ ] Monte Carlo Ray Tracing
     - [ ] CPU
     - [ ] CUDA
-    - [ ] OpenGL
 - [ ] Bidirectional Path Tracing
     - [ ] CPU
     - [ ] CUDA
-    - [ ] OpenGL
 - [ ] Python3 bindings
 
 progress:
 
-![https://thumbs.gfycat.com/UniformAnimatedDuckling-size_restricted.gif](https://thumbs.gfycat.com/UniformAnimatedDuckling-size_restricted.gif)
+![https://thumbs.gfycat.com/FineResponsibleBadger-size_restricted.gif](https://thumbs.gfycat.com/FineResponsibleBadger-size_restricted.gif)
 
 # Requirements
 
