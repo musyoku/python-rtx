@@ -5,6 +5,7 @@
 #include "../core/class/mesh.h"
 #include "../core/class/renderer.h"
 #include "../core/class/scene.h"
+#include "../core/geometry/box.h"
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
@@ -42,6 +43,8 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<py::array_t<int, py::array::c_style>, py::array_t<float, py::array::c_style>>(), py::arg("face_vertex_indeces"), py::arg("vertices"));
     py::class_<PlainGeometry, Geometry, std::shared_ptr<PlainGeometry>>(module, "PlainGeometry")
         .def(py::init<float, float>(), py::arg("width"), py::arg("height"));
+    py::class_<BoxGeometry, Geometry, std::shared_ptr<BoxGeometry>>(module, "BoxGeometry")
+        .def(py::init<float, float, float>(), py::arg("width"), py::arg("height"), py::arg("depth"));
 
     py::class_<MeshLambertMaterial, Material, std::shared_ptr<MeshLambertMaterial>>(module, "MeshLambertMaterial")
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
@@ -56,7 +59,7 @@ PYBIND11_MODULE(rtx, module)
     py::class_<RayTracingCUDARenderer, Renderer, std::shared_ptr<RayTracingCUDARenderer>>(module, "RayTracingCUDARenderer")
         .def(py::init<>())
         .def("render", (void (RayTracingCUDARenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCUDARenderer::render);
-        
+
     py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
         .def(py::init<>())
         .def_property("num_rays_per_pixel", &RayTracingOptions::num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel)

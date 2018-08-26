@@ -404,10 +404,10 @@ __global__ void render(
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
-    __shared__ float shared_face_vertices[39 * 12];
-    __shared__ float shared_face_colors[39 * 3];
-    __shared__ int shared_object_types[39];
-    __shared__ int shared_material_types[39];
+    __shared__ float shared_face_vertices[41 * 12];
+    __shared__ float shared_face_colors[41 * 3];
+    __shared__ int shared_object_types[41];
+    __shared__ int shared_material_types[41];
 
     if (threadIdx.x == 0) {
         for (int n = 0; n < num_faces; n++) {

@@ -1,7 +1,6 @@
 #include "plain.h"
 
 namespace rtx {
-namespace py = pybind11;
 PlainGeometry::PlainGeometry(float width, float height)
 {
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(0, 1, 2));
