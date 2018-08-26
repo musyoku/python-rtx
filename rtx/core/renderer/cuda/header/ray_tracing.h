@@ -34,8 +34,12 @@ void rtx_cuda_delete(
     float*& gpu_color_per_ray);
 
 void rtx_cuda_copy(
+    float*& gpu_rays,
     float*& gpu_face_vertices,
+    const float* rays,
     const float* face_vertices,
+    const int num_rays,
+    const int rays_stride,
     const int num_faces,
     const int faces_stride);
     

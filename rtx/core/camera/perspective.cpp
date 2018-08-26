@@ -21,4 +21,16 @@ PerspectiveCamera::PerspectiveCamera(float (&eye)[3], float (&center)[3], float 
     _z_near = z_near;
     _z_far = z_far;
 }
+float PerspectiveCamera::fov_rad()
+{
+    return _fov_rad;
+}
+void PerspectiveCamera::set_fov_rad(float fov_rad)
+{
+    _fov_rad = fov_rad;
+}
+CameraType PerspectiveCamera::type() const
+{
+    return CameraTypePerspective;
+}
 }

@@ -11,6 +11,7 @@ box_size = 6
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
 wall = rtx.Mesh(geometry, material)
+wall.set_rotation((0, 0, 0))
 wall.set_position((0, 0, -box_size / 2))
 scene.add(wall)
 
@@ -18,7 +19,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((1.0, 0.0, 0.0), 0.8)
 wall = rtx.Mesh(geometry, material)
-wall.set_rotation((0, math.pi / 2, 0))
+wall.set_rotation((0, -math.pi / 2, 0))
 wall.set_position((box_size / 2, 0, 0))
 scene.add(wall)
 
@@ -26,7 +27,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((0.0, 1.0, 0.0), 0.8)
 wall = rtx.Mesh(geometry, material)
-wall.set_rotation((0, -math.pi / 2, 0))
+wall.set_rotation((0, math.pi / 2, 0))
 wall.set_position((-box_size / 2, 0, 0))
 scene.add(wall)
 
@@ -34,6 +35,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
 wall = rtx.Mesh(geometry, material)
+wall.set_rotation((0, math.pi, 0))
 wall.set_position((0, 0, box_size / 2))
 scene.add(wall)
 
@@ -41,7 +43,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
 ceil = rtx.Mesh(geometry, material)
-ceil.set_rotation((-math.pi / 2, 0, 0))
+ceil.set_rotation((math.pi / 2, 0, 0))
 ceil.set_position((0, box_size / 2, 0))
 scene.add(ceil)
 
@@ -49,7 +51,7 @@ scene.add(ceil)
 geometry = rtx.PlainGeometry(box_size, box_size)
 material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
 ceil = rtx.Mesh(geometry, material)
-ceil.set_rotation((math.pi / 2, 0, 0))
+ceil.set_rotation((-math.pi / 2, 0, 0))
 ceil.set_position((0, -box_size / 2, 0))
 scene.add(ceil)
 
@@ -71,7 +73,7 @@ screen_width = 512
 screen_height = 512
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 512
+render_options.num_rays_per_pixel = 64
 render_options.path_depth = 5
 
 renderer = rtx.RayTracingCUDARenderer()
@@ -88,11 +90,11 @@ buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 renderer.render(scene, camera, render_options, buffer)
 
 camera_rad = 0
-camera_rad = math.pi / 10
-radius = 2
+# camera_rad = math.pi / 10
+radius = 6
 while True:
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
-    camera.look_at(eye=eye, center=(0, -1, 0), up=(0, 1, 0))
+    camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 
     renderer.render(scene, camera, render_options, buffer)
     # linear -> sRGB

@@ -520,6 +520,21 @@ __global__ void render(
                     if (v < 0.0f || u + v > 1.0f) {
                         continue;
                     }
+                    float tmp_x = edge_ba_y * edge_ca_z - edge_ba_z * edge_ca_y;
+                    float tmp_y = edge_ba_z * edge_ca_x - edge_ba_x * edge_ca_z;
+                    float tmp_z = edge_ba_x * edge_ca_y - edge_ba_y * edge_ca_x;
+
+                    float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
+
+                    tmp_x = tmp_x / norm;
+                    tmp_y = tmp_y / norm;
+                    tmp_z = tmp_z / norm;
+
+                    dot = tmp_x * ray_direction_x + tmp_y * ray_direction_y + tmp_z * ray_direction_z;
+                    if (dot > 0.0f) {
+                        continue;
+                    }
+
                     dot = edge_ca_x * q_x + edge_ca_y * q_y + edge_ca_z * q_z;
                     const float t = f * dot;
 
@@ -529,20 +544,15 @@ __global__ void render(
                     if (min_distance <= t) {
                         continue;
                     }
+
                     min_distance = t;
                     hit_point_x = ray_origin_x + t * ray_direction_x;
                     hit_point_y = ray_origin_y + t * ray_direction_y;
                     hit_point_z = ray_origin_z + t * ray_direction_z;
 
-                    float tmp_x = edge_ba_y * edge_ca_z - edge_ba_z * edge_ca_y;
-                    float tmp_y = edge_ba_z * edge_ca_x - edge_ba_x * edge_ca_z;
-                    float tmp_z = edge_ba_x * edge_ca_y - edge_ba_y * edge_ca_x;
-
-                    float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
-
-                    hit_face_normal_x = tmp_x / norm;
-                    hit_face_normal_y = tmp_y / norm;
-                    hit_face_normal_z = tmp_z / norm;
+                    hit_face_normal_x = tmp_x;
+                    hit_face_normal_y = tmp_y;
+                    hit_face_normal_z = tmp_z;
 
                     material_type = shared_material_types[face_index];
 
@@ -623,12 +633,12 @@ __global__ void render(
                 }
 
                 // detect backface
-                float dot = hit_face_normal_x * ray_direction_x + hit_face_normal_y * ray_direction_y + hit_face_normal_z * ray_direction_z;
-                if (dot > 0.0f) {
-                    hit_face_normal_x *= -1.0f;
-                    hit_face_normal_y *= -1.0f;
-                    hit_face_normal_z *= -1.0f;
-                }
+                // float dot = hit_face_normal_x * ray_direction_x + hit_face_normal_y * ray_direction_y + hit_face_normal_z * ray_direction_z;
+                // if (dot > 0.0f) {
+                //     hit_face_normal_x *= -1.0f;
+                //     hit_face_normal_y *= -1.0f;
+                //     hit_face_normal_z *= -1.0f;
+                // }
 
                 // diffuse reflection
                 float diffuese_x = curand_normal(&state);
@@ -639,7 +649,7 @@ __global__ void render(
                 diffuese_y /= norm;
                 diffuese_z /= norm;
 
-                dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
+                float dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
                 if (dot < 0.0f) {
                     diffuese_x = -diffuese_x;
                     diffuese_y = -diffuese_y;
@@ -705,11 +715,16 @@ void rtx_cuda_alloc(
 }
 
 void rtx_cuda_copy(
+    float*& gpu_rays,
     float*& gpu_face_vertices,
+    const float* rays,
     const float* face_vertices,
+    const int num_rays,
+    const int rays_stride,
     const int num_faces,
     const int faces_stride)
 {
+    cudaMemcpy(gpu_rays, rays, sizeof(float) * num_rays * rays_stride, cudaMemcpyHostToDevice);
     cudaMemcpy(gpu_face_vertices, face_vertices, sizeof(float) * num_faces * faces_stride, cudaMemcpyHostToDevice);
 }
 

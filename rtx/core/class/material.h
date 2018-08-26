@@ -1,12 +1,6 @@
 #pragma once
+#include "enum.h"
 #include <glm/glm.hpp>
-
-enum MaterialType {
-    MaterialTypeUnknown = 0,
-    MaterialTypeLambert = 1,
-    MaterialTypeMetal = 2,
-    MaterialTypeEmissive = 3,
-};
 
 namespace rtx {
 class Material {

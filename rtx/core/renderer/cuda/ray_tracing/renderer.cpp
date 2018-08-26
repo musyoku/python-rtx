@@ -1,4 +1,6 @@
 #include "renderer.h"
+#include "../../../class/enum.h"
+#include "../../../camera/perspective.h"
 #include "../../../geometry/sphere.h"
 #include "../../../geometry/standard.h"
 #include "../header/ray_tracing.h"
@@ -171,35 +173,40 @@ void RayTracingCUDARenderer::render(
 
     if (_initialized == false) {
         _rays = new float[num_rays * rays_stride];
+    }
+    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+    if (camera->type() == CameraTypePerspective) {
+        PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(camera.get());
+        origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
+    }
 
-        for (int y = 0; y < _height; y++) {
-            for (int x = 0; x < _width; x++) {
-                glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+    for (int y = 0; y < _height; y++) {
+        for (int x = 0; x < _width; x++) {
 
-                for (int m = 0; m < num_rays_per_pixel; m++) {
-                    int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
+            for (int m = 0; m < num_rays_per_pixel; m++) {
+                int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
 
-                    // direction
-                    _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-                    _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
-                    _rays[index + 2] = -1.0f;
+                // direction
+                _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+                _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
+                _rays[index + 2] = -origin.z;
 
-                    // origin
-                    _rays[index + 3] = 0.0f;
-                    _rays[index + 4] = 0.0f;
-                    _rays[index + 5] = 1.0f;
+                // origin
+                _rays[index + 3] = origin.x;
+                _rays[index + 4] = origin.y;
+                _rays[index + 5] = origin.z;
 
-                    // length
-                    _rays[index + 6] = 1.0f;
-                }
+                // length
+                _rays[index + 6] = 1.0f;
             }
         }
     }
+
     int num_pixels = _height * _width;
     if (_initialized == false) {
         _color_per_ray = new float[num_pixels * 3 * num_rays_per_pixel];
     }
-    
+
     if (_initialized == false) {
         rtx_cuda_alloc(
             _gpu_rays,
@@ -222,8 +229,8 @@ void RayTracingCUDARenderer::render(
             num_rays_per_pixel);
     }
 
-    rtx_cuda_copy(_gpu_face_vertices, _face_vertices, num_faces, faces_stride);
-    
+    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _rays, _face_vertices, num_rays, rays_stride, num_faces, faces_stride);
+
     rtx_cuda_ray_tracing_render(
         _gpu_rays,
         _gpu_face_vertices,
@@ -469,6 +476,8 @@ void RayTracingCUDARenderer::render(
             num_pixels,
             num_rays_per_pixel);
     }
+
+    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _rays, _face_vertices, num_rays, rays_stride, num_faces, faces_stride);
 
     rtx_cuda_ray_tracing_render(
         _gpu_rays,

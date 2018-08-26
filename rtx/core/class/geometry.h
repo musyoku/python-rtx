@@ -1,10 +1,5 @@
 #pragma once
-
-enum GeometryType {
-    GeometryTypeUnknown = 0,
-    GeometryTypeStandard = 1,
-    GeometryTypeSphere = 2,
-};
+#include "enum.h"
 
 namespace rtx {
 class Geometry {
