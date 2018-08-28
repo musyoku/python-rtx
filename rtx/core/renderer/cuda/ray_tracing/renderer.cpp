@@ -29,7 +29,11 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_bvh_face_start_index = nullptr;
     _gpu_bvh_face_end_index = nullptr;
 }
-
+RayTracingCUDARenderer::~RayTracingCUDARenderer()
+{
+    rtx_cuda_free((void*)_gpu_faces);
+    rtx_cuda_free((void*)_gpu_vertices);
+}
 void RayTracingCUDARenderer::serialize_mesh_buffer()
 {
     int num_faces = 0;
@@ -39,9 +43,7 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
         num_faces += geometry->num_faces();
         num_vertices += geometry->num_vertices();
     }
-    std::cout << "#faces: " << num_faces << std::endl;
-    std::cout << "#vertices: " << num_vertices << std::endl;
-
+    int num_objects = _scene->_mesh_array.size();
     int stride = 4;
     _faces = rtx::array<int>(num_faces * stride);
     _vertices = rtx::array<float>(num_vertices * stride);
@@ -50,8 +52,8 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
 
     // 各頂点をモデル座標系からカメラ座標系に変換
     // Transform vertices from model space to camera space
-    for (int mesh_index = 0; mesh_index < _scene->_mesh_array.size(); mesh_index++) {
-        auto& mesh = _scene->_mesh_array[mesh_index];
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
         glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
         int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index, transformation_matrix);
@@ -62,11 +64,11 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
     assert(buffer_index == _vertices.size());
 
     buffer_index = 0;
-    for (int mesh_index = 0; mesh_index < _scene->_mesh_array.size(); mesh_index++) {
-        auto& mesh = _scene->_mesh_array[mesh_index];
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
-        int offset = face_index_offset_array[mesh_index];
-        int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, offset);
+        int vertex_offset = face_index_offset_array[object_index];
+        int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, vertex_offset);
         assert(next_buffer_index == buffer_index + geometry->num_faces() * stride);
         buffer_index = next_buffer_index;
     }
@@ -74,6 +76,13 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
+    std::vector<std::pair<int, float>> map_object_gravity;
+    for (int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
+        auto& mesh = _scene->_mesh_array[object_index];
+        auto& geometry = mesh->_geometry;
+        
+    }
+
 }
 void RayTracingCUDARenderer::serialize_objects()
 {
@@ -95,16 +104,18 @@ void RayTracingCUDARenderer::render(
     _camera = camera;
     _options = options;
 
-    // 現在のカメラ座標系でのBVHを構築
-    // Construct BVH in current camera coordinate system
-    construct_bvh();
-
     // GPUの線形メモリへ転送するデータを準備する
-    // Construct arrays to transfer to Linear Memory of GPU
+    // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
         serialize_mesh_buffer();
-        rtx_cuda_alloc_buffer_float(_gpu_vertices, _vertices.size());
-        rtx_cuda_alloc_buffer_integer(_gpu_faces, _faces.size());
+        rtx_cuda_malloc_float(_gpu_vertices, _vertices.size());
+        rtx_cuda_malloc_integer(_gpu_faces, _faces.size());
+    }
+
+    // 現在のカメラ座標系でのBVHを構築
+    // Construct BVH in current camera coordinate system
+    if (camera->updated() || _scene->updated()) {
+        construct_bvh();
     }
 
     // _height = buffer.shape(0);

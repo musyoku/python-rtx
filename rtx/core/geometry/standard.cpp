@@ -56,13 +56,13 @@ int StandardGeometry::serialize_vertices(rtx::array<float>& buffer, int start, g
     return pos;
 }
 
-int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int offset) const
+int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const
 {
     int pos = start;
     for (auto& face : _face_vertex_indices_array) {
-        buffer[pos + 0] = face[0] + offset;
-        buffer[pos + 1] = face[1] + offset;
-        buffer[pos + 2] = face[2] + offset;
+        buffer[pos + 0] = face[0] + vertex_index_offset;
+        buffer[pos + 1] = face[1] + vertex_index_offset;
+        buffer[pos + 2] = face[2] + vertex_index_offset;
         buffer[pos + 3] = -1;
         pos += 4;
     }

@@ -41,11 +41,11 @@ int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start, glm
     return pos;
 }
 
-int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int offset) const
+int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const
 {
     int pos = start;
-    buffer[pos + 0] = 0 + offset;
-    buffer[pos + 1] = 1 + offset;
+    buffer[pos + 0] = 0 + vertex_index_offset;
+    buffer[pos + 1] = 1 + vertex_index_offset;
     buffer[pos + 2] = -1;
     buffer[pos + 3] = -1;
     pos += 4;

@@ -50,6 +50,7 @@ private:
 
 public:
     RayTracingCUDARenderer();
+    ~RayTracingCUDARenderer();
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
         std::shared_ptr<RayTracingOptions> options,
