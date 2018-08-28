@@ -5,9 +5,12 @@
 namespace rtx {
 class SphereGeometry : public Geometry {
 public:
-    float _radius;
     glm::vec4 _center;
+    glm::vec4 _radius;
     SphereGeometry(float radius);
-    int type() override;
+    int type() const override;
+    int num_faces() const override;
+    int num_vertices() const override;
+    void pack_vertices(float*& buffer, int start, glm::mat4& transformation_matrix) const override;
 };
 }

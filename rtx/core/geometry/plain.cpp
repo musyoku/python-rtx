@@ -14,8 +14,4 @@ PlainGeometry::PlainGeometry(float width, float height)
     _bvh_indices.push_back(0);
     _bvh_start_end_vertex_indices.push_back(std::make_pair<int, int>(0, _vertex_array.size() - 1));
 }
-int PlainGeometry::type()
-{
-    return RTX_GEOMETRY_TYPE_STANDARD;
-}
 }

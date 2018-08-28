@@ -5,6 +5,18 @@
 #include <curand_kernel.h>
 #include <float.h>
 #include <stdio.h>
+#include <time.h>
+
+__global__ void test_kernel(const float* vertices, int num_vertices)
+{
+    float sum = 0;
+    for (int n = 0; n < num_vertices; n++) {
+        float x = vertices[n * 4 + 0];
+        float y = vertices[n * 4 + 1];
+        float z = vertices[n * 4 + 2];
+        sum += x + y + z;
+    }
+}
 
 __global__ void render(
     const float* rays,
@@ -256,7 +268,7 @@ __global__ void render(
                     continue;
                 }
                 // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                if (object_type == RTX_GEOMETRY_TYPEBox) {
+                if (object_type == 333) {
                     float _min_x = shared_face_vertices[index + 0];
                     float _min_y = shared_face_vertices[index + 1];
                     float _min_z = shared_face_vertices[index + 2];
@@ -523,3 +535,64 @@ void rtx_cuda_ray_tracing_render(
     }
     cudaMemcpy(color_per_ray, gpu_color_per_ray, sizeof(float) * num_pixels * 3 * num_rays_per_pixel, cudaMemcpyDeviceToHost);
 }
+
+// void rtx_launch_test_kernel()
+// {
+//     clock_t c1, c2;
+
+//     int num_vertices = 100000;
+//     float* vertices = (float*)malloc(sizeof(float) * num_vertices * 4);
+//     for (int n = 0; n < num_vertices; n++) {
+//         vertices[n * 4 + 0] = 0.1f;
+//         vertices[n * 4 + 1] = 0.1f;
+//         vertices[n * 4 + 2] = 0.1f;
+//         vertices[n * 4 + 3] = 0.1f;
+//     }
+//     float* gpu_vertices;
+//     cudaMalloc((void**)&gpu_vertices, sizeof(float) * num_vertices * 4);
+//     cudaMemcpy(gpu_vertices, vertices, sizeof(float) * num_vertices * 4, cudaMemcpyHostToDevice);
+
+//     double mean = 0.0f;
+//     for (int j = 0; j < 10; j++) {
+//         c1 = clock();
+//         for (int i = 0; i < 1000; i++) {
+//             test_kernel<<<512, 128>>>(gpu_vertices, num_vertices);
+//             cudaThreadSynchronize();
+//         }
+//         c2 = clock();
+//         mean += (double)(c2 - c1) / CLOCKS_PER_SEC;
+//     }
+//     printf("time = %lf[s]\n", mean / 10.0);
+//     free(vertices);
+//     cudaFree(gpu_vertices);
+
+//     size_t pitch;
+//     cudaMallocPitch((void**)&gpu_vertices, &pitch, sizeof(float) * num_vertices * 4, 1);
+
+//     cudaError_t status = cudaGetLastError();
+//     if (status != 0) {
+//         fprintf(stderr, "%s\n", cudaGetErrorString(status));
+//     }
+
+//     printf("pitch = %d\n", (int)(pitch));
+//     cudaMemcpy(gpu_vertices, vertices, sizeof(float) * num_vertices * 4, cudaMemcpyHostToDevice);
+
+//     status = cudaGetLastError();
+//     if (status != 0) {
+//         fprintf(stderr, "%s\n", cudaGetErrorString(status));
+//     }
+
+//     mean = 0.0f;
+//     for (int j = 0; j < 10; j++) {
+//         c1 = clock();
+//         for (int i = 0; i < 1000; i++) {
+//             test_kernel<<<512, 128>>>(gpu_vertices, num_vertices);
+//             cudaThreadSynchronize();
+//         }
+//         c2 = clock();
+//         mean += (double)(c2 - c1) / CLOCKS_PER_SEC;
+//     }
+//     printf("time = %lf[s]\n", mean / 10.0);
+//     free(vertices);
+//     cudaFree(gpu_vertices);
+// }

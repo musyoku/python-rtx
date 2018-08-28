@@ -15,20 +15,94 @@ namespace py = pybind11;
 
 RayTracingCUDARenderer::RayTracingCUDARenderer()
 {
-    _face_vertices = nullptr;
-    _face_colors = nullptr;
-    _object_types = nullptr;
-    _material_types = nullptr;
     _rays = nullptr;
-    _color_per_ray = nullptr;
+    _faces = nullptr;
+    _vertices = nullptr;
+    _object_colors = nullptr;
+    _geometry_types = nullptr;
+    _material_types = nullptr;
+    _color_buffer = nullptr;
+    _bvh_hit_path = nullptr;
+    _bvh_miss_path = nullptr;
+    _bvh_is_leaf = nullptr;
+    _bvh_geometry_type = nullptr;
+    _bvh_face_start_index = nullptr;
+    _bvh_face_end_index = nullptr;
     _gpu_rays = nullptr;
-    _gpu_face_vertices = nullptr;
-    _gpu_face_colors = nullptr;
-    _gpu_object_types = nullptr;
+    _gpu_faces = nullptr;
+    _gpu_vertices = nullptr;
+    _gpu_object_colors = nullptr;
+    _gpu_geometry_types = nullptr;
     _gpu_material_types = nullptr;
-    _gpu_color_per_ray = nullptr;
-    _gpu_camera_inv_matrix = nullptr;
-    _initialized = false;
+    _gpu_color_buffer = nullptr;
+    _gpu_bvh_hit_path = nullptr;
+    _gpu_bvh_miss_path = nullptr;
+    _gpu_bvh_is_leaf = nullptr;
+    _gpu_bvh_object_index = nullptr;
+    _gpu_bvh_face_start_index = nullptr;
+    _gpu_bvh_face_end_index = nullptr;
+}
+
+void RayTracingCUDARenderer::allocate_mesh_buffer(int num_faces)
+{
+    int stride = 4;
+    _faces = new float[num_faces * stride];
+
+    // 各頂点をモデル座標系からカメラ座標系に変換
+    // Transform vertices from model space to camera space
+    // for (auto& mesh : _scene->_mesh_array) {
+    //     auto& geometry = mesh->_geometry;
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //         SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+    //         std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    //         glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+    //         glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
+    //         geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+
+    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+    //         mesh_array.emplace_back(mesh_in_view_space);
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //         std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
+    //         standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
+
+    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+
+    //         for (auto& vertex : standard_geometry->_vertex_array) {
+    //             glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
+    //             glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
+    //             standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+    //         }
+
+    //         for (auto& face_normal : standard_geometry->_face_normal_array) {
+    //             glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+    //             glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+    //             glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+    //             standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
+    //         }
+
+    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
+    //     }
+    // }
+}
+void RayTracingCUDARenderer::delete_mesh_buffer()
+{
+    delete[] _vertices;
+}
+void RayTracingCUDARenderer::construct_bvh()
+{
+}
+void RayTracingCUDARenderer::pack_objects()
+{
+    if (_scene->updated()) {
+        int num_faces = 0;
+        for (auto& mesh : _scene->_mesh_array) {
+            auto& geometry = mesh->_geometry;
+            num_faces += geometry->num_faces();
+        }
+    }
 }
 void RayTracingCUDARenderer::render(
     std::shared_ptr<Scene> scene,
@@ -36,326 +110,314 @@ void RayTracingCUDARenderer::render(
     std::shared_ptr<RayTracingOptions> options,
     py::array_t<float, py::array::c_style> buffer)
 {
-    _height = buffer.shape(0);
-    _width = buffer.shape(1);
-    int channels = buffer.shape(2);
-    if (channels != 3) {
-        throw std::runtime_error("channels != 3");
-    }
-    auto pixel = buffer.mutable_unchecked<3>();
+    // _scene = scene;
+    // _camera = camera;
+    // _options = options;
 
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
+    // // 現在のカメラ座標系でのBVHを構築
+    // // Construct BVH in current camera coordinate system
+    // construct_bvh();
 
-    int num_faces = 0;
+    // _height = buffer.shape(0);
+    // _width = buffer.shape(1);
+    // int channels = buffer.shape(2);
+    // if (channels != 3) {
+    //     throw std::runtime_error("channels != 3");
+    // }
+    // auto pixel = buffer.mutable_unchecked<3>();
 
-    for (auto& mesh : scene->_mesh_array) {
-        auto& geometry = mesh->_geometry;
-        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-            num_faces += 1;
-            continue;
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
-            num_faces += 1;
-            continue;
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-            num_faces += standard_geometry->_face_vertex_indices_array.size();
-            continue;
-        }
-    }
+    // std::default_random_engine generator;
+    // std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
 
-    int faces_stride = 4 * 3;
-    int color_stride = 3;
-    if (_initialized == false) {
-        std::cout << num_faces << " * " << faces_stride << std::endl;
-        _face_vertices = new float[num_faces * faces_stride];
-        _face_colors = new float[num_faces * color_stride];
-        _object_types = new int[num_faces];
-        _material_types = new int[num_faces];
-    }
-    std::vector<std::shared_ptr<Mesh>> mesh_array;
-    for (auto& mesh : scene->_mesh_array) {
-        auto& geometry = mesh->_geometry;
-        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-            std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
-            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-            glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
-            glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
-            geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+    // int num_faces = 0;
 
-            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
-            mesh_array.emplace_back(mesh_in_view_space);
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
-            BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
-            std::shared_ptr<BoxGeometry> geometry_in_view_space = std::make_shared<BoxGeometry>(box->_width, box->_height, box->_depth);
-            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    // for (auto& mesh : scene->_mesh_array) {
+    //     auto& geometry = mesh->_geometry;
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //         num_faces += 1;
+    //         continue;
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //         num_faces += standard_geometry->_face_vertex_indices_array.size();
+    //         continue;
+    //     }
+    // }
 
-            glm::vec4 homogeneous_min = glm::vec4(box->_min, 1.0f);
-            glm::vec4 homogeneous_min_in_view_space = mv_matrix * homogeneous_min;
-            geometry_in_view_space->_min = glm::vec3(homogeneous_min_in_view_space.x, homogeneous_min_in_view_space.y, homogeneous_min_in_view_space.z);
+    // int faces_stride = 4 * 3;
+    // int color_stride = 3;
+    // if (_initialized == false) {
+    //     std::cout << num_faces << " * " << faces_stride << std::endl;
+    //     _vertices = new float[num_faces * faces_stride];
+    //     _face_colors = new float[num_faces * color_stride];
+    //     _object_types = new int[num_faces];
+    //     _material_types = new int[num_faces];
+    // }
+    // std::vector<std::shared_ptr<Mesh>> mesh_array;
+    // for (auto& mesh : scene->_mesh_array) {
+    //     auto& geometry = mesh->_geometry;
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //         SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+    //         std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    //         glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+    //         glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
+    //         geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
 
-            glm::vec4 homogeneous_max = glm::vec4(box->_max, 1.0f);
-            glm::vec4 homogeneous_max_in_view_space = mv_matrix * homogeneous_max;
-            geometry_in_view_space->_max = glm::vec3(homogeneous_max_in_view_space.x, homogeneous_max_in_view_space.y, homogeneous_max_in_view_space.z);
+    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+    //         mesh_array.emplace_back(mesh_in_view_space);
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //         std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
+    //         standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
 
-            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
-            mesh_array.emplace_back(mesh_in_view_space);
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-            std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
-            standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
+    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
 
-            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    //         for (auto& vertex : standard_geometry->_vertex_array) {
+    //             glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
+    //             glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
+    //             standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+    //         }
 
-            for (auto& vertex : standard_geometry->_vertex_array) {
-                glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
-                glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
-                standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
-            }
+    //         for (auto& face_normal : standard_geometry->_face_normal_array) {
+    //             glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+    //             glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+    //             glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+    //             standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
+    //         }
 
-            for (auto& face_normal : standard_geometry->_face_normal_array) {
-                glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
-                glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
-                glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
-                standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
-            }
+    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
+    //         mesh_array.emplace_back(mesh_in_view_space);
+    //     }
+    // }
 
-            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
-            mesh_array.emplace_back(mesh_in_view_space);
-        }
-    }
+    // int face_index = 0;
+    // for (auto& mesh : mesh_array) {
+    //     auto& geometry = mesh->_geometry;
+    //     auto& material = mesh->_material;
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //         SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+    //         int index = face_index * faces_stride;
+    //         _vertices[index + 0] = sphere->_center.x;
+    //         _vertices[index + 1] = sphere->_center.y;
+    //         _vertices[index + 2] = sphere->_center.z;
+    //         _vertices[index + 3] = 1.0f;
+    //         _vertices[index + 4] = sphere->_radius;
 
-    int face_index = 0;
-    for (auto& mesh : mesh_array) {
-        auto& geometry = mesh->_geometry;
-        auto& material = mesh->_material;
-        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-            int index = face_index * faces_stride;
-            _face_vertices[index + 0] = sphere->_center.x;
-            _face_vertices[index + 1] = sphere->_center.y;
-            _face_vertices[index + 2] = sphere->_center.z;
-            _face_vertices[index + 3] = 1.0f;
-            _face_vertices[index + 4] = sphere->_radius;
+    //         index = face_index * color_stride;
+    //         glm::vec3 color = material->color();
+    //         _face_colors[index + 0] = color.r;
+    //         _face_colors[index + 1] = color.g;
+    //         _face_colors[index + 2] = color.b;
 
-            index = face_index * color_stride;
-            glm::vec3 color = material->color();
-            _face_colors[index + 0] = color.r;
-            _face_colors[index + 1] = color.g;
-            _face_colors[index + 2] = color.b;
+    //         _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
+    //         _material_types[face_index] = material->type();
+    //         face_index += 1;
+    //         continue;
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE) {
+    //         BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
+    //         int index = face_index * faces_stride;
+    //         _vertices[index + 0] = box->_min.x;
+    //         _vertices[index + 1] = box->_min.y;
+    //         _vertices[index + 2] = box->_min.z;
+    //         _vertices[index + 3] = 1.0f;
+    //         _vertices[index + 4] = box->_max.x;
+    //         _vertices[index + 5] = box->_max.y;
+    //         _vertices[index + 6] = box->_max.z;
+    //         _vertices[index + 7] = 1.0f;
 
-            _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
-            _material_types[face_index] = material->type();
-            face_index += 1;
-            continue;
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
-            BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
-            int index = face_index * faces_stride;
-            _face_vertices[index + 0] = box->_min.x;
-            _face_vertices[index + 1] = box->_min.y;
-            _face_vertices[index + 2] = box->_min.z;
-            _face_vertices[index + 3] = 1.0f;
-            _face_vertices[index + 4] = box->_max.x;
-            _face_vertices[index + 5] = box->_max.y;
-            _face_vertices[index + 6] = box->_max.z;
-            _face_vertices[index + 7] = 1.0f;
+    //         index = face_index * color_stride;
+    //         glm::vec3 color = material->color();
+    //         _face_colors[index + 0] = color.r;
+    //         _face_colors[index + 1] = color.g;
+    //         _face_colors[index + 2] = color.b;
 
-            index = face_index * color_stride;
-            glm::vec3 color = material->color();
-            _face_colors[index + 0] = color.r;
-            _face_colors[index + 1] = color.g;
-            _face_colors[index + 2] = color.b;
+    //         _object_types[face_index] = RTX_GEOMETRY_TYPE;
+    //         _material_types[face_index] = material->type();
+    //         face_index += 1;
+    //         continue;
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //         for (auto& face : standard_geometry->_face_vertex_indices_array) {
+    //             glm::vec3& va = standard_geometry->_vertex_array[face[0]];
+    //             glm::vec3& vb = standard_geometry->_vertex_array[face[1]];
+    //             glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
 
-            _object_types[face_index] = RTX_GEOMETRY_TYPEBox;
-            _material_types[face_index] = material->type();
-            face_index += 1;
-            continue;
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-            for (auto& face : standard_geometry->_face_vertex_indices_array) {
-                glm::vec3& va = standard_geometry->_vertex_array[face[0]];
-                glm::vec3& vb = standard_geometry->_vertex_array[face[1]];
-                glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
+    //             int index = face_index * faces_stride;
+    //             _vertices[index + 0] = va.x;
+    //             _vertices[index + 1] = va.y;
+    //             _vertices[index + 2] = va.z;
+    //             _vertices[index + 3] = 1.0f;
 
-                int index = face_index * faces_stride;
-                _face_vertices[index + 0] = va.x;
-                _face_vertices[index + 1] = va.y;
-                _face_vertices[index + 2] = va.z;
-                _face_vertices[index + 3] = 1.0f;
+    //             _vertices[index + 4] = vb.x;
+    //             _vertices[index + 5] = vb.y;
+    //             _vertices[index + 6] = vb.z;
+    //             _vertices[index + 7] = 1.0f;
 
-                _face_vertices[index + 4] = vb.x;
-                _face_vertices[index + 5] = vb.y;
-                _face_vertices[index + 6] = vb.z;
-                _face_vertices[index + 7] = 1.0f;
+    //             _vertices[index + 8] = vc.x;
+    //             _vertices[index + 9] = vc.y;
+    //             _vertices[index + 10] = vc.z;
+    //             _vertices[index + 11] = 1.0f;
 
-                _face_vertices[index + 8] = vc.x;
-                _face_vertices[index + 9] = vc.y;
-                _face_vertices[index + 10] = vc.z;
-                _face_vertices[index + 11] = 1.0f;
+    //             index = face_index * color_stride;
+    //             glm::vec3 color = material->color();
+    //             _face_colors[index + 0] = color.r;
+    //             _face_colors[index + 1] = color.g;
+    //             _face_colors[index + 2] = color.b;
 
-                index = face_index * color_stride;
-                glm::vec3 color = material->color();
-                _face_colors[index + 0] = color.r;
-                _face_colors[index + 1] = color.g;
-                _face_colors[index + 2] = color.b;
+    //             _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
+    //             _material_types[face_index] = material->type();
+    //             face_index += 1;
+    //         }
+    //         continue;
+    //     }
+    // }
 
-                _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
-                _material_types[face_index] = material->type();
-                face_index += 1;
-            }
-            continue;
-        }
-    }
+    // int num_rays_per_pixel = options->num_rays_per_pixel();
+    // int num_rays = _height * _width * num_rays_per_pixel;
+    // int rays_stride = 7;
 
-    int num_rays_per_pixel = options->num_rays_per_pixel();
-    int num_rays = _height * _width * num_rays_per_pixel;
-    int rays_stride = 7;
+    // if (_initialized == false) {
+    //     _rays = new float[num_rays * rays_stride];
+    // }
+    // glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+    // if (camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
+    //     PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(camera.get());
+    //     origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
+    // }
+    // float aspect_ratio = float(_width) / float(_height);
 
-    if (_initialized == false) {
-        _rays = new float[num_rays * rays_stride];
-    }
-    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
-    if (camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
-        PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(camera.get());
-        origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
-    }
-    float aspect_ratio = float(_width) / float(_height);
+    // for (int y = 0; y < _height; y++) {
+    //     for (int x = 0; x < _width; x++) {
 
-    for (int y = 0; y < _height; y++) {
-        for (int x = 0; x < _width; x++) {
+    //         for (int m = 0; m < num_rays_per_pixel; m++) {
+    //             int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
 
-            for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
+    //             // direction
+    //             _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+    //             _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f) / aspect_ratio;
+    //             _rays[index + 2] = -origin.z;
 
-                // direction
-                _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-                _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f) / aspect_ratio;
-                _rays[index + 2] = -origin.z;
+    //             // origin
+    //             _rays[index + 3] = origin.x;
+    //             _rays[index + 4] = origin.y;
+    //             _rays[index + 5] = origin.z;
 
-                // origin
-                _rays[index + 3] = origin.x;
-                _rays[index + 4] = origin.y;
-                _rays[index + 5] = origin.z;
+    //             // length
+    //             _rays[index + 6] = 1.0f;
+    //         }
+    //     }
+    // }
 
-                // length
-                _rays[index + 6] = 1.0f;
-            }
-        }
-    }
+    // int num_pixels = _height * _width;
+    // if (_initialized == false) {
+    //     _color_per_ray = new float[num_pixels * 3 * num_rays_per_pixel];
+    // }
 
-    int num_pixels = _height * _width;
-    if (_initialized == false) {
-        _color_per_ray = new float[num_pixels * 3 * num_rays_per_pixel];
-    }
+    // if (_initialized == false) {
+    //     _camera_inv_matrix = new float[16];
+    //     rtx_cuda_alloc(
+    //         _gpu_rays,
+    //         _gpu_face_vertices,
+    //         _gpu_face_colors,
+    //         _gpu_object_types,
+    //         _gpu_material_types,
+    //         _gpu_color_per_ray,
+    //         _gpu_camera_inv_matrix,
+    //         _rays,
+    //         _vertices,
+    //         _face_colors,
+    //         _object_types,
+    //         _material_types,
+    //         _camera_inv_matrix,
+    //         num_rays,
+    //         rays_stride,
+    //         num_faces,
+    //         faces_stride,
+    //         color_stride,
+    //         num_pixels,
+    //         num_rays_per_pixel);
+    // }
 
-    if (_initialized == false) {
-        _camera_inv_matrix = new float[16];
-        rtx_cuda_alloc(
-            _gpu_rays,
-            _gpu_face_vertices,
-            _gpu_face_colors,
-            _gpu_object_types,
-            _gpu_material_types,
-            _gpu_color_per_ray,
-            _gpu_camera_inv_matrix,
-            _rays,
-            _face_vertices,
-            _face_colors,
-            _object_types,
-            _material_types,
-            _camera_inv_matrix,
-            num_rays,
-            rays_stride,
-            num_faces,
-            faces_stride,
-            color_stride,
-            num_pixels,
-            num_rays_per_pixel);
-    }
+    // glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
+    // std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
+    // std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
+    // std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
+    // std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
+    // _camera_inv_matrix[0] = inv_camera[0][0];
+    // _camera_inv_matrix[1] = inv_camera[0][1];
+    // _camera_inv_matrix[2] = inv_camera[0][2];
+    // _camera_inv_matrix[3] = inv_camera[0][3];
+    // _camera_inv_matrix[4] = inv_camera[1][0];
+    // _camera_inv_matrix[5] = inv_camera[1][1];
+    // _camera_inv_matrix[6] = inv_camera[1][2];
+    // _camera_inv_matrix[7] = inv_camera[1][3];
+    // _camera_inv_matrix[8] = inv_camera[2][0];
+    // _camera_inv_matrix[9] = inv_camera[2][1];
+    // _camera_inv_matrix[10] = inv_camera[2][2];
+    // _camera_inv_matrix[11] = inv_camera[2][3];
+    // _camera_inv_matrix[12] = inv_camera[3][0];
+    // _camera_inv_matrix[13] = inv_camera[3][1];
+    // _camera_inv_matrix[14] = inv_camera[3][2];
+    // _camera_inv_matrix[15] = inv_camera[3][3];
+    // rtx_cuda_copy(_gpu_rays,
+    //     _gpu_face_vertices,
+    //     _gpu_camera_inv_matrix,
+    //     _rays,
+    //     _vertices,
+    //     _camera_inv_matrix,
+    //     num_rays,
+    //     rays_stride,
+    //     num_faces,
+    //     faces_stride);
 
-    glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
-    std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
-    std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
-    std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
-    std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
-    _camera_inv_matrix[0] = inv_camera[0][0];
-    _camera_inv_matrix[1] = inv_camera[0][1];
-    _camera_inv_matrix[2] = inv_camera[0][2];
-    _camera_inv_matrix[3] = inv_camera[0][3];
-    _camera_inv_matrix[4] = inv_camera[1][0];
-    _camera_inv_matrix[5] = inv_camera[1][1];
-    _camera_inv_matrix[6] = inv_camera[1][2];
-    _camera_inv_matrix[7] = inv_camera[1][3];
-    _camera_inv_matrix[8] = inv_camera[2][0];
-    _camera_inv_matrix[9] = inv_camera[2][1];
-    _camera_inv_matrix[10] = inv_camera[2][2];
-    _camera_inv_matrix[11] = inv_camera[2][3];
-    _camera_inv_matrix[12] = inv_camera[3][0];
-    _camera_inv_matrix[13] = inv_camera[3][1];
-    _camera_inv_matrix[14] = inv_camera[3][2];
-    _camera_inv_matrix[15] = inv_camera[3][3];
-    rtx_cuda_copy(_gpu_rays,
-        _gpu_face_vertices,
-        _gpu_camera_inv_matrix,
-        _rays,
-        _face_vertices,
-        _camera_inv_matrix,
-        num_rays,
-        rays_stride,
-        num_faces,
-        faces_stride);
+    // rtx_cuda_ray_tracing_render(
+    //     _gpu_rays,
+    //     _gpu_face_vertices,
+    //     _gpu_face_colors,
+    //     _gpu_object_types,
+    //     _gpu_material_types,
+    //     _gpu_color_per_ray,
+    //     _color_per_ray,
+    //     _gpu_camera_inv_matrix,
+    //     num_rays,
+    //     num_faces,
+    //     faces_stride,
+    //     color_stride,
+    //     options->path_depth(),
+    //     num_pixels,
+    //     num_rays_per_pixel);
 
-    rtx_cuda_ray_tracing_render(
-        _gpu_rays,
-        _gpu_face_vertices,
-        _gpu_face_colors,
-        _gpu_object_types,
-        _gpu_material_types,
-        _gpu_color_per_ray,
-        _color_per_ray,
-        _gpu_camera_inv_matrix,
-        num_rays,
-        num_faces,
-        faces_stride,
-        color_stride,
-        options->path_depth(),
-        num_pixels,
-        num_rays_per_pixel);
+    // // _initialized = true;
+
+    // for (int y = 0; y < _height; y++) {
+    //     for (int x = 0; x < _width; x++) {
+    //         float sum_r = 0.0f;
+    //         float sum_g = 0.0f;
+    //         float sum_b = 0.0f;
+    //         for (int m = 0; m < num_rays_per_pixel; m++) {
+    //             int index = y * _width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
+    //             sum_r += _color_per_ray[index + 0];
+    //             sum_g += _color_per_ray[index + 1];
+    //             sum_b += _color_per_ray[index + 2];
+    //         }
+    //         pixel(y, x, 0) = sum_r / float(num_rays_per_pixel);
+    //         pixel(y, x, 1) = sum_g / float(num_rays_per_pixel);
+    //         pixel(y, x, 2) = sum_b / float(num_rays_per_pixel);
+    //     }
+    // }
 
     // _initialized = true;
-
-    for (int y = 0; y < _height; y++) {
-        for (int x = 0; x < _width; x++) {
-            float sum_r = 0.0f;
-            float sum_g = 0.0f;
-            float sum_b = 0.0f;
-            for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * _width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
-                sum_r += _color_per_ray[index + 0];
-                sum_g += _color_per_ray[index + 1];
-                sum_b += _color_per_ray[index + 2];
-            }
-            pixel(y, x, 0) = sum_r / float(num_rays_per_pixel);
-            pixel(y, x, 1) = sum_g / float(num_rays_per_pixel);
-            pixel(y, x, 2) = sum_b / float(num_rays_per_pixel);
-        }
-    }
-
-    _initialized = true;
     // rtx_cuda_delete(_gpu_rays,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
     //     _gpu_material_types,
     //     _gpu_color_per_ray);
-    // delete[] _face_vertices;
+    // delete[] _vertices;
     // delete[] _face_colors;
     // delete[] _object_types;
     // delete[] _material_types;
@@ -371,269 +433,269 @@ void RayTracingCUDARenderer::render(
     int width,
     int channels)
 {
-    _height = height;
-    _width = width;
-    if (channels != 3) {
-        throw std::runtime_error("channels != 3");
-    }
+    // _height = height;
+    // _width = width;
+    // if (channels != 3) {
+    //     throw std::runtime_error("channels != 3");
+    // }
 
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
+    // std::default_random_engine generator;
+    // std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
 
-    int num_faces = 0;
+    // int num_faces = 0;
 
-    for (auto& mesh : scene->_mesh_array) {
-        auto& geometry = mesh->_geometry;
-        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-            num_faces += 1;
-            continue;
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-            num_faces += standard_geometry->_face_vertex_indices_array.size();
-            continue;
-        }
-    }
+    // for (auto& mesh : scene->_mesh_array) {
+    //     auto& geometry = mesh->_geometry;
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //         num_faces += 1;
+    //         continue;
+    //     }
+    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //         num_faces += standard_geometry->_face_vertex_indices_array.size();
+    //         continue;
+    //     }
+    // }
 
-    int faces_stride = 4 * 3;
-    int color_stride = 3;
-    if (_initialized == false) {
-        _face_vertices = new float[num_faces * faces_stride];
-        _face_colors = new float[num_faces * color_stride];
-        _object_types = new int[num_faces];
-        _material_types = new int[num_faces];
+    // int faces_stride = 4 * 3;
+    // int color_stride = 3;
+    // if (_initialized == false) {
+    //     _vertices = new float[num_faces * faces_stride];
+    //     _face_colors = new float[num_faces * color_stride];
+    //     _object_types = new int[num_faces];
+    //     _material_types = new int[num_faces];
 
-        std::vector<std::shared_ptr<Mesh>> mesh_array;
-        for (auto& mesh : scene->_mesh_array) {
-            auto& geometry = mesh->_geometry;
-            if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-                SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-                std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
-                glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-                glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
-                glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
-                geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+    //     std::vector<std::shared_ptr<Mesh>> mesh_array;
+    //     for (auto& mesh : scene->_mesh_array) {
+    //         auto& geometry = mesh->_geometry;
+    //         if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+    //             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+    //             glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    //             glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+    //             glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
+    //             geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
 
-                std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
-                mesh_array.emplace_back(mesh_in_view_space);
-            }
-            if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-                StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-                std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
-                standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
+    //             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+    //             mesh_array.emplace_back(mesh_in_view_space);
+    //         }
+    //         if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //             std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
+    //             standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
 
-                glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+    //             glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
 
-                for (auto& vertex : standard_geometry->_vertex_array) {
-                    glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
-                    glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
-                    standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
-                }
+    //             for (auto& vertex : standard_geometry->_vertex_array) {
+    //                 glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
+    //                 glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
+    //                 standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+    //             }
 
-                for (auto& face_normal : standard_geometry->_face_normal_array) {
-                    glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
-                    glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
-                    glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
-                    standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
-                }
+    //             for (auto& face_normal : standard_geometry->_face_normal_array) {
+    //                 glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+    //                 glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+    //                 glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+    //                 standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
+    //             }
 
-                std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
-                mesh_array.emplace_back(mesh_in_view_space);
-            }
-        }
+    //             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
+    //             mesh_array.emplace_back(mesh_in_view_space);
+    //         }
+    //     }
 
-        int face_index = 0;
-        for (auto& mesh : mesh_array) {
-            auto& geometry = mesh->_geometry;
-            auto& material = mesh->_material;
-            if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-                SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-                int index = face_index * faces_stride;
-                _face_vertices[index + 0] = sphere->_center.x;
-                _face_vertices[index + 1] = sphere->_center.y;
-                _face_vertices[index + 2] = sphere->_center.z;
-                _face_vertices[index + 3] = 1.0f;
-                _face_vertices[index + 4] = sphere->_radius;
+    //     int face_index = 0;
+    //     for (auto& mesh : mesh_array) {
+    //         auto& geometry = mesh->_geometry;
+    //         auto& material = mesh->_material;
+    //         if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+    //             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+    //             int index = face_index * faces_stride;
+    //             _vertices[index + 0] = sphere->_center.x;
+    //             _vertices[index + 1] = sphere->_center.y;
+    //             _vertices[index + 2] = sphere->_center.z;
+    //             _vertices[index + 3] = 1.0f;
+    //             _vertices[index + 4] = sphere->_radius;
 
-                index = face_index * color_stride;
-                glm::vec3 color = material->color();
-                _face_colors[index + 0] = color.r;
-                _face_colors[index + 1] = color.g;
-                _face_colors[index + 2] = color.b;
+    //             index = face_index * color_stride;
+    //             glm::vec3 color = material->color();
+    //             _face_colors[index + 0] = color.r;
+    //             _face_colors[index + 1] = color.g;
+    //             _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
-                _material_types[face_index] = material->type();
-                face_index += 1;
-            }
-            if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
-                BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
-                int index = face_index * faces_stride;
-                _face_vertices[index + 0] = box->_min.x;
-                _face_vertices[index + 1] = box->_min.y;
-                _face_vertices[index + 2] = box->_min.z;
-                _face_vertices[index + 3] = 1.0f;
-                _face_vertices[index + 4] = box->_max.x;
-                _face_vertices[index + 5] = box->_max.y;
-                _face_vertices[index + 6] = box->_max.z;
-                _face_vertices[index + 7] = 1.0f;
+    //             _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
+    //             _material_types[face_index] = material->type();
+    //             face_index += 1;
+    //         }
+    //         if (geometry->type() == RTX_GEOMETRY_TYPE) {
+    //             BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
+    //             int index = face_index * faces_stride;
+    //             _vertices[index + 0] = box->_min.x;
+    //             _vertices[index + 1] = box->_min.y;
+    //             _vertices[index + 2] = box->_min.z;
+    //             _vertices[index + 3] = 1.0f;
+    //             _vertices[index + 4] = box->_max.x;
+    //             _vertices[index + 5] = box->_max.y;
+    //             _vertices[index + 6] = box->_max.z;
+    //             _vertices[index + 7] = 1.0f;
 
-                index = face_index * color_stride;
-                glm::vec3 color = material->color();
-                _face_colors[index + 0] = color.r;
-                _face_colors[index + 1] = color.g;
-                _face_colors[index + 2] = color.b;
+    //             index = face_index * color_stride;
+    //             glm::vec3 color = material->color();
+    //             _face_colors[index + 0] = color.r;
+    //             _face_colors[index + 1] = color.g;
+    //             _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = RTX_GEOMETRY_TYPEBox;
-                _material_types[face_index] = material->type();
-                face_index += 1;
-            }
-            if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-                StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-                for (auto& face : standard_geometry->_face_vertex_indices_array) {
-                    glm::vec3& va = standard_geometry->_vertex_array[face[0]];
-                    glm::vec3& vb = standard_geometry->_vertex_array[face[1]];
-                    glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
+    //             _object_types[face_index] = RTX_GEOMETRY_TYPE;
+    //             _material_types[face_index] = material->type();
+    //             face_index += 1;
+    //         }
+    //         if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+    //             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+    //             for (auto& face : standard_geometry->_face_vertex_indices_array) {
+    //                 glm::vec3& va = standard_geometry->_vertex_array[face[0]];
+    //                 glm::vec3& vb = standard_geometry->_vertex_array[face[1]];
+    //                 glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
 
-                    int index = face_index * faces_stride;
-                    _face_vertices[index + 0] = va.x;
-                    _face_vertices[index + 1] = va.y;
-                    _face_vertices[index + 2] = va.z;
-                    _face_vertices[index + 3] = 1.0f;
+    //                 int index = face_index * faces_stride;
+    //                 _vertices[index + 0] = va.x;
+    //                 _vertices[index + 1] = va.y;
+    //                 _vertices[index + 2] = va.z;
+    //                 _vertices[index + 3] = 1.0f;
 
-                    _face_vertices[index + 4] = vb.x;
-                    _face_vertices[index + 5] = vb.y;
-                    _face_vertices[index + 6] = vb.z;
-                    _face_vertices[index + 7] = 1.0f;
+    //                 _vertices[index + 4] = vb.x;
+    //                 _vertices[index + 5] = vb.y;
+    //                 _vertices[index + 6] = vb.z;
+    //                 _vertices[index + 7] = 1.0f;
 
-                    _face_vertices[index + 8] = vc.x;
-                    _face_vertices[index + 9] = vc.y;
-                    _face_vertices[index + 10] = vc.z;
-                    _face_vertices[index + 11] = 1.0f;
+    //                 _vertices[index + 8] = vc.x;
+    //                 _vertices[index + 9] = vc.y;
+    //                 _vertices[index + 10] = vc.z;
+    //                 _vertices[index + 11] = 1.0f;
 
-                    index = face_index * color_stride;
-                    glm::vec3 color = material->color();
-                    _face_colors[index + 0] = color.r;
-                    _face_colors[index + 1] = color.g;
-                    _face_colors[index + 2] = color.b;
+    //                 index = face_index * color_stride;
+    //                 glm::vec3 color = material->color();
+    //                 _face_colors[index + 0] = color.r;
+    //                 _face_colors[index + 1] = color.g;
+    //                 _face_colors[index + 2] = color.b;
 
-                    _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
-                    _material_types[face_index] = material->type();
-                    face_index += 1;
-                }
-            }
-        }
-    }
+    //                 _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
+    //                 _material_types[face_index] = material->type();
+    //                 face_index += 1;
+    //             }
+    //         }
+    //     }
+    // }
 
-    int num_rays_per_pixel = options->num_rays_per_pixel();
-    int num_rays = _height * _width * num_rays_per_pixel;
-    int rays_stride = 7;
+    // int num_rays_per_pixel = options->num_rays_per_pixel();
+    // int num_rays = _height * _width * num_rays_per_pixel;
+    // int rays_stride = 7;
 
-    if (_initialized == false) {
-        _rays = new float[num_rays * rays_stride];
+    // if (_initialized == false) {
+    //     _rays = new float[num_rays * rays_stride];
 
-        for (int y = 0; y < _height; y++) {
-            for (int x = 0; x < _width; x++) {
-                glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+    //     for (int y = 0; y < _height; y++) {
+    //         for (int x = 0; x < _width; x++) {
+    //             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
 
-                for (int m = 0; m < num_rays_per_pixel; m++) {
-                    int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
+    //             for (int m = 0; m < num_rays_per_pixel; m++) {
+    //                 int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
 
-                    // direction
-                    _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-                    _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
-                    _rays[index + 2] = -1.0f;
+    //                 // direction
+    //                 _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+    //                 _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
+    //                 _rays[index + 2] = -1.0f;
 
-                    // origin
-                    _rays[index + 3] = 0.0f;
-                    _rays[index + 4] = 0.0f;
-                    _rays[index + 5] = 1.0f;
+    //                 // origin
+    //                 _rays[index + 3] = 0.0f;
+    //                 _rays[index + 4] = 0.0f;
+    //                 _rays[index + 5] = 1.0f;
 
-                    // length
-                    _rays[index + 6] = 1.0f;
-                }
-            }
-        }
-    }
-    int num_pixels = _height * _width;
-    if (_initialized == false) {
-        _color_per_ray = new float[num_pixels * 3 * num_rays_per_pixel];
-    }
+    //                 // length
+    //                 _rays[index + 6] = 1.0f;
+    //             }
+    //         }
+    //     }
+    // }
+    // int num_pixels = _height * _width;
+    // if (_initialized == false) {
+    //     _color_per_ray = new float[num_pixels * 3 * num_rays_per_pixel];
+    // }
 
-    if (_initialized == false) {
-        _camera_inv_matrix = new float[16];
-        rtx_cuda_alloc(
-            _gpu_rays,
-            _gpu_face_vertices,
-            _gpu_face_colors,
-            _gpu_object_types,
-            _gpu_material_types,
-            _gpu_color_per_ray,
-            _gpu_camera_inv_matrix,
-            _rays,
-            _face_vertices,
-            _face_colors,
-            _object_types,
-            _material_types,
-            _camera_inv_matrix,
-            num_rays,
-            rays_stride,
-            num_faces,
-            faces_stride,
-            color_stride,
-            num_pixels,
-            num_rays_per_pixel);
-    }
+    // if (_initialized == false) {
+    //     _camera_inv_matrix = new float[16];
+    //     rtx_cuda_alloc(
+    //         _gpu_rays,
+    //         _gpu_face_vertices,
+    //         _gpu_face_colors,
+    //         _gpu_object_types,
+    //         _gpu_material_types,
+    //         _gpu_color_per_ray,
+    //         _gpu_camera_inv_matrix,
+    //         _rays,
+    //         _vertices,
+    //         _face_colors,
+    //         _object_types,
+    //         _material_types,
+    //         _camera_inv_matrix,
+    //         num_rays,
+    //         rays_stride,
+    //         num_faces,
+    //         faces_stride,
+    //         color_stride,
+    //         num_pixels,
+    //         num_rays_per_pixel);
+    // }
 
-    glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
-    // std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
-    // std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
-    // std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
-    // std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
-    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _gpu_camera_inv_matrix, _rays, _face_vertices, _camera_inv_matrix, num_rays, rays_stride, num_faces, faces_stride);
+    // glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
+    // // std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
+    // // std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
+    // // std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
+    // // std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
+    // rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _gpu_camera_inv_matrix, _rays, _vertices, _camera_inv_matrix, num_rays, rays_stride, num_faces, faces_stride);
 
-    rtx_cuda_ray_tracing_render(
-        _gpu_rays,
-        _gpu_face_vertices,
-        _gpu_face_colors,
-        _gpu_object_types,
-        _gpu_material_types,
-        _gpu_color_per_ray,
-        _color_per_ray,
-        _gpu_camera_inv_matrix,
-        num_rays,
-        num_faces,
-        faces_stride,
-        color_stride,
-        options->path_depth(),
-        num_pixels,
-        num_rays_per_pixel);
+    // rtx_cuda_ray_tracing_render(
+    //     _gpu_rays,
+    //     _gpu_face_vertices,
+    //     _gpu_face_colors,
+    //     _gpu_object_types,
+    //     _gpu_material_types,
+    //     _gpu_color_per_ray,
+    //     _color_per_ray,
+    //     _gpu_camera_inv_matrix,
+    //     num_rays,
+    //     num_faces,
+    //     faces_stride,
+    //     color_stride,
+    //     options->path_depth(),
+    //     num_pixels,
+    //     num_rays_per_pixel);
 
-    for (int y = 0; y < _height; y++) {
-        for (int x = 0; x < _width; x++) {
-            float sum_r = 0.0f;
-            float sum_g = 0.0f;
-            float sum_b = 0.0f;
-            for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * _width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
-                sum_r += _color_per_ray[index + 0];
-                sum_g += _color_per_ray[index + 1];
-                sum_b += _color_per_ray[index + 2];
-            }
-            int index = y * width * channels + x * channels;
-            buffer[index + 0] = std::min(std::max((int)(sum_r / float(num_rays_per_pixel) * 255.0f), 0), 255);
-            buffer[index + 1] = std::min(std::max((int)(sum_g / float(num_rays_per_pixel) * 255.0f), 0), 255);
-            buffer[index + 2] = std::min(std::max((int)(sum_b / float(num_rays_per_pixel) * 255.0f), 0), 255);
-        }
-    }
+    // for (int y = 0; y < _height; y++) {
+    //     for (int x = 0; x < _width; x++) {
+    //         float sum_r = 0.0f;
+    //         float sum_g = 0.0f;
+    //         float sum_b = 0.0f;
+    //         for (int m = 0; m < num_rays_per_pixel; m++) {
+    //             int index = y * _width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
+    //             sum_r += _color_per_ray[index + 0];
+    //             sum_g += _color_per_ray[index + 1];
+    //             sum_b += _color_per_ray[index + 2];
+    //         }
+    //         int index = y * width * channels + x * channels;
+    //         buffer[index + 0] = std::min(std::max((int)(sum_r / float(num_rays_per_pixel) * 255.0f), 0), 255);
+    //         buffer[index + 1] = std::min(std::max((int)(sum_g / float(num_rays_per_pixel) * 255.0f), 0), 255);
+    //         buffer[index + 2] = std::min(std::max((int)(sum_b / float(num_rays_per_pixel) * 255.0f), 0), 255);
+    //     }
+    // }
 
-    _initialized = true;
+    // _initialized = true;
     // rtx_cuda_delete(_gpu_rays,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
     //     _gpu_material_types,
     //     _gpu_color_per_ray);
-    // delete[] _face_vertices;
+    // delete[] _vertices;
     // delete[] _face_colors;
     // delete[] _object_types;
     // delete[] _material_types;

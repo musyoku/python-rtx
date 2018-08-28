@@ -10,21 +10,44 @@
 namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
 private:
-    float* _face_vertices;
-    float* _face_colors;
-    int* _object_types;
-    int* _material_types;
+    // host
     float* _rays;
-    float* _color_per_ray;
-    float* _camera_inv_matrix;
-    bool _initialized;
+    float* _faces;
+    float* _vertices;
+    float* _object_colors;
+    int* _geometry_types;
+    int* _material_types;
+    float* _color_buffer;
+    float* _bvh_hit_path;
+    float* _bvh_miss_path;
+    bool* _bvh_is_leaf;
+    float* _bvh_geometry_type;
+    float* _bvh_face_start_index;
+    float* _bvh_face_end_index;
+    // device
     float* _gpu_rays;
-    float* _gpu_face_vertices;
-    float* _gpu_face_colors;
-    int* _gpu_object_types;
+    float* _gpu_faces;
+    float* _gpu_vertices;
+    float* _gpu_object_colors;
+    int* _gpu_geometry_types;
     int* _gpu_material_types;
-    float* _gpu_color_per_ray;
-    float* _gpu_camera_inv_matrix;
+    float* _gpu_color_buffer;
+    float* _gpu_bvh_hit_path;
+    float* _gpu_bvh_miss_path;
+    bool* _gpu_bvh_is_leaf;
+    float* _gpu_bvh_object_index;
+    float* _gpu_bvh_face_start_index;
+    float* _gpu_bvh_face_end_index;
+
+    std::shared_ptr<Scene> _scene;
+    std::shared_ptr<Camera> _camera;
+    std::shared_ptr<RayTracingOptions> _options;
+
+    void construct_bvh();
+    void pack_objects();
+    void allocate_mesh_buffer(int num_faces);
+    void delete_mesh_buffer();
+
 public:
     RayTracingCUDARenderer();
     void render(std::shared_ptr<Scene> scene,

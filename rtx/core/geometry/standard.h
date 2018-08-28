@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <pybind11/numpy.h>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 namespace rtx {
 class StandardGeometry : public Geometry {
@@ -24,6 +24,9 @@ public:
     std::vector<std::pair<int, int>> _bvh_start_end_vertex_indices;
     StandardGeometry();
     StandardGeometry(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces, pybind11::array_t<float, pybind11::array::c_style> vertices);
-    int type() override;
+    int type() const override;
+    int num_faces() const override;
+    int num_vertices() const override;
+    void pack_vertices(float*& buffer, int start, glm::mat4& transformation_matrix) const override;
 };
 }

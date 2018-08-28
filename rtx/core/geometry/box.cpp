@@ -20,7 +20,7 @@ BoxGeometry::BoxGeometry(float width, float height, float depth)
 
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(16, 17, 18));
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(18, 17, 19));
-    
+
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(20, 21, 22));
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(22, 21, 23));
 
@@ -56,9 +56,5 @@ BoxGeometry::BoxGeometry(float width, float height, float depth)
 
     _bvh_indices.push_back(0);
     _bvh_start_end_vertex_indices.push_back(std::make_pair<int, int>(0, _vertex_array.size() - 1));
-}
-int BoxGeometry::type()
-{
-    return RTX_GEOMETRY_TYPE_STANDARD;
 }
 }
