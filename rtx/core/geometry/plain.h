@@ -5,6 +5,6 @@ namespace rtx {
 class PlainGeometry : public StandardGeometry {
 public:
     PlainGeometry(float width, float height);
-    GeometryType type() override;
+    int type() override;
 };
 }

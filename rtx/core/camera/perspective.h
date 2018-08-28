@@ -15,6 +15,6 @@ public:
         float fov_rad, float aspect_ratio, float z_near, float z_far);
     float fov_rad();
     void set_fov_rad(float fov_rad);
-    CameraType type() const override;
+    int type() const override;
 };
 }

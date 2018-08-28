@@ -1,21 +1,20 @@
 #pragma once
 
-enum MaterialType {
-    MaterialTypeUnknown = 0,
-    MaterialTypeLambert = 1,
-    MaterialTypeMetal = 2,
-    MaterialTypeEmissive = 3,
+enum RTX_MATERIAL_TYPE {
+    RTX_MATERIAL_TYPE_UNKNOWN,
+    RTX_MATERIAL_TYPE_LAMBERT,
+    RTX_MATERIAL_TYPE_METAL,
+    RTX_MATERIAL_TYPE_EMISSIVE,
 };
 
-enum GeometryType {
-    GeometryTypeUnknown = 0,
-    GeometryTypeStandard = 1,
-    GeometryTypeSphere = 2,
-    GeometryTypeBox = 3,
+enum RTX_GEOMETRY_TYPE {
+    RTX_GEOMETRY_TYPE_UNKNOWN,
+    RTX_GEOMETRY_TYPE_STANDARD,
+    RTX_GEOMETRY_TYPE_SPHERE,
 };
 
-enum CameraType {
-    CameraTypeUnknown = 0,
-    CameraTypePerspective = 1,
-    CameraTypeOrthogonal = 2,
+enum RTX_CAMERA_TYPE {
+    RTX_CAMERA_TYPE_UNKNOWN,
+    RTX_CAMERA_TYPE_PERSPECTIVE,
+    RTX_CAMERA_TYPE_ORTHOGONAL,
 };

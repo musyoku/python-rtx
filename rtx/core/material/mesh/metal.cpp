@@ -23,8 +23,8 @@ glm::vec3 MeshMetalMaterial::color() const
 {
     throw std::runtime_error("Not implemented");
 };
-MaterialType MeshMetalMaterial::type() const
+int MeshMetalMaterial::type() const
 {
-    return MaterialTypeMetal;
+    return RTX_MATERIAL_TYPE_METAL;
 }
 }

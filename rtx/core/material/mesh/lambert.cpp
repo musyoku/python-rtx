@@ -33,8 +33,8 @@ glm::vec3 MeshLambertMaterial::emit_color() const
 {
     throw std::runtime_error("Not implemented");
 };
-MaterialType MeshLambertMaterial::type() const
+int MeshLambertMaterial::type() const
 {
-    return MaterialTypeLambert;
+    return RTX_MATERIAL_TYPE_LAMBERT;
 }
 }

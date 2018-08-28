@@ -67,7 +67,7 @@ bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
     for (auto& mesh : mesh_array) {
         auto& geometry = mesh->_geometry;
 
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             if (hit_test_sphere(sphere->_center, sphere->_radius, ray, min_distance, hit_point, hit_face_normal)) {
                 new_origin = hit_point;
@@ -76,7 +76,7 @@ bool hit_test(std::vector<std::shared_ptr<Mesh>>& mesh_array,
             }
         }
 
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             for (unsigned int n = 0; n < standard_geometry->_face_vertex_indices_array.size(); n++) {
                 glm::vec<3, int>& face = standard_geometry->_face_vertex_indices_array[n];
@@ -119,7 +119,7 @@ glm::vec3 RayTracingCPURenderer::compute_color(std::vector<std::shared_ptr<Mesh>
         glm::vec3 face_normal = hit_face_normal;
 
         const auto& material = hit_mesh->_material;
-        if (material->type() == MaterialTypeEmissive) {
+        if (material->type() == RTX_MATERIAL_TYPE_EMISSIVE) {
             return material->emit_color();
         }
 
@@ -173,7 +173,7 @@ void RayTracingCPURenderer::render(
     std::vector<std::shared_ptr<Mesh>> mesh_array;
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
 
@@ -186,7 +186,7 @@ void RayTracingCPURenderer::render(
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
             mesh_array.emplace_back(mesh_in_view_space);
         }
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
             standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
@@ -262,7 +262,7 @@ void RayTracingCPURenderer::render(
     std::vector<std::shared_ptr<Mesh>> mesh_array;
     for (auto mesh : scene->_mesh_array) {
         auto geometry = mesh->_geometry;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
 

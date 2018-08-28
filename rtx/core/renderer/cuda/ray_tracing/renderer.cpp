@@ -51,15 +51,15 @@ void RayTracingCUDARenderer::render(
 
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             num_faces += 1;
             continue;
         }
-        if (geometry->type() == GeometryTypeBox) {
+        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
             num_faces += 1;
             continue;
         }
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             num_faces += standard_geometry->_face_vertex_indices_array.size();
             continue;
@@ -78,7 +78,7 @@ void RayTracingCUDARenderer::render(
     std::vector<std::shared_ptr<Mesh>> mesh_array;
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
             glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
@@ -89,7 +89,7 @@ void RayTracingCUDARenderer::render(
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
             mesh_array.emplace_back(mesh_in_view_space);
         }
-        if (geometry->type() == GeometryTypeBox) {
+        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
             BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
             std::shared_ptr<BoxGeometry> geometry_in_view_space = std::make_shared<BoxGeometry>(box->_width, box->_height, box->_depth);
             glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
@@ -105,7 +105,7 @@ void RayTracingCUDARenderer::render(
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
             mesh_array.emplace_back(mesh_in_view_space);
         }
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
             standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
@@ -134,7 +134,7 @@ void RayTracingCUDARenderer::render(
     for (auto& mesh : mesh_array) {
         auto& geometry = mesh->_geometry;
         auto& material = mesh->_material;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
             int index = face_index * faces_stride;
             _face_vertices[index + 0] = sphere->_center.x;
@@ -149,12 +149,12 @@ void RayTracingCUDARenderer::render(
             _face_colors[index + 1] = color.g;
             _face_colors[index + 2] = color.b;
 
-            _object_types[face_index] = GeometryTypeSphere;
+            _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
             _material_types[face_index] = material->type();
             face_index += 1;
             continue;
         }
-        if (geometry->type() == GeometryTypeBox) {
+        if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
             BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
             int index = face_index * faces_stride;
             _face_vertices[index + 0] = box->_min.x;
@@ -172,12 +172,12 @@ void RayTracingCUDARenderer::render(
             _face_colors[index + 1] = color.g;
             _face_colors[index + 2] = color.b;
 
-            _object_types[face_index] = GeometryTypeBox;
+            _object_types[face_index] = RTX_GEOMETRY_TYPEBox;
             _material_types[face_index] = material->type();
             face_index += 1;
             continue;
         }
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             for (auto& face : standard_geometry->_face_vertex_indices_array) {
                 glm::vec3& va = standard_geometry->_vertex_array[face[0]];
@@ -206,7 +206,7 @@ void RayTracingCUDARenderer::render(
                 _face_colors[index + 1] = color.g;
                 _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = GeometryTypeStandard;
+                _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
                 _material_types[face_index] = material->type();
                 face_index += 1;
             }
@@ -222,7 +222,7 @@ void RayTracingCUDARenderer::render(
         _rays = new float[num_rays * rays_stride];
     }
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
-    if (camera->type() == CameraTypePerspective) {
+    if (camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
         PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(camera.get());
         origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
     }
@@ -384,11 +384,11 @@ void RayTracingCUDARenderer::render(
 
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
-        if (geometry->type() == GeometryTypeSphere) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
             num_faces += 1;
             continue;
         }
-        if (geometry->type() == GeometryTypeStandard) {
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
             num_faces += standard_geometry->_face_vertex_indices_array.size();
             continue;
@@ -406,7 +406,7 @@ void RayTracingCUDARenderer::render(
         std::vector<std::shared_ptr<Mesh>> mesh_array;
         for (auto& mesh : scene->_mesh_array) {
             auto& geometry = mesh->_geometry;
-            if (geometry->type() == GeometryTypeSphere) {
+            if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
                 SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
                 std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
                 glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
@@ -417,7 +417,7 @@ void RayTracingCUDARenderer::render(
                 std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
                 mesh_array.emplace_back(mesh_in_view_space);
             }
-            if (geometry->type() == GeometryTypeStandard) {
+            if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
                 StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
                 std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
                 standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
@@ -446,7 +446,7 @@ void RayTracingCUDARenderer::render(
         for (auto& mesh : mesh_array) {
             auto& geometry = mesh->_geometry;
             auto& material = mesh->_material;
-            if (geometry->type() == GeometryTypeSphere) {
+            if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
                 SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
                 int index = face_index * faces_stride;
                 _face_vertices[index + 0] = sphere->_center.x;
@@ -461,11 +461,11 @@ void RayTracingCUDARenderer::render(
                 _face_colors[index + 1] = color.g;
                 _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = GeometryTypeSphere;
+                _object_types[face_index] = RTX_GEOMETRY_TYPE_SPHERE;
                 _material_types[face_index] = material->type();
                 face_index += 1;
             }
-            if (geometry->type() == GeometryTypeBox) {
+            if (geometry->type() == RTX_GEOMETRY_TYPEBox) {
                 BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
                 int index = face_index * faces_stride;
                 _face_vertices[index + 0] = box->_min.x;
@@ -483,11 +483,11 @@ void RayTracingCUDARenderer::render(
                 _face_colors[index + 1] = color.g;
                 _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = GeometryTypeBox;
+                _object_types[face_index] = RTX_GEOMETRY_TYPEBox;
                 _material_types[face_index] = material->type();
                 face_index += 1;
             }
-            if (geometry->type() == GeometryTypeStandard) {
+            if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
                 StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
                 for (auto& face : standard_geometry->_face_vertex_indices_array) {
                     glm::vec3& va = standard_geometry->_vertex_array[face[0]];
@@ -516,7 +516,7 @@ void RayTracingCUDARenderer::render(
                     _face_colors[index + 1] = color.g;
                     _face_colors[index + 2] = color.b;
 
-                    _object_types[face_index] = GeometryTypeStandard;
+                    _object_types[face_index] = RTX_GEOMETRY_TYPE_STANDARD;
                     _material_types[face_index] = material->type();
                     face_index += 1;
                 }

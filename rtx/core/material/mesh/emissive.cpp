@@ -30,8 +30,8 @@ glm::vec3 MeshEmissiveMaterial::color() const
 {
     return _color;
 }
-MaterialType MeshEmissiveMaterial::type() const
+int MeshEmissiveMaterial::type() const
 {
-    return MaterialTypeEmissive;
+    return RTX_MATERIAL_TYPE_EMISSIVE;
 }
 }

@@ -29,8 +29,8 @@ void PerspectiveCamera::set_fov_rad(float fov_rad)
 {
     _fov_rad = fov_rad;
 }
-CameraType PerspectiveCamera::type() const
+int PerspectiveCamera::type() const
 {
-    return CameraTypePerspective;
+    return RTX_CAMERA_TYPE_PERSPECTIVE;
 }
 }

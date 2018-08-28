@@ -2,8 +2,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace rtx {
-GeometryType Geometry::type()
+int Geometry::type()
 {
-    return GeometryTypeUnknown;
+    return RTX_GEOMETRY_TYPE_UNKNOWN;
 }
 }

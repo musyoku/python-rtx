@@ -5,6 +5,6 @@ namespace rtx {
 class BoxGeometry : public StandardGeometry {
 public:
     BoxGeometry(float width, float height, float depth);
-    GeometryType type() override;
+    int type() override;
 };
 }

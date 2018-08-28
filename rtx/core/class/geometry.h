@@ -4,6 +4,6 @@
 namespace rtx {
 class Geometry {
 public:
-    virtual GeometryType type();
+    virtual int type();
 };
 }

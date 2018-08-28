@@ -113,7 +113,7 @@ __global__ void render(
                 object_type = shared_object_types[face_index];
                 const int index = face_index * faces_stride;
 
-                if (object_type == GeometryTypeStandard) {
+                if (object_type == RTX_GEOMETRY_TYPE_STANDARD) {
                     const float va_x = shared_face_vertices[index + 0];
                     const float va_y = shared_face_vertices[index + 1];
                     const float va_z = shared_face_vertices[index + 2];
@@ -202,7 +202,7 @@ __global__ void render(
                     did_hit_object = true;
                     continue;
                 }
-                if (object_type == GeometryTypeSphere) {
+                if (object_type == RTX_GEOMETRY_TYPE_SPHERE) {
                     const float center_x = shared_face_vertices[index + 0];
                     const float center_y = shared_face_vertices[index + 1];
                     const float center_z = shared_face_vertices[index + 2];
@@ -256,7 +256,7 @@ __global__ void render(
                     continue;
                 }
                 // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                if (object_type == GeometryTypeBox) {
+                if (object_type == RTX_GEOMETRY_TYPEBox) {
                     float _min_x = shared_face_vertices[index + 0];
                     float _min_y = shared_face_vertices[index + 1];
                     float _min_z = shared_face_vertices[index + 2];
@@ -300,7 +300,7 @@ __global__ void render(
                     if (tzmax < tmax) {
                         tmax = tzmax;
                     }
-                    material_type = MaterialTypeEmissive;
+                    material_type = RTX_MATERIAL_TYPE_EMISSIVE;
 
                     hit_color_r = 1.0f;
                     hit_color_g = 1.0f;
@@ -316,7 +316,7 @@ __global__ void render(
                 ray_origin_y = hit_point_y;
                 ray_origin_z = hit_point_z;
 
-                if (material_type == MaterialTypeEmissive) {
+                if (material_type == RTX_MATERIAL_TYPE_EMISSIVE) {
                     color_r = reflection_decay_r * hit_color_r;
                     color_g = reflection_decay_g * hit_color_g;
                     color_b = reflection_decay_b * hit_color_b;

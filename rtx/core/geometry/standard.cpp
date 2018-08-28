@@ -30,8 +30,8 @@ StandardGeometry::StandardGeometry(pybind11::array_t<int, pybind11::array::c_sty
         _vertex_array.emplace_back(vertex);
     }
 }
-GeometryType StandardGeometry::type()
+int StandardGeometry::type()
 {
-    return GeometryTypeStandard;
+    return RTX_GEOMETRY_TYPE_STANDARD;
 }
 }
