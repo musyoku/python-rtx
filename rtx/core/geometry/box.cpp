@@ -24,45 +24,35 @@ BoxGeometry::BoxGeometry(float width, float height, float depth)
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(20, 21, 22));
     _face_vertex_indices_array.emplace_back(glm::vec<3, int>(22, 21, 23));
 
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, depth / 2.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
 
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, -depth / 2.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
 
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, -depth / 2.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
 
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, depth / 2.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
 
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, height / 2.0f, -depth / 2.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, height / 2.0f, -depth / 2.0f, 1.0f));
 
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, -depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(-width / 2.0f, -height / 2.0f, depth / 2.0f));
-    _vertex_array.emplace_back(glm::vec3(width / 2.0f, -height / 2.0f, depth / 2.0f));
-
-    for (auto& face : _face_vertex_indices_array) {
-        glm::vec3& va = _vertex_array[face[0]];
-        glm::vec3& vb = _vertex_array[face[1]];
-        glm::vec3& vc = _vertex_array[face[2]];
-        glm::vec3 vba = vb - va;
-        glm::vec3 vca = vc - va;
-        glm::vec3 normal = glm::normalize(glm::cross(vba, vca));
-        _face_normal_array.emplace_back(normal);
-    }
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
+    _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
 }
 GeometryType BoxGeometry::type()
 {

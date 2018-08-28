@@ -16,6 +16,7 @@ private:
     int* _material_types;
     float* _rays;
     float* _color_per_ray;
+    float* _camera_inv_matrix;
     bool _initialized;
     float* _gpu_rays;
     float* _gpu_face_vertices;
@@ -23,6 +24,7 @@ private:
     int* _gpu_object_types;
     int* _gpu_material_types;
     float* _gpu_color_per_ray;
+    float* _gpu_camera_inv_matrix;
 public:
     RayTracingCUDARenderer();
     void render(std::shared_ptr<Scene> scene,

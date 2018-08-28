@@ -1,6 +1,7 @@
 #include "renderer.h"
-#include "../../../class/enum.h"
 #include "../../../camera/perspective.h"
+#include "../../../class/enum.h"
+#include "../../../geometry/box.h"
 #include "../../../geometry/sphere.h"
 #include "../../../geometry/standard.h"
 #include "../header/ray_tracing.h"
@@ -26,6 +27,7 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_object_types = nullptr;
     _gpu_material_types = nullptr;
     _gpu_color_per_ray = nullptr;
+    _gpu_camera_inv_matrix = nullptr;
     _initialized = false;
 }
 void RayTracingCUDARenderer::render(
@@ -50,6 +52,10 @@ void RayTracingCUDARenderer::render(
     for (auto& mesh : scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
         if (geometry->type() == GeometryTypeSphere) {
+            num_faces += 1;
+            continue;
+        }
+        if (geometry->type() == GeometryTypeBox) {
             num_faces += 1;
             continue;
         }
@@ -79,6 +85,22 @@ void RayTracingCUDARenderer::render(
             glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
             glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
             geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+
+            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+            mesh_array.emplace_back(mesh_in_view_space);
+        }
+        if (geometry->type() == GeometryTypeBox) {
+            BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
+            std::shared_ptr<BoxGeometry> geometry_in_view_space = std::make_shared<BoxGeometry>(box->_width, box->_height, box->_depth);
+            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+
+            glm::vec4 homogeneous_min = glm::vec4(box->_min, 1.0f);
+            glm::vec4 homogeneous_min_in_view_space = mv_matrix * homogeneous_min;
+            geometry_in_view_space->_min = glm::vec3(homogeneous_min_in_view_space.x, homogeneous_min_in_view_space.y, homogeneous_min_in_view_space.z);
+
+            glm::vec4 homogeneous_max = glm::vec4(box->_max, 1.0f);
+            glm::vec4 homogeneous_max_in_view_space = mv_matrix * homogeneous_max;
+            geometry_in_view_space->_max = glm::vec3(homogeneous_max_in_view_space.x, homogeneous_max_in_view_space.y, homogeneous_max_in_view_space.z);
 
             std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
             mesh_array.emplace_back(mesh_in_view_space);
@@ -127,9 +149,33 @@ void RayTracingCUDARenderer::render(
             _face_colors[index + 1] = color.g;
             _face_colors[index + 2] = color.b;
 
-            _object_types[face_index] = RTX_CUDA_GEOMETRY_TYPE_SPHERE;
+            _object_types[face_index] = GeometryTypeSphere;
             _material_types[face_index] = material->type();
             face_index += 1;
+            continue;
+        }
+        if (geometry->type() == GeometryTypeBox) {
+            BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
+            int index = face_index * faces_stride;
+            _face_vertices[index + 0] = box->_min.x;
+            _face_vertices[index + 1] = box->_min.y;
+            _face_vertices[index + 2] = box->_min.z;
+            _face_vertices[index + 3] = 1.0f;
+            _face_vertices[index + 4] = box->_max.x;
+            _face_vertices[index + 5] = box->_max.y;
+            _face_vertices[index + 6] = box->_max.z;
+            _face_vertices[index + 7] = 1.0f;
+
+            index = face_index * color_stride;
+            glm::vec3 color = material->color();
+            _face_colors[index + 0] = color.r;
+            _face_colors[index + 1] = color.g;
+            _face_colors[index + 2] = color.b;
+
+            _object_types[face_index] = GeometryTypeBox;
+            _material_types[face_index] = material->type();
+            face_index += 1;
+            continue;
         }
         if (geometry->type() == GeometryTypeStandard) {
             StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
@@ -160,10 +206,11 @@ void RayTracingCUDARenderer::render(
                 _face_colors[index + 1] = color.g;
                 _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = RTX_CUDA_GEOMETRY_TYPE_STANDARD;
+                _object_types[face_index] = GeometryTypeStandard;
                 _material_types[face_index] = material->type();
                 face_index += 1;
             }
+            continue;
         }
     }
 
@@ -209,6 +256,7 @@ void RayTracingCUDARenderer::render(
     }
 
     if (_initialized == false) {
+        _camera_inv_matrix = new float[16];
         rtx_cuda_alloc(
             _gpu_rays,
             _gpu_face_vertices,
@@ -216,11 +264,13 @@ void RayTracingCUDARenderer::render(
             _gpu_object_types,
             _gpu_material_types,
             _gpu_color_per_ray,
+            _gpu_camera_inv_matrix,
             _rays,
             _face_vertices,
             _face_colors,
             _object_types,
             _material_types,
+            _camera_inv_matrix,
             num_rays,
             rays_stride,
             num_faces,
@@ -230,7 +280,37 @@ void RayTracingCUDARenderer::render(
             num_rays_per_pixel);
     }
 
-    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _rays, _face_vertices, num_rays, rays_stride, num_faces, faces_stride);
+    glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
+    std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
+    std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
+    std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
+    std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
+    _camera_inv_matrix[0] = inv_camera[0][0];
+    _camera_inv_matrix[1] = inv_camera[0][1];
+    _camera_inv_matrix[2] = inv_camera[0][2];
+    _camera_inv_matrix[3] = inv_camera[0][3];
+    _camera_inv_matrix[4] = inv_camera[1][0];
+    _camera_inv_matrix[5] = inv_camera[1][1];
+    _camera_inv_matrix[6] = inv_camera[1][2];
+    _camera_inv_matrix[7] = inv_camera[1][3];
+    _camera_inv_matrix[8] = inv_camera[2][0];
+    _camera_inv_matrix[9] = inv_camera[2][1];
+    _camera_inv_matrix[10] = inv_camera[2][2];
+    _camera_inv_matrix[11] = inv_camera[2][3];
+    _camera_inv_matrix[12] = inv_camera[3][0];
+    _camera_inv_matrix[13] = inv_camera[3][1];
+    _camera_inv_matrix[14] = inv_camera[3][2];
+    _camera_inv_matrix[15] = inv_camera[3][3];
+    rtx_cuda_copy(_gpu_rays,
+        _gpu_face_vertices,
+        _gpu_camera_inv_matrix,
+        _rays,
+        _face_vertices,
+        _camera_inv_matrix,
+        num_rays,
+        rays_stride,
+        num_faces,
+        faces_stride);
 
     rtx_cuda_ray_tracing_render(
         _gpu_rays,
@@ -240,6 +320,7 @@ void RayTracingCUDARenderer::render(
         _gpu_material_types,
         _gpu_color_per_ray,
         _color_per_ray,
+        _gpu_camera_inv_matrix,
         num_rays,
         num_faces,
         faces_stride,
@@ -380,7 +461,29 @@ void RayTracingCUDARenderer::render(
                 _face_colors[index + 1] = color.g;
                 _face_colors[index + 2] = color.b;
 
-                _object_types[face_index] = RTX_CUDA_GEOMETRY_TYPE_SPHERE;
+                _object_types[face_index] = GeometryTypeSphere;
+                _material_types[face_index] = material->type();
+                face_index += 1;
+            }
+            if (geometry->type() == GeometryTypeBox) {
+                BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
+                int index = face_index * faces_stride;
+                _face_vertices[index + 0] = box->_min.x;
+                _face_vertices[index + 1] = box->_min.y;
+                _face_vertices[index + 2] = box->_min.z;
+                _face_vertices[index + 3] = 1.0f;
+                _face_vertices[index + 4] = box->_max.x;
+                _face_vertices[index + 5] = box->_max.y;
+                _face_vertices[index + 6] = box->_max.z;
+                _face_vertices[index + 7] = 1.0f;
+
+                index = face_index * color_stride;
+                glm::vec3 color = material->color();
+                _face_colors[index + 0] = color.r;
+                _face_colors[index + 1] = color.g;
+                _face_colors[index + 2] = color.b;
+
+                _object_types[face_index] = GeometryTypeBox;
                 _material_types[face_index] = material->type();
                 face_index += 1;
             }
@@ -413,7 +516,7 @@ void RayTracingCUDARenderer::render(
                     _face_colors[index + 1] = color.g;
                     _face_colors[index + 2] = color.b;
 
-                    _object_types[face_index] = RTX_CUDA_GEOMETRY_TYPE_STANDARD;
+                    _object_types[face_index] = GeometryTypeStandard;
                     _material_types[face_index] = material->type();
                     face_index += 1;
                 }
@@ -457,6 +560,7 @@ void RayTracingCUDARenderer::render(
     }
 
     if (_initialized == false) {
+        _camera_inv_matrix = new float[16];
         rtx_cuda_alloc(
             _gpu_rays,
             _gpu_face_vertices,
@@ -464,11 +568,13 @@ void RayTracingCUDARenderer::render(
             _gpu_object_types,
             _gpu_material_types,
             _gpu_color_per_ray,
+            _gpu_camera_inv_matrix,
             _rays,
             _face_vertices,
             _face_colors,
             _object_types,
             _material_types,
+            _camera_inv_matrix,
             num_rays,
             rays_stride,
             num_faces,
@@ -478,7 +584,12 @@ void RayTracingCUDARenderer::render(
             num_rays_per_pixel);
     }
 
-    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _rays, _face_vertices, num_rays, rays_stride, num_faces, faces_stride);
+    glm::mat4 inv_camera = glm::inverse(camera->_view_matrix);
+    // std::cout << inv_camera[0][0] << ", " << inv_camera[0][1] << ", " << inv_camera[0][2] << ", " << inv_camera[0][3] << std::endl;
+    // std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
+    // std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
+    // std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
+    rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _gpu_camera_inv_matrix, _rays, _face_vertices, _camera_inv_matrix, num_rays, rays_stride, num_faces, faces_stride);
 
     rtx_cuda_ray_tracing_render(
         _gpu_rays,
@@ -488,6 +599,7 @@ void RayTracingCUDARenderer::render(
         _gpu_material_types,
         _gpu_color_per_ray,
         _color_per_ray,
+        _gpu_camera_inv_matrix,
         num_rays,
         num_faces,
         faces_stride,

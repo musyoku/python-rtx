@@ -41,7 +41,7 @@ int main()
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
-    options->set_num_rays_per_pixel(512);
+    options->set_num_rays_per_pixel(64);
     options->set_path_depth(5);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 

@@ -11,6 +11,7 @@ enum GeometryType {
     GeometryTypeUnknown = 0,
     GeometryTypeStandard = 1,
     GeometryTypeSphere = 2,
+    GeometryTypeBox = 3,
 };
 
 enum CameraType {
