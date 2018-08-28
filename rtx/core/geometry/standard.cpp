@@ -42,11 +42,16 @@ int StandardGeometry::num_vertices() const
 {
     return _vertex_array.size();
 }
-void StandardGeometry::pack_vertices(float*& buffer, int start, glm::mat4& transformation_matrix) const
+int StandardGeometry::pack_vertices(rtx::array<float>& buffer, int start, glm::mat4& transformation_matrix) const
 {
     int pos = start;
-    for (int n = 0; n < num_faces(); n++) {
-        const glm::vec<3, int>& face = _face_vertex_indices_array[n];
+    for (auto& vertex : _vertex_array) {
+        buffer[pos + 0] = vertex.x;
+        buffer[pos + 1] = vertex.y;
+        buffer[pos + 2] = vertex.z;
+        buffer[pos + 3] = vertex.w;
+        pos += 4;
     }
+    return pos;
 }
 }

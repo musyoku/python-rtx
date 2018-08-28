@@ -15,19 +15,6 @@ namespace py = pybind11;
 
 RayTracingCUDARenderer::RayTracingCUDARenderer()
 {
-    _rays = nullptr;
-    _faces = nullptr;
-    _vertices = nullptr;
-    _object_colors = nullptr;
-    _geometry_types = nullptr;
-    _material_types = nullptr;
-    _color_buffer = nullptr;
-    _bvh_hit_path = nullptr;
-    _bvh_miss_path = nullptr;
-    _bvh_is_leaf = nullptr;
-    _bvh_geometry_type = nullptr;
-    _bvh_face_start_index = nullptr;
-    _bvh_face_end_index = nullptr;
     _gpu_rays = nullptr;
     _gpu_faces = nullptr;
     _gpu_vertices = nullptr;
@@ -43,53 +30,50 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_bvh_face_end_index = nullptr;
 }
 
-void RayTracingCUDARenderer::allocate_mesh_buffer(int num_faces)
+void RayTracingCUDARenderer::allocate_mesh_buffer(int num_faces, int num_vertices)
 {
     int stride = 4;
-    _faces = new float[num_faces * stride];
+    _faces = rtx::array<float>(num_faces * stride);
+    _vertices = rtx::array<float>(num_vertices * stride);
 
     // 各頂点をモデル座標系からカメラ座標系に変換
-    // Transform vertices from model space to camera space
-    // for (auto& mesh : _scene->_mesh_array) {
-    //     auto& geometry = mesh->_geometry;
-    //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-    //         SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-    //         std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
-    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-    //         glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
-    //         glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
-    //         geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
+    Transform vertices from model space to camera space
+    for (auto& mesh : _scene->_mesh_array) {
+        auto& geometry = mesh->_geometry;
+        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
+            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+            std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
+            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+            glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
+            glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
+            geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
 
-    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
-    //         mesh_array.emplace_back(mesh_in_view_space);
-    //     }
-    //     if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-    //         StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-    //         std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
-    //         standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
+            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
+            mesh_array.emplace_back(mesh_in_view_space);
+        }
+        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
+            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
+            std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
+            standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
 
-    //         glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
+            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
 
-    //         for (auto& vertex : standard_geometry->_vertex_array) {
-    //             glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
-    //             glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
-    //             standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
-    //         }
+            for (auto& vertex : standard_geometry->_vertex_array) {
+                glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
+                glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
+                standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
+            }
 
-    //         for (auto& face_normal : standard_geometry->_face_normal_array) {
-    //             glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
-    //             glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
-    //             glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
-    //             standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
-    //         }
+            for (auto& face_normal : standard_geometry->_face_normal_array) {
+                glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
+                glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
+                glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
+                standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
+            }
 
-    //         std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
-    //     }
-    // }
-}
-void RayTracingCUDARenderer::delete_mesh_buffer()
-{
-    delete[] _vertices;
+            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
+        }
+    }
 }
 void RayTracingCUDARenderer::construct_bvh()
 {

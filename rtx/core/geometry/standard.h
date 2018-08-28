@@ -27,6 +27,6 @@ public:
     int type() const override;
     int num_faces() const override;
     int num_vertices() const override;
-    void pack_vertices(float*& buffer, int start, glm::mat4& transformation_matrix) const override;
+    int pack_vertices(rtx::array<float>& buffer, int start, glm::mat4& transformation_matrix) const override;
 };
 }

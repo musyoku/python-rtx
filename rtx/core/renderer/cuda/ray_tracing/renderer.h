@@ -1,5 +1,6 @@
 #pragma once
 #include "../../../class/ray.h"
+#include "../../../class/array.h"
 #include "../../../class/renderer.h"
 #include "../../options/ray_tracing.h"
 #include <array>
@@ -11,19 +12,19 @@ namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
 private:
     // host
-    float* _rays;
-    float* _faces;
-    float* _vertices;
-    float* _object_colors;
-    int* _geometry_types;
-    int* _material_types;
-    float* _color_buffer;
-    float* _bvh_hit_path;
-    float* _bvh_miss_path;
-    bool* _bvh_is_leaf;
-    float* _bvh_geometry_type;
-    float* _bvh_face_start_index;
-    float* _bvh_face_end_index;
+    rtx::array<float> _rays;
+    rtx::array<float> _faces;
+    rtx::array<float> _vertices;
+    rtx::array<float> _object_colors;
+    rtx::array<int> _geometry_types;
+    rtx::array<int> _material_types;
+    rtx::array<float> _color_buffer;
+    rtx::array<float> _bvh_hit_path;
+    rtx::array<float> _bvh_miss_path;
+    rtx::array<bool> _bvh_is_leaf;
+    rtx::array<float> _bvh_geometry_type;
+    rtx::array<float> _bvh_face_start_index;
+    rtx::array<float> _bvh_face_end_index;
     // device
     float* _gpu_rays;
     float* _gpu_faces;
@@ -45,7 +46,7 @@ private:
 
     void construct_bvh();
     void pack_objects();
-    void allocate_mesh_buffer(int num_faces);
+    void allocate_mesh_buffer(int num_faces, int num_vertices);
     void delete_mesh_buffer();
 
 public:
