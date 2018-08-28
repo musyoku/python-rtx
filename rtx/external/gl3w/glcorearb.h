@@ -178,18 +178,18 @@ typedef unsigned char GLubyte;
 #define GL_STEREO                         0x0C33
 #define GL_LINE_SMOOTH_HINT               0x0C52
 #define GL_POLYGON_SMOOTH_HINT            0x0C53
-#define GL_UNPACK_SWAP_BYTES              0x0CF0
-#define GL_UNPACK_LSB_FIRST               0x0CF1
-#define GL_UNPACK_ROW_LENGTH              0x0CF2
-#define GL_UNPACK_SKIP_ROWS               0x0CF3
-#define GL_UNPACK_SKIP_PIXELS             0x0CF4
-#define GL_UNPACK_ALIGNMENT               0x0CF5
-#define GL_PACK_SWAP_BYTES                0x0D00
-#define GL_PACK_LSB_FIRST                 0x0D01
-#define GL_PACK_ROW_LENGTH                0x0D02
-#define GL_PACK_SKIP_ROWS                 0x0D03
-#define GL_PACK_SKIP_PIXELS               0x0D04
-#define GL_PACK_ALIGNMENT                 0x0D05
+#define GL_UNserialize_SWAP_BYTES              0x0CF0
+#define GL_UNserialize_LSB_FIRST               0x0CF1
+#define GL_UNserialize_ROW_LENGTH              0x0CF2
+#define GL_UNserialize_SKIP_ROWS               0x0CF3
+#define GL_UNserialize_SKIP_PIXELS             0x0CF4
+#define GL_UNserialize_ALIGNMENT               0x0CF5
+#define GL_serialize_SWAP_BYTES                0x0D00
+#define GL_serialize_LSB_FIRST                 0x0D01
+#define GL_serialize_ROW_LENGTH                0x0D02
+#define GL_serialize_SKIP_ROWS                 0x0D03
+#define GL_serialize_SKIP_PIXELS               0x0D04
+#define GL_serialize_ALIGNMENT                 0x0D05
 #define GL_MAX_TEXTURE_SIZE               0x0D33
 #define GL_MAX_VIEWPORT_DIMS              0x0D3A
 #define GL_SUBPIXEL_BITS                  0x0D50
@@ -435,10 +435,10 @@ GLAPI GLboolean APIENTRY glIsTexture (GLuint texture);
 #define GL_UNSIGNED_INT_8_8_8_8           0x8035
 #define GL_UNSIGNED_INT_10_10_10_2        0x8036
 #define GL_TEXTURE_BINDING_3D             0x806A
-#define GL_PACK_SKIP_IMAGES               0x806B
-#define GL_PACK_IMAGE_HEIGHT              0x806C
-#define GL_UNPACK_SKIP_IMAGES             0x806D
-#define GL_UNPACK_IMAGE_HEIGHT            0x806E
+#define GL_serialize_SKIP_IMAGES               0x806B
+#define GL_serialize_IMAGE_HEIGHT              0x806C
+#define GL_UNserialize_SKIP_IMAGES             0x806D
+#define GL_UNserialize_IMAGE_HEIGHT            0x806E
 #define GL_TEXTURE_3D                     0x806F
 #define GL_PROXY_TEXTURE_3D               0x8070
 #define GL_TEXTURE_DEPTH                  0x8071
@@ -964,10 +964,10 @@ GLAPI void APIENTRY glVertexAttribPointer (GLuint index, GLint size, GLenum type
 
 #ifndef GL_VERSION_2_1
 #define GL_VERSION_2_1 1
-#define GL_PIXEL_PACK_BUFFER              0x88EB
-#define GL_PIXEL_UNPACK_BUFFER            0x88EC
-#define GL_PIXEL_PACK_BUFFER_BINDING      0x88ED
-#define GL_PIXEL_UNPACK_BUFFER_BINDING    0x88EF
+#define GL_PIXEL_serialize_BUFFER              0x88EB
+#define GL_PIXEL_UNserialize_BUFFER            0x88EC
+#define GL_PIXEL_serialize_BUFFER_BINDING      0x88ED
+#define GL_PIXEL_UNserialize_BUFFER_BINDING    0x88EF
 #define GL_FLOAT_MAT2x3                   0x8B65
 #define GL_FLOAT_MAT2x4                   0x8B66
 #define GL_FLOAT_MAT3x2                   0x8B67
@@ -2117,14 +2117,14 @@ GLAPI void APIENTRY glGetDoublei_v (GLenum target, GLuint index, GLdouble *data)
 #define GL_COPY_WRITE_BUFFER_BINDING      0x8F37
 #define GL_TRANSFORM_FEEDBACK_ACTIVE      0x8E24
 #define GL_TRANSFORM_FEEDBACK_PAUSED      0x8E23
-#define GL_UNPACK_COMPRESSED_BLOCK_WIDTH  0x9127
-#define GL_UNPACK_COMPRESSED_BLOCK_HEIGHT 0x9128
-#define GL_UNPACK_COMPRESSED_BLOCK_DEPTH  0x9129
-#define GL_UNPACK_COMPRESSED_BLOCK_SIZE   0x912A
-#define GL_PACK_COMPRESSED_BLOCK_WIDTH    0x912B
-#define GL_PACK_COMPRESSED_BLOCK_HEIGHT   0x912C
-#define GL_PACK_COMPRESSED_BLOCK_DEPTH    0x912D
-#define GL_PACK_COMPRESSED_BLOCK_SIZE     0x912E
+#define GL_UNserialize_COMPRESSED_BLOCK_WIDTH  0x9127
+#define GL_UNserialize_COMPRESSED_BLOCK_HEIGHT 0x9128
+#define GL_UNserialize_COMPRESSED_BLOCK_DEPTH  0x9129
+#define GL_UNserialize_COMPRESSED_BLOCK_SIZE   0x912A
+#define GL_serialize_COMPRESSED_BLOCK_WIDTH    0x912B
+#define GL_serialize_COMPRESSED_BLOCK_HEIGHT   0x912C
+#define GL_serialize_COMPRESSED_BLOCK_DEPTH    0x912D
+#define GL_serialize_COMPRESSED_BLOCK_SIZE     0x912E
 #define GL_NUM_SAMPLE_COUNTS              0x9380
 #define GL_MIN_MAP_BUFFER_ALIGNMENT       0x90BC
 #define GL_ATOMIC_COUNTER_BUFFER          0x92C0
@@ -3426,10 +3426,10 @@ GLAPI void APIENTRY glMaxShaderCompilerThreadsARB (GLuint count);
 
 #ifndef GL_ARB_pixel_buffer_object
 #define GL_ARB_pixel_buffer_object 1
-#define GL_PIXEL_PACK_BUFFER_ARB          0x88EB
-#define GL_PIXEL_UNPACK_BUFFER_ARB        0x88EC
-#define GL_PIXEL_PACK_BUFFER_BINDING_ARB  0x88ED
-#define GL_PIXEL_UNPACK_BUFFER_BINDING_ARB 0x88EF
+#define GL_PIXEL_serialize_BUFFER_ARB          0x88EB
+#define GL_PIXEL_UNserialize_BUFFER_ARB        0x88EC
+#define GL_PIXEL_serialize_BUFFER_BINDING_ARB  0x88ED
+#define GL_PIXEL_UNserialize_BUFFER_BINDING_ARB 0x88EF
 #endif /* GL_ARB_pixel_buffer_object */
 
 #ifndef GL_ARB_polygon_offset_clamp

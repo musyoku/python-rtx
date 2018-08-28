@@ -13,7 +13,7 @@ class RayTracingCUDARenderer : public Renderer {
 private:
     // host
     rtx::array<float> _rays;
-    rtx::array<float> _faces;
+    rtx::array<int> _faces;
     rtx::array<float> _vertices;
     rtx::array<float> _object_colors;
     rtx::array<int> _geometry_types;
@@ -27,7 +27,7 @@ private:
     rtx::array<float> _bvh_face_end_index;
     // device
     float* _gpu_rays;
-    float* _gpu_faces;
+    int* _gpu_faces;
     float* _gpu_vertices;
     float* _gpu_object_colors;
     int* _gpu_geometry_types;
@@ -45,9 +45,8 @@ private:
     std::shared_ptr<RayTracingOptions> _options;
 
     void construct_bvh();
-    void pack_objects();
-    void allocate_mesh_buffer(int num_faces, int num_vertices);
-    void delete_mesh_buffer();
+    void serialize_objects();
+    void serialize_mesh_buffer();
 
 public:
     RayTracingCUDARenderer();

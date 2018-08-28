@@ -30,55 +30,52 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_bvh_face_end_index = nullptr;
 }
 
-void RayTracingCUDARenderer::allocate_mesh_buffer(int num_faces, int num_vertices)
+void RayTracingCUDARenderer::serialize_mesh_buffer()
 {
-    int stride = 4;
-    _faces = rtx::array<float>(num_faces * stride);
-    _vertices = rtx::array<float>(num_vertices * stride);
-
-    // 各頂点をモデル座標系からカメラ座標系に変換
-    Transform vertices from model space to camera space
+    int num_faces = 0;
+    int num_vertices = 0;
     for (auto& mesh : _scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
-        if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
-            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-            std::shared_ptr<SphereGeometry> geometry_in_view_space = std::make_shared<SphereGeometry>(sphere->_radius);
-            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-            glm::vec4 homogeneous_center = glm::vec4(sphere->_center, 1.0f);
-            glm::vec4 homogeneous_center_in_view_space = mv_matrix * homogeneous_center;
-            geometry_in_view_space->_center = glm::vec3(homogeneous_center_in_view_space.x, homogeneous_center_in_view_space.y, homogeneous_center_in_view_space.z);
-
-            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(geometry_in_view_space, mesh->_material);
-            mesh_array.emplace_back(mesh_in_view_space);
-        }
-        if (geometry->type() == RTX_GEOMETRY_TYPE_STANDARD) {
-            StandardGeometry* standard_geometry = static_cast<StandardGeometry*>(geometry.get());
-            std::shared_ptr<StandardGeometry> standard_geometry_in_view_space = std::make_shared<StandardGeometry>();
-            standard_geometry_in_view_space->_face_vertex_indices_array = standard_geometry->_face_vertex_indices_array;
-
-            glm::mat4 mv_matrix = camera->_view_matrix * mesh->_model_matrix;
-
-            for (auto& vertex : standard_geometry->_vertex_array) {
-                glm::vec4 homogeneous_vertex = glm::vec4(vertex, 1.0f);
-                glm::vec4 homogeneous_vertex_in_view_space = mv_matrix * homogeneous_vertex;
-                standard_geometry_in_view_space->_vertex_array.emplace_back(glm::vec3(homogeneous_vertex_in_view_space.x, homogeneous_vertex_in_view_space.y, homogeneous_vertex_in_view_space.z));
-            }
-
-            for (auto& face_normal : standard_geometry->_face_normal_array) {
-                glm::vec4 homogeneous_face_normal = glm::vec4(face_normal, 1.0f);
-                glm::vec4 homogeneous_face_normal_in_view_space = mv_matrix * homogeneous_face_normal;
-                glm::vec3 face_normal_in_view_space = glm::normalize(glm::vec3(homogeneous_face_normal_in_view_space.x, homogeneous_face_normal_in_view_space.y, homogeneous_face_normal_in_view_space.z));
-                standard_geometry_in_view_space->_face_normal_array.emplace_back(face_normal_in_view_space);
-            }
-
-            std::shared_ptr<Mesh> mesh_in_view_space = std::make_shared<Mesh>(standard_geometry_in_view_space, mesh->_material);
-        }
+        num_faces += geometry->num_faces();
+        num_vertices += geometry->num_vertices();
     }
+    std::cout << "#faces: " << num_faces << std::endl;
+    std::cout << "#vertices: " << num_vertices << std::endl;
+
+    int stride = 4;
+    _faces = rtx::array<int>(num_faces * stride);
+    _vertices = rtx::array<float>(num_vertices * stride);
+    int buffer_index = 0;
+    std::vector<int> face_index_offset_array;
+
+    // 各頂点をモデル座標系からカメラ座標系に変換
+    // Transform vertices from model space to camera space
+    for (int mesh_index = 0; mesh_index < _scene->_mesh_array.size(); mesh_index++) {
+        auto& mesh = _scene->_mesh_array[mesh_index];
+        auto& geometry = mesh->_geometry;
+        glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
+        int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index, transformation_matrix);
+        assert(next_buffer_index == buffer_index + geometry->num_vertices() * stride);
+        face_index_offset_array.push_back(buffer_index);
+        buffer_index = next_buffer_index;
+    }
+    assert(buffer_index == _vertices.size());
+
+    buffer_index = 0;
+    for (int mesh_index = 0; mesh_index < _scene->_mesh_array.size(); mesh_index++) {
+        auto& mesh = _scene->_mesh_array[mesh_index];
+        auto& geometry = mesh->_geometry;
+        int offset = face_index_offset_array[mesh_index];
+        int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, offset);
+        assert(next_buffer_index == buffer_index + geometry->num_faces() * stride);
+        buffer_index = next_buffer_index;
+    }
+    assert(buffer_index == _faces.size());
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
 }
-void RayTracingCUDARenderer::pack_objects()
+void RayTracingCUDARenderer::serialize_objects()
 {
     if (_scene->updated()) {
         int num_faces = 0;
@@ -94,13 +91,21 @@ void RayTracingCUDARenderer::render(
     std::shared_ptr<RayTracingOptions> options,
     py::array_t<float, py::array::c_style> buffer)
 {
-    // _scene = scene;
-    // _camera = camera;
-    // _options = options;
+    _scene = scene;
+    _camera = camera;
+    _options = options;
 
-    // // 現在のカメラ座標系でのBVHを構築
-    // // Construct BVH in current camera coordinate system
-    // construct_bvh();
+    // 現在のカメラ座標系でのBVHを構築
+    // Construct BVH in current camera coordinate system
+    construct_bvh();
+
+    // GPUの線形メモリへ転送するデータを準備する
+    // Construct arrays to transfer to Linear Memory of GPU
+    if (_scene->updated()) {
+        serialize_mesh_buffer();
+        rtx_cuda_alloc_buffer_float(_gpu_vertices, _vertices.size());
+        rtx_cuda_alloc_buffer_integer(_gpu_faces, _faces.size());
+    }
 
     // _height = buffer.shape(0);
     // _width = buffer.shape(1);
@@ -417,6 +422,20 @@ void RayTracingCUDARenderer::render(
     int width,
     int channels)
 {
+    _scene = scene;
+    _camera = camera;
+    _options = options;
+
+    // 現在のカメラ座標系でのBVHを構築
+    // Construct BVH in current camera coordinate system
+    construct_bvh();
+
+    // GPUの線形メモリへ転送するデータを準備する
+    // Construct arrays to transfer to Linear Memory of GPU
+    if (_scene->updated()) {
+        serialize_mesh_buffer();
+    }
+
     // _height = height;
     // _width = width;
     // if (channels != 3) {

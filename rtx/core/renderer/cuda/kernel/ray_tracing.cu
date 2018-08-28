@@ -384,6 +384,15 @@ __global__ void render(
     }
 }
 
+void rtx_cuda_alloc_buffer_integer(int*& gpu_buffer, int size)
+{
+    cudaMalloc((void**)&gpu_buffer, sizeof(int) * size);
+}
+void rtx_cuda_alloc_buffer_float(float*& gpu_buffer, int size)
+{
+    cudaMalloc((void**)&gpu_buffer, sizeof(float) * size);
+}
+
 void rtx_cuda_alloc(
     float*& gpu_rays,
     float*& gpu_face_vertices,

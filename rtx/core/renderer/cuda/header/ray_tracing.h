@@ -1,5 +1,8 @@
 #pragma once
 
+void rtx_cuda_alloc_buffer_integer(int*& gpu_buffer, int size);
+void rtx_cuda_alloc_buffer_float(float*& gpu_buffer, int size);
+
 void rtx_cuda_alloc(
     float*& gpu_rays,
     float*& gpu_face_vertices,
@@ -42,7 +45,7 @@ void rtx_cuda_copy(
     const int rays_stride,
     const int num_faces,
     const int faces_stride);
-    
+
 void rtx_cuda_ray_tracing_render(
     float*& gpu_rays,
     float*& gpu_face_vertices,
