@@ -1,5 +1,5 @@
 #pragma once
-#include "enum.h"
+#include "../header/enum.h"
 #include <glm/glm.hpp>
 #include <pybind11/pybind11.h>
 

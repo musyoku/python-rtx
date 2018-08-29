@@ -3,8 +3,8 @@
 namespace rtx {
 SphereGeometry::SphereGeometry(float radius)
 {
-    _center = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    _radius = glm::vec4(radius, radius, radius, 1.0f);
+    _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
+    _radius = glm::vec4f(radius, radius, radius, 1.0f);
 }
 int SphereGeometry::type() const
 {
@@ -23,7 +23,7 @@ int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start, glm
 {
     int pos = start;
     // face_id = 0
-    glm::vec4 center = transformation_matrix * _center;
+    glm::vec4f center = transformation_matrix * _center;
     buffer[pos + 0] = center.x;
     buffer[pos + 1] = center.y;
     buffer[pos + 2] = center.z;
@@ -31,7 +31,7 @@ int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start, glm
     pos += 4;
 
     // face_id = 1
-    glm::vec4 radius = transformation_matrix * _radius;
+    glm::vec4f radius = transformation_matrix * _radius;
     buffer[pos + 0] = radius.x;
     buffer[pos + 1] = radius.y;
     buffer[pos + 2] = radius.z;

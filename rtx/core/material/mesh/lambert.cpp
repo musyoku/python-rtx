@@ -17,19 +17,19 @@ MeshLambertMaterial::MeshLambertMaterial(float (&color)[3], float diffuse_reflec
     _color.b = color[2];
     _diffuse_reflectance = diffuse_reflectance;
 }
-glm::vec3 MeshLambertMaterial::reflect_color(glm::vec3& input_color) const
+glm::vec3f MeshLambertMaterial::reflect_color(glm::vec3f& input_color) const
 {
     return _diffuse_reflectance * _color * input_color;
 }
-glm::vec3 MeshLambertMaterial::color() const
+glm::vec3f MeshLambertMaterial::color() const
 {
     return _color;
 }
-glm::vec3 MeshLambertMaterial::reflect_ray(glm::vec3& diffuse_vec, glm::vec3& specular_vec) const
+glm::vec3f MeshLambertMaterial::reflect_ray(glm::vec3f& diffuse_vec, glm::vec3f& specular_vec) const
 {
     return diffuse_vec;
 }
-glm::vec3 MeshLambertMaterial::emit_color() const
+glm::vec3f MeshLambertMaterial::emit_color() const
 {
     throw std::runtime_error("Not implemented");
 };

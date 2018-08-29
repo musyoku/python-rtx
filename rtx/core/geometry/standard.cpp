@@ -5,8 +5,25 @@ namespace py = pybind11;
 StandardGeometry::StandardGeometry()
 {
 }
-StandardGeometry::StandardGeometry(pybind11::array_t<int, pybind11::array::c_style> np_face_vertex_indeces, pybind11::array_t<float, pybind11::array::c_style> np_vertices)
+StandardGeometry::StandardGeometry(
+    py::array_t<int, py::array::c_style> face_vertex_indeces,
+    py::array_t<float, py::array::c_style> vertices)
 {
+    init(face_vertex_indeces, vertices, 1);
+}
+StandardGeometry::StandardGeometry(
+    py::array_t<int, py::array::c_style> face_vertex_indeces,
+    py::array_t<float, py::array::c_style> vertices,
+    int num_bvh_split)
+{
+    init(face_vertex_indeces, vertices, num_bvh_split);
+}
+void StandardGeometry::init(
+    py::array_t<int, py::array::c_style> np_face_vertex_indeces,
+    py::array_t<float, py::array::c_style> np_vertices,
+    int num_bvh_split)
+{
+    _num_bvh_split = num_bvh_split;
     if (np_face_vertex_indeces.ndim() != 2) {
         throw std::runtime_error("num_np_face_vertex_indeces.ndim() != 2");
     }
@@ -22,13 +39,19 @@ StandardGeometry::StandardGeometry(pybind11::array_t<int, pybind11::array::c_sty
     auto faces = np_face_vertex_indeces.mutable_unchecked<2>();
     auto vertices = np_vertices.mutable_unchecked<2>();
     for (int n = 0; n < num_faces; n++) {
-        glm::vec<3, int> face = glm::vec<3, int>(faces(n, 0), faces(n, 1), faces(n, 2));
+        glm::vec3i face = glm::vec3i(faces(n, 0), faces(n, 1), faces(n, 2));
         _face_vertex_indices_array.emplace_back(face);
     }
     for (int n = 0; n < num_vertices; n++) {
-        glm::vec4 vertex = glm::vec4(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3));
+        glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3));
         _vertex_array.emplace_back(vertex);
     }
+
+    bvh_split();
+}
+void StandardGeometry::bvh_split()
+{
+
 }
 int StandardGeometry::type() const
 {
@@ -46,7 +69,7 @@ int StandardGeometry::serialize_vertices(rtx::array<float>& buffer, int start, g
 {
     int pos = start;
     for (auto& vertex : _vertex_array) {
-        glm::vec4 v = transformation_matrix * vertex;
+        glm::vec4f v = transformation_matrix * vertex;
         buffer[pos + 0] = v.x;
         buffer[pos + 1] = v.y;
         buffer[pos + 2] = v.z;

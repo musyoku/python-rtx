@@ -53,8 +53,5 @@ BoxGeometry::BoxGeometry(float width, float height, float depth)
     _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
     _vertex_array.emplace_back(glm::vec4(-width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
     _vertex_array.emplace_back(glm::vec4(width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
-
-    _bvh_indices.push_back(0);
-    _bvh_start_end_vertex_indices.push_back(std::make_pair<int, int>(0, _vertex_array.size() - 1));
 }
 }

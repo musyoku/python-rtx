@@ -1,6 +1,7 @@
 #pragma once
 #include "../../../class/ray.h"
 #include "../../../class/renderer.h"
+#include "../../../header/glm.h"
 #include "../../options/ray_tracing.h"
 #include <array>
 #include <memory>
@@ -12,7 +13,7 @@ class RayTracingCPURenderer : public Renderer {
 private:
     std::default_random_engine _normal_engine;
     std::normal_distribution<float> _normal_distribution;
-    glm::vec3 compute_color(std::vector<std::shared_ptr<Mesh>>& mesh_array,
+    glm::vec3f compute_color(std::vector<std::shared_ptr<Mesh>>& mesh_array,
         std::unique_ptr<Ray>& ray,
         int current_reflection,
         int max_reflextions);

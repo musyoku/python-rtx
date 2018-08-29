@@ -1,7 +1,8 @@
 #pragma once
 #include "../../../class/ray.h"
-#include "../../../class/array.h"
 #include "../../../class/renderer.h"
+#include "../../../header/array.h"
+#include "../../../header/glm.h"
 #include "../../options/ray_tracing.h"
 #include <array>
 #include <memory>
@@ -15,6 +16,8 @@ private:
     rtx::array<float> _rays;
     rtx::array<int> _faces;
     rtx::array<float> _vertices;
+    rtx::array<int> _face_serialization_offsets;
+    rtx::array<int> _vertex_serialization_offsets;
     rtx::array<float> _object_colors;
     rtx::array<int> _geometry_types;
     rtx::array<int> _material_types;
@@ -47,6 +50,8 @@ private:
     void construct_bvh();
     void serialize_objects();
     void serialize_mesh_buffer();
+
+    void render_objects();
 
 public:
     RayTracingCUDARenderer();

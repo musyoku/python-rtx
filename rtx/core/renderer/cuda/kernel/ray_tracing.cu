@@ -1,4 +1,4 @@
-#include "../../../class/enum.h"
+#include "../../../header/enum.h"
 #include "../header/ray_tracing.h"
 #include <assert.h>
 #include <cuda_runtime.h>

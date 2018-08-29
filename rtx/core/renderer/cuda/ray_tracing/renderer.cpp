@@ -1,6 +1,6 @@
 #include "renderer.h"
 #include "../../../camera/perspective.h"
-#include "../../../class/enum.h"
+#include "../../../header/enum.h"
 #include "../../../geometry/box.h"
 #include "../../../geometry/sphere.h"
 #include "../../../geometry/standard.h"
@@ -47,8 +47,9 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
     int stride = 4;
     _faces = rtx::array<int>(num_faces * stride);
     _vertices = rtx::array<float>(num_vertices * stride);
+    _vertex_serialization_offsets = rtx::array<int>(num_objects);
+    _face_serialization_offsets = rtx::array<int>(num_objects);
     int buffer_index = 0;
-    std::vector<int> face_index_offset_array;
 
     // 各頂点をモデル座標系からカメラ座標系に変換
     // Transform vertices from model space to camera space
@@ -58,7 +59,7 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
         glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
         int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index, transformation_matrix);
         assert(next_buffer_index == buffer_index + geometry->num_vertices() * stride);
-        face_index_offset_array.push_back(buffer_index);
+        _vertex_serialization_offsets[object_index] = buffer_index;
         buffer_index = next_buffer_index;
     }
     assert(buffer_index == _vertices.size());
@@ -67,10 +68,15 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
-        int vertex_offset = face_index_offset_array[object_index];
+        int vertex_offset = _vertex_serialization_offsets[object_index];
         int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, vertex_offset);
         assert(next_buffer_index == buffer_index + geometry->num_faces() * stride);
+        _face_serialization_offsets[object_index] = buffer_index;
         buffer_index = next_buffer_index;
+    }
+
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        std::cout << "vertex_offset: " << _vertex_serialization_offsets[object_index] << " face_offset: " << _face_serialization_offsets[object_index] << std::endl;
     }
     assert(buffer_index == _faces.size());
 }
@@ -80,9 +86,7 @@ void RayTracingCUDARenderer::construct_bvh()
     for (int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
         auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
-        
     }
-
 }
 void RayTracingCUDARenderer::serialize_objects()
 {
@@ -92,6 +96,23 @@ void RayTracingCUDARenderer::serialize_objects()
             auto& geometry = mesh->_geometry;
             num_faces += geometry->num_faces();
         }
+    }
+}
+
+void RayTracingCUDARenderer::render_objects()
+{
+    // GPUの線形メモリへ転送するデータを準備する
+    // Construct arrays to transfer to the Linear Memory of GPU
+    if (_scene->updated()) {
+        serialize_mesh_buffer();
+        rtx_cuda_malloc_float(_gpu_vertices, _vertices.size());
+        rtx_cuda_malloc_integer(_gpu_faces, _faces.size());
+    }
+
+    // 現在のカメラ座標系でのBVHを構築
+    // Construct BVH in current camera coordinate system
+    if (_camera->updated() || _scene->updated()) {
+        construct_bvh();
     }
 }
 void RayTracingCUDARenderer::render(
@@ -104,19 +125,7 @@ void RayTracingCUDARenderer::render(
     _camera = camera;
     _options = options;
 
-    // GPUの線形メモリへ転送するデータを準備する
-    // Construct arrays to transfer to the Linear Memory of GPU
-    if (_scene->updated()) {
-        serialize_mesh_buffer();
-        rtx_cuda_malloc_float(_gpu_vertices, _vertices.size());
-        rtx_cuda_malloc_integer(_gpu_faces, _faces.size());
-    }
-
-    // 現在のカメラ座標系でのBVHを構築
-    // Construct BVH in current camera coordinate system
-    if (camera->updated() || _scene->updated()) {
-        construct_bvh();
-    }
+    render_objects();
 
     // _height = buffer.shape(0);
     // _width = buffer.shape(1);
@@ -437,15 +446,7 @@ void RayTracingCUDARenderer::render(
     _camera = camera;
     _options = options;
 
-    // 現在のカメラ座標系でのBVHを構築
-    // Construct BVH in current camera coordinate system
-    construct_bvh();
-
-    // GPUの線形メモリへ転送するデータを準備する
-    // Construct arrays to transfer to Linear Memory of GPU
-    if (_scene->updated()) {
-        serialize_mesh_buffer();
-    }
+    render_objects();
 
     // _height = height;
     // _width = width;
