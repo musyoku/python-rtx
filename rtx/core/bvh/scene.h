@@ -1,6 +1,7 @@
 #pragma once
 #include "../class/geometry.h"
 #include "../header/glm.h"
+#include "geometry.h"
 #include <vector>
 
 namespace rtx {
@@ -10,6 +11,7 @@ namespace bvh {
         private:
             bool _is_leaf;
             std::vector<int> _object_ids;
+            geometry::GeometryBVH* _geometry_bvh;
 
         public:
             glm::vec3f _aabb_min;

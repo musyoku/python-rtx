@@ -104,7 +104,7 @@ camera = rtx.PerspectiveCamera(
 
 buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 renderer.render(scene, camera, render_options, buffer)
-
+exit()
 camera_rad = 0
 # camera_rad = math.pi / 10
 radius = 5.5

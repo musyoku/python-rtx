@@ -47,11 +47,7 @@ void StandardGeometry::init(
         _vertex_array.emplace_back(vertex);
     }
 
-    bvh_split();
-}
-void StandardGeometry::bvh_split()
-{
-    _bvh = std::make_shared<bvh::geometry::GeometryBVH>(_face_vertex_indices_array, _vertex_array);
+    _bvh = std::make_shared<bvh::geometry::GeometryBVH>(_face_vertex_indices_array, _vertex_array, _num_bvh_split);
 }
 int StandardGeometry::type() const
 {

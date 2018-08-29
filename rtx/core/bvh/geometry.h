@@ -9,20 +9,20 @@ namespace bvh {
         class Node {
         private:
             bool _is_leaf;
-            std::vector<int> _assigned_face_ids;
+            std::vector<int> _assigned_face_indices;
             std::vector<glm::vec3i>& _face_vertex_indices_array;
-            std::vector<glm::vec3f>& _vertex_array;
+            std::vector<glm::vec4f>& _vertex_array;
 
         public:
-            glm::vec3f _aabb_min;
-            glm::vec3f _aabb_max;
-            Node(std::vector<glm::vec3i>& face_vertex_indices_array,
-                std::vector<glm::vec3f>& vertex_array,
-                glm::vec3f aabb_min,
-                glm::vec3f aabb_max);
+            glm::vec4f _aabb_min;
+            glm::vec4f _aabb_max;
+            Node(std::vector<int> assigned_face_indices,
+                std::vector<glm::vec3i>& face_vertex_indices_array,
+                std::vector<glm::vec4f>& vertex_array,
+                int num_split);
             int _id;
-            Node* _left;
-            Node* _right;
+            std::shared_ptr<Node> _left;
+            std::shared_ptr<Node> _right;
         };
         class GeometryBVH {
         private:
@@ -31,9 +31,10 @@ namespace bvh {
 
         public:
             GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
-                std::vector<glm::vec4f>& vertex_array);
-            Node* _root;
-            void split(Node* parent);
+                std::vector<glm::vec4f>& vertex_array,
+                int num_split);
+            std::shared_ptr<Node> _root;
+            void split(Node* parent, int num_split);
         };
     }
 }
