@@ -1,4 +1,5 @@
 #pragma once
+#include "../../../bvh/scene.h"
 #include "../../../class/ray.h"
 #include "../../../class/renderer.h"
 #include "../../../header/array.h"
@@ -46,6 +47,7 @@ private:
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<RayTracingOptions> _options;
+    std::unique_ptr<bvh::scene::SceneBVH> _bvh;
 
     void construct_bvh();
     void serialize_objects();

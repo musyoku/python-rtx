@@ -21,8 +21,8 @@ namespace bvh {
                 std::vector<glm::vec4f>& vertex_array,
                 int num_split);
             int _id;
-            std::shared_ptr<Node> _left;
-            std::shared_ptr<Node> _right;
+            std::unique_ptr<Node> _left;
+            std::unique_ptr<Node> _right;
         };
         class GeometryBVH {
         private:
@@ -33,7 +33,7 @@ namespace bvh {
             GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
                 std::vector<glm::vec4f>& vertex_array,
                 int num_split);
-            std::shared_ptr<Node> _root;
+            std::unique_ptr<Node> _root;
             void split(Node* parent, int num_split);
         };
     }

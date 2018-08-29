@@ -3,6 +3,7 @@
 #include "../header/glm.h"
 #include "geometry.h"
 #include <vector>
+#include <memory>
 
 namespace rtx {
 namespace bvh {
@@ -10,25 +11,22 @@ namespace bvh {
         class Node {
         private:
             bool _is_leaf;
-            std::vector<int> _object_ids;
-            geometry::GeometryBVH* _geometry_bvh;
+            std::vector<int> _assigned_object_ids;
+            std::shared_ptr<geometry::GeometryBVH> _geometry_bvh;
 
         public:
             glm::vec3f _aabb_min;
             glm::vec3f _aabb_max;
-            Node(std::vector<int> object_ids, glm::vec3f aabb_min, glm::vec3f aabb_max);
+            Node(std::vector<int> assigned_object_ids, std::vector<std::shared_ptr<Geometry>>& geometries);
             int _id;
-            Node* _left;
-            Node* _right;
+            std::unique_ptr<Node> _left;
+            std::unique_ptr<Node> _right;
             std::vector<int>& object_ids();
         };
         class SceneBVH {
-        private:
-            std::vector<Geometry*> _geometries;
-
         public:
-            SceneBVH(std::vector<Geometry*>& geometries);
-            Node* _root;
+            SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometries);
+            std::unique_ptr<Node> _root;
             void split(Node* parent);
         };
     }

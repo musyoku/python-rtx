@@ -82,11 +82,13 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
-    std::vector<std::pair<int, float>> map_object_gravity;
-    for (int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
+    std::vector<std::shared_ptr<Geometry>> geometries;
+    for (unsigned int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
         auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
+        geometries.push_back(geometry);
     }
+    _bvh = std::make_unique<bvh::scene::SceneBVH>(geometries);
 }
 void RayTracingCUDARenderer::serialize_objects()
 {

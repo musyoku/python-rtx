@@ -57,10 +57,10 @@ namespace bvh {
             , _vertex_array(vertex_array)
         {
             std::vector<int> face_indices;
-            for (int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {
+            for (unsigned int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {
                 face_indices.push_back(face_index);
             }
-            _root = std::make_shared<Node>(face_indices,
+            _root = std::make_unique<Node>(face_indices,
                 face_vertex_indices_array,
                 vertex_array,
                 num_split);
