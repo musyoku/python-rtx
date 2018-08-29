@@ -10,7 +10,6 @@ namespace bvh {
         private:
             bool _is_leaf;
             std::vector<int> _object_ids;
-            static int _node_index_base;
 
         public:
             glm::vec3f _aabb_min;

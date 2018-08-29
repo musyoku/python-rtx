@@ -11,14 +11,13 @@ namespace bvh {
             bool _is_leaf;
             std::vector<int> _assigned_face_ids;
             std::vector<glm::vec3i>& _face_vertex_indices_array;
-            std::vector<glm::vec3f>& _vertices;
-            static int _node_index_base;
+            std::vector<glm::vec3f>& _vertex_array;
 
         public:
             glm::vec3f _aabb_min;
             glm::vec3f _aabb_max;
-            Node(std::vector<glm::vec3i>& faces,
-                std::vector<glm::vec3f>& vertices,
+            Node(std::vector<glm::vec3i>& face_vertex_indices_array,
+                std::vector<glm::vec3f>& vertex_array,
                 glm::vec3f aabb_min,
                 glm::vec3f aabb_max);
             int _id;
@@ -31,8 +30,8 @@ namespace bvh {
             std::vector<glm::vec4f>& _vertex_array;
 
         public:
-            GeometryBVH(std::vector<glm::vec3i>& _face_vertex_indices_array,
-                std::vector<glm::vec4f>& _vertex_array);
+            GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
+                std::vector<glm::vec4f>& vertex_array);
             Node* _root;
             void split(Node* parent);
         };

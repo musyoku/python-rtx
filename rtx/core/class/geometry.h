@@ -7,7 +7,7 @@
 
 namespace rtx {
 class Geometry {
-private:
+protected:
     int _num_bvh_split = 1;
     std::shared_ptr<bvh::geometry::GeometryBVH> _bvh;
 
