@@ -50,9 +50,7 @@ private:
     std::unique_ptr<bvh::scene::SceneBVH> _bvh;
 
     void construct_bvh();
-    void serialize_objects();
-    void serialize_mesh_buffer();
-
+    void serialize_geometries();
     void render_objects();
 
 public:

@@ -44,8 +44,8 @@ namespace bvh {
                       << "length_z: " << length_z << std::endl;
 
             if (num_split == 1) {
-                _aabb_min = glm::vec4f(min_x, min_y, min_z, 1.0f);
-                _aabb_max = glm::vec4f(max_x, max_y, max_z, 1.0f);
+                // _aabb_min = glm::vec4f(min_x, min_y, min_z, 1.0f);
+                // _aabb_max = glm::vec4f(max_x, max_y, max_z, 1.0f);
                 _is_leaf = true;
                 return;
             }
@@ -64,6 +64,11 @@ namespace bvh {
                 face_vertex_indices_array,
                 vertex_array,
                 num_split);
+        }
+        Node* GeometryBVH::root()
+        {
+            assert(!!_root == true);
+            return _root.get();
         }
     }
 }

@@ -2,7 +2,7 @@
 #include "../bvh/geometry.h"
 #include "../header/array.h"
 #include "../header/enum.h"
-#include <glm/glm.hpp>
+#include "../header/glm.h"
 #include <vector>
 
 namespace rtx {
@@ -19,5 +19,6 @@ public:
     virtual int num_vertices() const = 0;
     virtual int serialize_vertices(rtx::array<float>& buffer, int start, glm::mat4& transformation_matrix) const = 0;
     virtual int serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const = 0;
+    virtual std::unique_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const = 0;
 };
 }

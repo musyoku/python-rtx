@@ -87,4 +87,15 @@ int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int ve
     }
     return pos;
 }
+
+std::unique_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
+{
+    auto geometry = std::make_unique<StandardGeometry>();
+    geometry->_face_vertex_indices_array = _face_vertex_indices_array;
+    for (auto vertex : _vertex_array) {
+        glm::vec4f v = transformation_matrix * vertex;
+        geometry->_vertex_array.emplace_back(v);
+    }
+    return geometry;
+}
 }

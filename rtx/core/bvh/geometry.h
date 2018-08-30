@@ -14,8 +14,6 @@ namespace bvh {
             std::vector<glm::vec4f>& _vertex_array;
 
         public:
-            glm::vec4f _aabb_min;
-            glm::vec4f _aabb_max;
             Node(std::vector<int> assigned_face_indices,
                 std::vector<glm::vec3i>& face_vertex_indices_array,
                 std::vector<glm::vec4f>& vertex_array,
@@ -28,13 +26,14 @@ namespace bvh {
         private:
             std::vector<glm::vec3i>& _face_vertex_indices_array;
             std::vector<glm::vec4f>& _vertex_array;
+            std::unique_ptr<Node> _root;
 
         public:
             GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
                 std::vector<glm::vec4f>& vertex_array,
                 int num_split);
-            std::unique_ptr<Node> _root;
             void split(Node* parent, int num_split);
+            Node* root();
         };
     }
 }

@@ -34,7 +34,7 @@ RayTracingCUDARenderer::~RayTracingCUDARenderer()
     rtx_cuda_free((void*)_gpu_faces);
     rtx_cuda_free((void*)_gpu_vertices);
 }
-void RayTracingCUDARenderer::serialize_mesh_buffer()
+void RayTracingCUDARenderer::serialize_geometries()
 {
     int num_faces = 0;
     int num_vertices = 0;
@@ -82,31 +82,22 @@ void RayTracingCUDARenderer::serialize_mesh_buffer()
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
-    std::vector<std::shared_ptr<Geometry>> geometries;
+    std::vector<std::shared_ptr<Geometry>> geometry_array;
     for (unsigned int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
         auto& mesh = _scene->_mesh_array[object_index];
         auto& geometry = mesh->_geometry;
-        geometries.push_back(geometry);
+        geometry_array.push_back(geometry);
     }
-    _bvh = std::make_unique<bvh::scene::SceneBVH>(geometries);
+    _bvh = std::make_unique<bvh::scene::SceneBVH>(geometry_array);
 }
-void RayTracingCUDARenderer::serialize_objects()
-{
-    if (_scene->updated()) {
-        int num_faces = 0;
-        for (auto& mesh : _scene->_mesh_array) {
-            auto& geometry = mesh->_geometry;
-            num_faces += geometry->num_faces();
-        }
-    }
-}
-
 void RayTracingCUDARenderer::render_objects()
 {
     // GPUの線形メモリへ転送するデータを準備する
     // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
-        serialize_mesh_buffer();
+        rtx_cuda_free(_gpu_vertices);
+        rtx_cuda_free(_gpu_faces);
+        serialize_geometries();
         rtx_cuda_malloc_float(_gpu_vertices, _vertices.size());
         rtx_cuda_malloc_integer(_gpu_faces, _faces.size());
     }

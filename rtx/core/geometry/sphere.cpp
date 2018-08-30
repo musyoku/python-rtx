@@ -4,7 +4,7 @@ namespace rtx {
 SphereGeometry::SphereGeometry(float radius)
 {
     _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
-    _radius = glm::vec4f(radius, radius, radius, 1.0f);
+    _radius = glm::vec4f(radius, radius, radius, 0.0f);
 }
 int SphereGeometry::type() const
 {
@@ -50,5 +50,11 @@ int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vert
     buffer[pos + 3] = -1;
     pos += 4;
     return pos;
+}
+
+std::unique_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
+{
+    auto sphere = std::make_unique<SphereGeometry>(_radius[0]);
+    return sphere;
 }
 }
