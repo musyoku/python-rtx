@@ -9,6 +9,8 @@
 namespace rtx {
 namespace bvh {
     namespace scene {
+        int detect_longest_axis(const glm::vec3f& axis_length);
+        bool compare_position(const std::pair<int, float>& a, const std::pair<int, float>& b);
         class Node {
         public:
             bool _is_leaf;
