@@ -33,6 +33,7 @@ public:
     int num_vertices() const override;
     int serialize_vertices(rtx::array<float>& buffer, int start) const override;
     int serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const override;
+    void compute_axis_aligned_bounding_box() override;
     std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const override;
 };
 }

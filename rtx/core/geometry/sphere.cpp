@@ -5,6 +5,7 @@ SphereGeometry::SphereGeometry(float radius)
 {
     _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
     _radius = glm::vec4f(radius, radius, radius, 0.0f);
+    compute_axis_aligned_bounding_box();
 }
 int SphereGeometry::type() const
 {
@@ -38,7 +39,6 @@ int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start) con
 
     return pos;
 }
-
 int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const
 {
     int pos = start;
@@ -49,12 +49,16 @@ int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vert
     pos += 4;
     return pos;
 }
-
 std::shared_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
 {
-    auto sphere = std::make_unique<SphereGeometry>(_radius[0]);
-    sphere->_radius = _radius;
+    auto sphere = std::make_shared<SphereGeometry>(_radius[0]);
     sphere->_center = transformation_matrix * _center;
+    sphere->compute_axis_aligned_bounding_box();
     return sphere;
+}
+void SphereGeometry::compute_axis_aligned_bounding_box()
+{
+    _aabb_min = _center - _radius;
+    _aabb_max = _center + _radius;
 }
 }

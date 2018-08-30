@@ -1,4 +1,6 @@
 #include "standard.h"
+#include <cfloat>
+#include <iostream>
 
 namespace rtx {
 namespace py = pybind11;
@@ -87,15 +89,30 @@ int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int ve
     return pos;
 }
 
+void StandardGeometry::compute_axis_aligned_bounding_box()
+{
+    _aabb_max = glm::vec4f(0.0f);
+    _aabb_min = glm::vec4f(FLT_MAX);
+    for (auto vertex : _vertex_array) {
+        _aabb_max.x = vertex.x > _aabb_max.x ? vertex.x : _aabb_max.x;
+        _aabb_max.y = vertex.y > _aabb_max.y ? vertex.y : _aabb_max.y;
+        _aabb_max.z = vertex.z > _aabb_max.z ? vertex.z : _aabb_max.z;
+        _aabb_min.x = vertex.x < _aabb_min.x ? vertex.x : _aabb_min.x;
+        _aabb_min.y = vertex.y < _aabb_min.y ? vertex.y : _aabb_min.y;
+        _aabb_min.z = vertex.z < _aabb_min.z ? vertex.z : _aabb_min.z;
+    }
+    _center = (_aabb_max - _aabb_min) / 2.0f;
+}
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {
-    auto geometry = std::make_unique<StandardGeometry>();
+    auto geometry = std::make_shared<StandardGeometry>();
     geometry->_num_bvh_split = _num_bvh_split;
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     for (auto vertex : _vertex_array) {
         glm::vec4f v = transformation_matrix * vertex;
         geometry->_vertex_array.emplace_back(v);
     }
+    geometry->compute_axis_aligned_bounding_box();
     return geometry;
 }
 }

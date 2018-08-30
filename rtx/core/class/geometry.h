@@ -7,18 +7,19 @@
 
 namespace rtx {
 class Geometry {
-protected:
+public:
     int _num_bvh_split = 1;
     std::unique_ptr<bvh::geometry::GeometryBVH> _bvh;
-
-public:
-    bvh::geometry::GeometryBVH* bvh();
+    glm::vec4f _aabb_min;
+    glm::vec4f _center;
+    glm::vec4f _aabb_max;
     int num_bvh_split();
     virtual int type() const = 0;
     virtual int num_faces() const = 0;
     virtual int num_vertices() const = 0;
     virtual int serialize_vertices(rtx::array<float>& buffer, int start) const = 0;
     virtual int serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const = 0;
+    virtual void compute_axis_aligned_bounding_box() = 0;
     virtual std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const = 0;
 };
 }
