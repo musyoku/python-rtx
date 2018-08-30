@@ -1,5 +1,6 @@
 #include "scene.h"
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <cfloat>
 #include <iostream>
@@ -8,6 +9,7 @@
 namespace rtx {
 namespace bvh {
     namespace scene {
+        static unsigned int node_current_index = 0;
         int detect_longest_axis(const glm::vec3f& axis_length)
         {
             if (axis_length.x > axis_length.y) {
@@ -34,7 +36,6 @@ namespace bvh {
         {
             return a.second < b.second;
         }
-        static int scene_bvh_node_current_id = 1;
         Node::Node(std::vector<int> assigned_object_indices,
             std::vector<std::shared_ptr<Geometry>>& geometry_array)
         {
@@ -42,8 +43,12 @@ namespace bvh {
             assert(assigned_object_indices.size() > 0);
             assert(assigned_object_indices.size() <= geometry_array.size());
             _assigned_object_indices = assigned_object_indices;
-            _id = scene_bvh_node_current_id;
-            scene_bvh_node_current_id++;
+            _index = node_current_index;
+            std::cout << "id: " << _index << std::endl;
+            node_current_index++;
+            if (node_current_index > 254) {
+                throw std::runtime_error("too many bvh nodes");
+            }
             _aabb_max = glm::vec4f(0.0f);
             _aabb_min = glm::vec4f(0.0f);
 
@@ -58,6 +63,8 @@ namespace bvh {
             }
 
             if (assigned_object_indices.size() == 1) {
+                _is_leaf = true;
+                auto& geometry = geometry_array.at(assigned_object_indices.at(0));
                 return;
             }
 
@@ -88,12 +95,12 @@ namespace bvh {
                 }
             }
             std::sort(object_center_array.begin(), object_center_array.end(), compare_position);
-            std::cout << "sort:" << std::endl;
-            for (auto& pair : object_center_array) {
-                std::cout << pair.first << ": " << pair.second << std::endl;
-            }
+            // std::cout << "sort:" << std::endl;
+            // for (auto& pair : object_center_array) {
+            //     std::cout << pair.first << ": " << pair.second << std::endl;
+            // }
             int split_index = object_center_array.size() / 2;
-            std::cout << "split: " << split_index << std::endl;
+            // std::cout << "split: " << split_index << std::endl;
             std::vector<int> left_assigned_indices;
             std::vector<int> right_assigned_indices;
             for (int n = 0; n < split_index; n++) {
@@ -104,16 +111,54 @@ namespace bvh {
                 auto& pair = object_center_array.at(n);
                 right_assigned_indices.push_back(pair.first);
             }
-            std::cout << "left:" << std::endl;
-            for (auto index : left_assigned_indices) {
-                std::cout << index << std::endl;
+            // std::cout << "left:" << std::endl;
+            // for (auto index : left_assigned_indices) {
+            //     std::cout << index << std::endl;
+            // }
+            // std::cout << "right:" << std::endl;
+            // for (auto index : right_assigned_indices) {
+            //     std::cout << index << std::endl;
+            // }
+            _left = std::make_shared<Node>(left_assigned_indices, geometry_array);
+            _right = std::make_shared<Node>(right_assigned_indices, geometry_array);
+        }
+        void Node::set_hit_and_miss_links()
+        {
+            if (_left) {
+                _hit = _left;
+                if (_right) {
+                    _left->_miss = _right;
+                } else {
+                    _left->_miss = _miss;
+                }
+                _left->set_hit_and_miss_links();
             }
-            std::cout << "right:" << std::endl;
-            for (auto index : right_assigned_indices) {
-                std::cout << index << std::endl;
+            if (_right) {
+                _right->_miss = _miss;
+                _right->set_hit_and_miss_links();
             }
-            _left = std::make_unique<Node>(left_assigned_indices, geometry_array);
-            _right = std::make_unique<Node>(right_assigned_indices, geometry_array);
+        }
+        int Node::num_children()
+        {
+            int num_children = 0;
+            if (_left) {
+                num_children += _left->num_children() + 1;
+            }
+            if (_right) {
+                num_children += _right->num_children() + 1;
+            }
+            return num_children;
+        }
+        void Node::collect_children(std::vector<std::shared_ptr<Node>>& children)
+        {
+            if (_left) {
+                children.push_back(_left);
+                _left->collect_children(children);
+            }
+            if (_right) {
+                children.push_back(_right);
+                _right->collect_children(children);
+            }
         }
         SceneBVH::SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array)
         {
@@ -121,10 +166,49 @@ namespace bvh {
             for (int object_id = 0; object_id < (int)geometry_array.size(); object_id++) {
                 assigned_object_indices.push_back(object_id);
             }
-            _root = std::make_unique<Node>(assigned_object_indices, geometry_array);
+            _root = std::make_shared<Node>(assigned_object_indices, geometry_array);
+            _root->set_hit_and_miss_links();
         }
-        rtx::array<float> SceneBVH::serialize()
+        int SceneBVH::num_nodes()
         {
+            int num_nodes = _root->num_children() + 1;
+            std::cout << "#nodes: " << num_nodes << std::endl;
+            return num_nodes;
+        }
+        void SceneBVH::serialize(rtx::array<unsigned int>& buffer)
+        {
+            std::cout << "serialize:" << std::endl;
+            int num_nodes = this->num_nodes();
+            assert(buffer.size() == num_nodes);
+            std::vector<std::shared_ptr<Node>> children = { _root };
+            _root->collect_children(children);
+            for (auto& node : children) {
+                unsigned int hit_bit = node->_hit ? node->_hit->_index : 255;
+                unsigned int miss_bit = node->_miss ? node->_miss->_index : 255;
+                unsigned int object_id_bit = node->_is_leaf ? node->_assigned_object_indices[0] : 255;
+                unsigned int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
+                buffer[node->_index] = binary_path;
+                // std::cout << "    id: " << node->_index;
+                // std::cout << " left: ";
+                // if (node->_left) {
+                //     std::cout << node->_left->_index;
+                // }
+                // std::cout << " right: ";
+                // if (node->_right) {
+                //     std::cout << node->_right->_index;
+                // }
+                // std::cout << " hit: ";
+                // if (node->_hit) {
+                //     std::cout << node->_hit->_index;
+                // }
+                // std::cout << " miss: ";
+                // if (node->_miss) {
+                //     std::cout << node->_miss->_index;
+                // }
+                // std::bitset<32> x(binary_path);
+                // std::cout << " binary: " << x;
+                // std::cout << std::endl;
+            }
         }
     }
 }

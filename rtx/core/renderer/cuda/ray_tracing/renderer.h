@@ -23,12 +23,7 @@ private:
     rtx::array<int> _geometry_types;
     rtx::array<int> _material_types;
     rtx::array<float> _color_buffer;
-    rtx::array<float> _bvh_hit_path;
-    rtx::array<float> _bvh_miss_path;
-    rtx::array<bool> _bvh_is_leaf;
-    rtx::array<float> _bvh_geometry_type;
-    rtx::array<float> _bvh_face_start_index;
-    rtx::array<float> _bvh_face_end_index;
+    rtx::array<unsigned int> _scene_bvh_nodes;
     // device
     float* _gpu_rays;
     int* _gpu_faces;
@@ -37,12 +32,7 @@ private:
     int* _gpu_geometry_types;
     int* _gpu_material_types;
     float* _gpu_color_buffer;
-    float* _gpu_bvh_hit_path;
-    float* _gpu_bvh_miss_path;
-    bool* _gpu_bvh_is_leaf;
-    float* _gpu_bvh_object_index;
-    float* _gpu_bvh_face_start_index;
-    float* _gpu_bvh_face_end_index;
+    float* _gpu_scene_bvh_nodes;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
@@ -50,10 +40,14 @@ private:
     std::unique_ptr<bvh::scene::SceneBVH> _bvh;
     std::vector<std::shared_ptr<Geometry>> _transformed_geometry_array;
 
+    int _prev_height;
+    int _prev_width;
+
     void construct_bvh();
     void transform_geometries_to_view_space();
     void serialize_geometries();
-    void render_objects();
+    void serialize_rays(int height, int width);
+    void render_objects(int height, int width);
 
 public:
     RayTracingCUDARenderer();

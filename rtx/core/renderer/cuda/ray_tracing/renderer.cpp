@@ -94,8 +94,47 @@ void RayTracingCUDARenderer::serialize_geometries()
 void RayTracingCUDARenderer::construct_bvh()
 {
     _bvh = std::make_unique<bvh::scene::SceneBVH>(_transformed_geometry_array);
+    int num_nodes = _bvh->num_nodes();
+    _scene_bvh_nodes = rtx::array<unsigned int>(num_nodes);
+    _bvh->serialize(_scene_bvh_nodes);
 }
-void RayTracingCUDARenderer::render_objects()
+
+void RayTracingCUDARenderer::serialize_rays(int height, int width)
+{
+    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays = height * width * num_rays_per_pixel;
+    int stride = 6;
+    _rays = rtx::array<float>(num_rays * stride);
+    std::default_random_engine generator;
+    std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
+    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
+    if (_camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
+        PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(_camera.get());
+        origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
+    }
+    float aspect_ratio = float(_width) / float(_height);
+    if (_prev_height != height || _prev_width != width) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+
+                for (int m = 0; m < num_rays_per_pixel; m++) {
+                    int index = y * width * num_rays_per_pixel * stride + x * num_rays_per_pixel * stride + m * stride;
+
+                    // direction
+                    _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(width) - 1.0f;
+                    _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(height) - 1.0f) / aspect_ratio;
+                    _rays[index + 2] = -origin.z;
+
+                    // origin
+                    _rays[index + 3] = origin.x;
+                    _rays[index + 4] = origin.y;
+                    _rays[index + 5] = origin.z;
+                }
+            }
+        }
+    }
+}
+void RayTracingCUDARenderer::render_objects(int height, int width)
 {
     // Transform
     if (_scene->updated()) {
@@ -115,7 +154,19 @@ void RayTracingCUDARenderer::render_objects()
     // 現在のカメラ座標系でのBVHを構築
     // Construct BVH in current camera coordinate system
     if (_camera->updated() || _scene->updated()) {
+        rtx_cuda_free(_gpu_scene_bvh_nodes);
         construct_bvh();
+        rtx_cuda_malloc_float(_gpu_scene_bvh_nodes, _scene_bvh_nodes.size());
+    }
+
+    // レイ
+    // Ray
+    if (_prev_height != height || _prev_width != width) {
+        rtx_cuda_free(_gpu_rays);
+        serialize_rays(height, width);
+        rtx_cuda_malloc_float(_gpu_rays, _rays.size());
+        _prev_height = height;
+        _prev_width = width;
     }
 }
 void RayTracingCUDARenderer::render(
@@ -128,10 +179,11 @@ void RayTracingCUDARenderer::render(
     _camera = camera;
     _options = options;
 
-    render_objects();
+    int height = buffer.shape(0);
+    int width = buffer.shape(1);
 
-    // _height = buffer.shape(0);
-    // _width = buffer.shape(1);
+    render_objects(height, width);
+
     // int channels = buffer.shape(2);
     // if (channels != 3) {
     //     throw std::runtime_error("channels != 3");
