@@ -11,8 +11,6 @@ namespace bvh {
             std::vector<glm::vec3i>& face_vertex_indices_array,
             std::vector<glm::vec4f>& vertex_array,
             int num_split)
-            : _face_vertex_indices_array(face_vertex_indices_array)
-            , _vertex_array(vertex_array)
         {
             assert(num_split > 0);
 
@@ -53,8 +51,6 @@ namespace bvh {
         GeometryBVH::GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
             std::vector<glm::vec4f>& vertex_array,
             int num_split)
-            : _face_vertex_indices_array(face_vertex_indices_array)
-            , _vertex_array(vertex_array)
         {
             std::vector<int> face_indices;
             for (unsigned int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {

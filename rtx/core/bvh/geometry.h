@@ -10,8 +10,6 @@ namespace bvh {
         private:
             bool _is_leaf;
             std::vector<int> _assigned_face_indices;
-            std::vector<glm::vec3i>& _face_vertex_indices_array;
-            std::vector<glm::vec4f>& _vertex_array;
 
         public:
             Node(std::vector<int> assigned_face_indices,
@@ -24,15 +22,12 @@ namespace bvh {
         };
         class GeometryBVH {
         private:
-            std::vector<glm::vec3i>& _face_vertex_indices_array;
-            std::vector<glm::vec4f>& _vertex_array;
             std::unique_ptr<Node> _root;
 
         public:
             GeometryBVH(std::vector<glm::vec3i>& face_vertex_indices_array,
                 std::vector<glm::vec4f>& vertex_array,
                 int num_split);
-            void split(Node* parent, int num_split);
             Node* root();
         };
     }

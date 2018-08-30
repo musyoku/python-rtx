@@ -19,23 +19,21 @@ int SphereGeometry::num_vertices() const
     // center + radius
     return 2;
 }
-int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start, glm::mat4& transformation_matrix) const
+int SphereGeometry::serialize_vertices(rtx::array<float>& buffer, int start) const
 {
     int pos = start;
     // face_id = 0
-    glm::vec4f center = transformation_matrix * _center;
-    buffer[pos + 0] = center.x;
-    buffer[pos + 1] = center.y;
-    buffer[pos + 2] = center.z;
-    buffer[pos + 3] = center.w;
+    buffer[pos + 0] = _center.x;
+    buffer[pos + 1] = _center.y;
+    buffer[pos + 2] = _center.z;
+    buffer[pos + 3] = _center.w;
     pos += 4;
 
     // face_id = 1
-    glm::vec4f radius = transformation_matrix * _radius;
-    buffer[pos + 0] = radius.x;
-    buffer[pos + 1] = radius.y;
-    buffer[pos + 2] = radius.z;
-    buffer[pos + 3] = radius.w;
+    buffer[pos + 0] = _radius.x;
+    buffer[pos + 1] = _radius.y;
+    buffer[pos + 2] = _radius.z;
+    buffer[pos + 3] = _radius.w;
     pos += 4;
 
     return pos;
@@ -52,9 +50,11 @@ int SphereGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vert
     return pos;
 }
 
-std::unique_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
+std::shared_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto sphere = std::make_unique<SphereGeometry>(_radius[0]);
+    sphere->_radius = _radius;
+    sphere->_center = transformation_matrix * _center;
     return sphere;
 }
 }

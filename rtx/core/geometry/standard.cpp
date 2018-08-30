@@ -61,15 +61,14 @@ int StandardGeometry::num_vertices() const
 {
     return _vertex_array.size();
 }
-int StandardGeometry::serialize_vertices(rtx::array<float>& buffer, int start, glm::mat4& transformation_matrix) const
+int StandardGeometry::serialize_vertices(rtx::array<float>& buffer, int start) const
 {
     int pos = start;
     for (auto& vertex : _vertex_array) {
-        glm::vec4f v = transformation_matrix * vertex;
-        buffer[pos + 0] = v.x;
-        buffer[pos + 1] = v.y;
-        buffer[pos + 2] = v.z;
-        buffer[pos + 3] = v.w;
+        buffer[pos + 0] = vertex.x;
+        buffer[pos + 1] = vertex.y;
+        buffer[pos + 2] = vertex.z;
+        buffer[pos + 3] = vertex.w;
         pos += 4;
     }
     return pos;
@@ -88,9 +87,10 @@ int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int ve
     return pos;
 }
 
-std::unique_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
+std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto geometry = std::make_unique<StandardGeometry>();
+    geometry->_num_bvh_split = _num_bvh_split;
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     for (auto vertex : _vertex_array) {
         glm::vec4f v = transformation_matrix * vertex;

@@ -26,7 +26,6 @@ namespace bvh {
         public:
             SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array);
             std::unique_ptr<Node> _root;
-            void split(const std::unique_ptr<Node>& parent);
             rtx::array<float> serialize();
         };
     }

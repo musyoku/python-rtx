@@ -48,8 +48,10 @@ private:
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<RayTracingOptions> _options;
     std::unique_ptr<bvh::scene::SceneBVH> _bvh;
+    std::vector<std::shared_ptr<Geometry>> _transformed_geometry_array;
 
     void construct_bvh();
+    void transform_geometries_to_view_space();
     void serialize_geometries();
     void render_objects();
 

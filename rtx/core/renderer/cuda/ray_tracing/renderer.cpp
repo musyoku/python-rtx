@@ -1,9 +1,9 @@
 #include "renderer.h"
 #include "../../../camera/perspective.h"
-#include "../../../header/enum.h"
 #include "../../../geometry/box.h"
 #include "../../../geometry/sphere.h"
 #include "../../../geometry/standard.h"
+#include "../../../header/enum.h"
 #include "../header/ray_tracing.h"
 #include <iostream>
 #include <memory>
@@ -34,6 +34,20 @@ RayTracingCUDARenderer::~RayTracingCUDARenderer()
     rtx_cuda_free((void*)_gpu_faces);
     rtx_cuda_free((void*)_gpu_vertices);
 }
+void RayTracingCUDARenderer::transform_geometries_to_view_space()
+{
+    int num_objects = _scene->_mesh_array.size();
+    std::vector<std::shared_ptr<Geometry>> transformed_geometry_array;
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& mesh = _scene->_mesh_array[object_index];
+        auto& geometry = mesh->_geometry;
+        glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
+        // Transform vertices from model space to view space
+        auto transformed_geometry = geometry->transoform(transformation_matrix);
+        transformed_geometry_array.push_back(transformed_geometry);
+    }
+    _transformed_geometry_array = transformed_geometry_array;
+}
 void RayTracingCUDARenderer::serialize_geometries()
 {
     int num_faces = 0;
@@ -54,10 +68,8 @@ void RayTracingCUDARenderer::serialize_geometries()
     // 各頂点をモデル座標系からカメラ座標系に変換
     // Transform vertices from model space to camera space
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& mesh = _scene->_mesh_array[object_index];
-        auto& geometry = mesh->_geometry;
-        glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
-        int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index, transformation_matrix);
+        auto& geometry = _transformed_geometry_array.at(object_index);
+        int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index);
         assert(next_buffer_index == buffer_index + geometry->num_vertices() * stride);
         _vertex_serialization_offsets[object_index] = buffer_index;
         buffer_index = next_buffer_index;
@@ -66,8 +78,7 @@ void RayTracingCUDARenderer::serialize_geometries()
 
     buffer_index = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& mesh = _scene->_mesh_array[object_index];
-        auto& geometry = mesh->_geometry;
+        auto& geometry = _transformed_geometry_array.at(object_index);
         int vertex_offset = _vertex_serialization_offsets[object_index];
         int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, vertex_offset);
         assert(next_buffer_index == buffer_index + geometry->num_faces() * stride);
@@ -82,16 +93,15 @@ void RayTracingCUDARenderer::serialize_geometries()
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
-    std::vector<std::shared_ptr<Geometry>> geometry_array;
-    for (unsigned int object_index = 0; object_index < _scene->_mesh_array.size(); object_index++) {
-        auto& mesh = _scene->_mesh_array[object_index];
-        auto& geometry = mesh->_geometry;
-        geometry_array.push_back(geometry);
-    }
-    _bvh = std::make_unique<bvh::scene::SceneBVH>(geometry_array);
+    _bvh = std::make_unique<bvh::scene::SceneBVH>(_transformed_geometry_array);
 }
 void RayTracingCUDARenderer::render_objects()
 {
+    // Transform
+    if (_scene->updated()) {
+        transform_geometries_to_view_space();
+    }
+
     // GPUの線形メモリへ転送するデータを準備する
     // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
