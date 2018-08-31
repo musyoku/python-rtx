@@ -384,18 +384,19 @@ __global__ void render(
     }
 }
 
-void rtx_cuda_malloc_integer(int*& gpu_buffer, int size)
+void rtx_cuda_malloc(void** gpu_buffer, size_t size)
 {
-    cudaMalloc((void**)&gpu_buffer, sizeof(int) * size);
+    cudaMalloc(gpu_buffer, size);
 }
-void rtx_cuda_malloc_float(float*& gpu_buffer, int size)
+void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size)
 {
-    cudaMalloc((void**)&gpu_buffer, sizeof(float) * size);
+    cudaMemcpy(*gpu_buffer, *cpu_buffer, size, cudaMemcpyHostToDevice);
 }
-void rtx_cuda_free(void* buffer)
+void rtx_cuda_free(void** buffer)
 {
-    if (buffer != nullptr) {
-        cudaFree(buffer);
+    if (*buffer != nullptr) {
+        cudaFree(*buffer);
+        *buffer = nullptr;
     }
 }
 

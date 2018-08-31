@@ -1,8 +1,8 @@
 #pragma once
 
-void rtx_cuda_malloc_integer(int*& gpu_buffer, int size);
-void rtx_cuda_malloc_float(float*& gpu_buffer, int size);
-void rtx_cuda_free(void* buffer);
+void rtx_cuda_malloc(void** gpu_buffer, size_t size);
+void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size);
+void rtx_cuda_free(void** buffer);
 
 void rtx_cuda_alloc(
     float*& gpu_rays,

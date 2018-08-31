@@ -22,17 +22,11 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_geometry_types = nullptr;
     _gpu_material_types = nullptr;
     _gpu_color_buffer = nullptr;
-    _gpu_bvh_hit_path = nullptr;
-    _gpu_bvh_miss_path = nullptr;
-    _gpu_bvh_is_leaf = nullptr;
-    _gpu_bvh_object_index = nullptr;
-    _gpu_bvh_face_start_index = nullptr;
-    _gpu_bvh_face_end_index = nullptr;
 }
 RayTracingCUDARenderer::~RayTracingCUDARenderer()
 {
-    rtx_cuda_free((void*)_gpu_faces);
-    rtx_cuda_free((void*)_gpu_vertices);
+    rtx_cuda_free((void**)&_gpu_faces);
+    rtx_cuda_free((void**)&_gpu_vertices);
 }
 void RayTracingCUDARenderer::transform_geometries_to_view_space()
 {
@@ -144,27 +138,30 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
     // GPUの線形メモリへ転送するデータを準備する
     // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
-        rtx_cuda_free(_gpu_vertices);
-        rtx_cuda_free(_gpu_faces);
         serialize_geometries();
-        rtx_cuda_malloc_float(_gpu_vertices, _vertices.size());
-        rtx_cuda_malloc_integer(_gpu_faces, _faces.size());
+        rtx_cuda_free((void**)&_gpu_vertices);
+        rtx_cuda_malloc((void**)&_gpu_vertices, sizeof(float) * _vertices.size());
+        rtx_cuda_free((void**)&_gpu_faces);
+        rtx_cuda_malloc((void**)&_gpu_faces, sizeof(int) * _faces.size());
     }
 
     // 現在のカメラ座標系でのBVHを構築
     // Construct BVH in current camera coordinate system
     if (_camera->updated() || _scene->updated()) {
-        rtx_cuda_free(_gpu_scene_bvh_nodes);
         construct_bvh();
-        rtx_cuda_malloc_float(_gpu_scene_bvh_nodes, _scene_bvh_nodes.size());
+        rtx_cuda_free((void**)&_gpu_scene_bvh_nodes);
+        rtx_cuda_malloc((void**)&_gpu_scene_bvh_nodes, sizeof(unsigned int) * _scene_bvh_nodes.size());
     }
 
     // レイ
     // Ray
     if (_prev_height != height || _prev_width != width) {
-        rtx_cuda_free(_gpu_rays);
         serialize_rays(height, width);
-        rtx_cuda_malloc_float(_gpu_rays, _rays.size());
+        std::cout << _gpu_rays << std::endl;
+        rtx_cuda_free((void**)&_gpu_rays);
+        std::cout << _gpu_rays << std::endl;
+        rtx_cuda_malloc((void**)&_gpu_rays, sizeof(float) * _rays.size());
+        std::cout << _gpu_rays << std::endl;
         _prev_height = height;
         _prev_width = width;
     }
@@ -501,13 +498,11 @@ void RayTracingCUDARenderer::render(
     _camera = camera;
     _options = options;
 
-    render_objects();
+    if (channels != 3) {
+        throw std::runtime_error("channels != 3");
+    }
 
-    // _height = height;
-    // _width = width;
-    // if (channels != 3) {
-    //     throw std::runtime_error("channels != 3");
-    // }
+    render_objects(height, width);
 
     // std::default_random_engine generator;
     // std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);

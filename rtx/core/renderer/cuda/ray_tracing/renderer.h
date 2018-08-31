@@ -32,7 +32,7 @@ private:
     int* _gpu_geometry_types;
     int* _gpu_material_types;
     float* _gpu_color_buffer;
-    float* _gpu_scene_bvh_nodes;
+    unsigned int* _gpu_scene_bvh_nodes;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
