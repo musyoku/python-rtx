@@ -176,11 +176,11 @@ namespace bvh {
             std::cout << "#nodes: " << num_nodes << std::endl;
             return num_nodes;
         }
-        void SceneBVH::serialize(rtx::array<unsigned int>& buffer)
+        void SceneBVH::serialize(rtx::array<unsigned int>& node_buffer, rtx::array<float>& aabb_buffer)
         {
             std::cout << "serialize:" << std::endl;
             int num_nodes = this->num_nodes();
-            assert(buffer.size() == num_nodes);
+            assert(node_buffer.size() == num_nodes);
             std::vector<std::shared_ptr<Node>> children = { _root };
             _root->collect_children(children);
             for (auto& node : children) {
@@ -188,7 +188,15 @@ namespace bvh {
                 unsigned int miss_bit = node->_miss ? node->_miss->_index : 255;
                 unsigned int object_id_bit = node->_is_leaf ? node->_assigned_object_indices[0] : 255;
                 unsigned int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
-                buffer[node->_index] = binary_path;
+                node_buffer[node->_index] = binary_path;
+                aabb_buffer[node->_index * 8 + 0] = node->_aabb_max.x;
+                aabb_buffer[node->_index * 8 + 1] = node->_aabb_max.y;
+                aabb_buffer[node->_index * 8 + 2] = node->_aabb_max.z;
+                aabb_buffer[node->_index * 8 + 3] = 1.0f;
+                aabb_buffer[node->_index * 8 + 4] = node->_aabb_min.x;
+                aabb_buffer[node->_index * 8 + 5] = node->_aabb_min.y;
+                aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
+                aabb_buffer[node->_index * 8 + 7] = 1.0f;
                 // std::cout << " left: ";
                 // if (node->_left) {
                 //     std::cout << node->_left->_index;

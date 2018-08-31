@@ -24,7 +24,8 @@ __global__ void render(
     const int* face_count_buffer, const int face_count_buffer_size,
     const float* vertex_buffer, const int vertex_buffer_size,
     const int* vertex_count_buffer, const int vertex_count_buffer_size,
-    const unsigned int* scene_threaded_bvh_buffer, const int scene_threaded_bvh_buffer_size,
+    const unsigned int* scene_threaded_bvh_node_buffer, const int scene_threaded_bvh_node_buffer_size,
+    const float* scene_threaded_bvh_aabb_buffer, const int scene_threaded_bvh_aabb_buffer_size,
     const float* render_buffer, const int render_buffer_size,
     const int num_rays_per_thread,
     const int num_rays,
@@ -39,31 +40,43 @@ __global__ void render(
     int* shared_face_count_buffer = &shared_memory[face_vertex_index_buffer_size];
     float* shared_vertex_buffer = (float*)&shared_memory[face_count_buffer_size];
     int* shared_vertex_count_buffer = &shared_memory[vertex_buffer_size];
-    unsigned int* shared_scene_threaded_bvh_buffer = (unsigned int*)&shared_memory[vertex_count_buffer_size];
+    unsigned int* shared_scene_threaded_bvh_node_buffer = (unsigned int*)&shared_memory[vertex_count_buffer_size];
+    float* shared_scene_threaded_bvh_aabb_buffer = (float*)&shared_memory[scene_threaded_bvh_node_buffer_size];
     if(thread_id == 0){
-        printf("vertex_index_buffer:");
+        printf("vertex_index_buffer:\n");
         for(int i = 0;i < face_vertex_index_buffer_size;i++){
+            shared_face_vertex_index_buffer[i] = face_vertex_index_buffer[i];
             printf("%d ", shared_face_vertex_index_buffer[i]);
         }
         printf("\n");
-        printf("face_count_buffer:");
+        printf("face_count_buffer:\n");
         for(int i = 0;i < face_count_buffer_size;i++){
+            shared_face_count_buffer[i] = face_count_buffer[i];
             printf("%d ", shared_face_count_buffer[i]);
         }
         printf("\n");
-        printf("vertex_buffer:");
+        printf("vertex_buffer:\n");
         for(int i = 0;i < vertex_buffer_size;i++){
+            shared_vertex_buffer[i] = vertex_buffer[i];
             printf("%f ", shared_vertex_buffer[i]);
         }
         printf("\n");
-        printf("vertex_count_buffer:");
+        printf("vertex_count_buffer:\n");
         for(int i = 0;i < vertex_count_buffer_size;i++){
+            shared_vertex_count_buffer[i] = vertex_count_buffer[i];
             printf("%d ", shared_vertex_count_buffer[i]);
         }
         printf("\n");
-        printf("scene_threaded_bvh_buffer:");
-        for(int i = 0;i < scene_threaded_bvh_buffer_size;i++){
-            printf("%d ", shared_scene_threaded_bvh_buffer[i]);
+        printf("scene_threaded_bvh_node_buffer:\n");
+        for(int i = 0;i < scene_threaded_bvh_node_buffer_size;i++){
+            shared_scene_threaded_bvh_node_buffer[i] = scene_threaded_bvh_node_buffer[i];
+            printf("%u ", shared_scene_threaded_bvh_node_buffer[i]);
+        }
+        printf("\n");
+        printf("scene_threaded_bvh_aabb_buffer:\n");
+        for(int i = 0;i < scene_threaded_bvh_aabb_buffer_size;i++){
+            shared_scene_threaded_bvh_aabb_buffer[i] = scene_threaded_bvh_aabb_buffer[i];
+            printf("%f ", scene_threaded_bvh_aabb_buffer[i]);
         }
         printf("\n");
     }
@@ -443,7 +456,7 @@ void rtx_cuda_malloc(void** gpu_buffer, size_t size)
         fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
     }
 }
-void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size)
+void rtx_cuda_memcpy_host_to_device(void* gpu_buffer, void* cpu_buffer, size_t size)
 {
     cudaError_t error = cudaMemcpy(gpu_buffer, cpu_buffer, size, cudaMemcpyHostToDevice);
     if (error != cudaSuccess) {
@@ -478,7 +491,8 @@ void rtx_cuda_ray_tracing_render(
     int*& gpu_face_count_buffer, const int face_count_buffer_size,
     float*& gpu_vertex_buffer, const int vertex_buffer_size,
     int*& gpu_vertex_count_buffer, const int vertex_count_buffer_size,
-    unsigned int*& gpu_scene_threaded_bvh, const int scene_threaded_bvh_size,
+    unsigned int*& gpu_scene_threaded_bvh_node_buffer, const int scene_threaded_bvh_node_buffer_size,
+    float*& gpu_scene_threaded_bvh_aabb_buffer, const int scene_threaded_bvh_aabb_buffer_size,
     float*& gpu_render_buffer, const int render_buffer_size,
     const int num_rays,
     const int num_rays_per_pixel,
@@ -489,13 +503,14 @@ void rtx_cuda_ray_tracing_render(
     assert(gpu_face_count_buffer != NULL);
     assert(gpu_vertex_buffer != NULL);
     assert(gpu_vertex_count_buffer != NULL);
-    assert(gpu_scene_threaded_bvh != NULL);
+    assert(gpu_scene_threaded_bvh_node_buffer != NULL);
+    assert(gpu_scene_threaded_bvh_aabb_buffer != NULL);
     assert(gpu_render_buffer != NULL);
 
     int num_threads = 128;
     int num_blocks = (num_rays - 1) / num_threads + 1;
 
-    num_blocks = 512;
+    num_blocks = 1;
 
     int num_kernels = 1;
     assert(num_rays % num_kernels == 0);
@@ -503,7 +518,7 @@ void rtx_cuda_ray_tracing_render(
     int num_rays_per_thread = num_rays / (num_threads * num_blocks * num_kernels) + 1;
     int num_rays_per_kernel = num_rays / num_kernels;
 
-    int shared_memory_bytes = sizeof(float) * (vertex_buffer_size) + sizeof(int) * (face_vertex_index_buffer_size + face_count_buffer_size + vertex_count_buffer_size) + sizeof(unsigned int) * (scene_threaded_bvh_size);
+    int shared_memory_bytes = sizeof(float) * (vertex_buffer_size + scene_threaded_bvh_aabb_buffer_size) + sizeof(int) * (face_vertex_index_buffer_size + face_count_buffer_size + vertex_count_buffer_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_buffer_size);
 
     printf("shared memory: %d bytes\n", shared_memory_bytes);
 
@@ -515,7 +530,8 @@ void rtx_cuda_ray_tracing_render(
         gpu_face_count_buffer, face_count_buffer_size,
         gpu_vertex_buffer, vertex_buffer_size,
         gpu_vertex_count_buffer, vertex_count_buffer_size,
-        gpu_scene_threaded_bvh, scene_threaded_bvh_size,
+        gpu_scene_threaded_bvh_node_buffer, scene_threaded_bvh_node_buffer_size,
+        gpu_scene_threaded_bvh_aabb_buffer, scene_threaded_bvh_aabb_buffer_size,
         gpu_render_buffer, render_buffer_size,
         num_rays_per_thread,
         num_rays,

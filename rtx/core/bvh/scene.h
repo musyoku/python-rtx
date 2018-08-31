@@ -39,7 +39,7 @@ namespace bvh {
             SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array);
             std::shared_ptr<Node> _root;
             int num_nodes();
-            void serialize(rtx::array<unsigned int>& buffer);
+            void serialize(rtx::array<unsigned int>& node_buffer, rtx::array<float>& aabb_buffer);
         };
     }
 }

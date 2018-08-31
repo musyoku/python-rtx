@@ -22,7 +22,7 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_face_count_buffer = NULL;
     _gpu_vertex_offset_buffer = NULL;
     _gpu_vertex_count_buffer = NULL;
-    _gpu_scene_threaded_bvh_buffer = NULL;
+    _gpu_scene_threaded_bvh_node_buffer = NULL;
     _gpu_render_buffer = NULL;
 }
 RayTracingCUDARenderer::~RayTracingCUDARenderer()
@@ -34,7 +34,7 @@ RayTracingCUDARenderer::~RayTracingCUDARenderer()
     rtx_cuda_free((void**)&_gpu_face_count_buffer);
     rtx_cuda_free((void**)&_gpu_vertex_offset_buffer);
     rtx_cuda_free((void**)&_gpu_vertex_count_buffer);
-    rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_buffer);
+    rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_node_buffer);
     rtx_cuda_free((void**)&_gpu_render_buffer);
     rtx_cuda_free((void**)&_gpu_face_vertex_index_buffer);
     rtx_cuda_free((void**)&_gpu_ray_buffer);
@@ -104,8 +104,9 @@ void RayTracingCUDARenderer::construct_bvh()
 {
     _bvh = std::make_unique<bvh::scene::SceneBVH>(_transformed_geometry_array);
     int num_nodes = _bvh->num_nodes();
-    _scene_threaded_bvh_buffer = rtx::array<unsigned int>(num_nodes);
-    _bvh->serialize(_scene_threaded_bvh_buffer);
+    _scene_threaded_bvh_node_buffer = rtx::array<unsigned int>(num_nodes);
+    _scene_threaded_bvh_aabb_buffer = rtx::array<float>(num_nodes * 2 * 4);
+    _bvh->serialize(_scene_threaded_bvh_node_buffer, _scene_threaded_bvh_aabb_buffer);
 }
 
 void RayTracingCUDARenderer::serialize_rays(int height, int width)
@@ -164,25 +165,34 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         rtx_cuda_malloc((void**)&_gpu_vertex_count_buffer, sizeof(float) * _vertex_count_buffer.size());
         rtx_cuda_malloc((void**)&_gpu_face_vertex_index_buffer, sizeof(int) * _face_vertex_index_buffer.size());
         rtx_cuda_malloc((void**)&_gpu_face_count_buffer, sizeof(int) * _face_count_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_buffer, (void*)_vertex_buffer.data(), sizeof(float) * _vertex_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_count_buffer, (void*)_vertex_count_buffer.data(), sizeof(float) * _vertex_count_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_index_buffer, (void*)_face_vertex_index_buffer.data(), sizeof(int) * _face_vertex_index_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_count_buffer, (void*)_face_count_buffer.data(), sizeof(int) * _face_count_buffer.size());
     }
 
     // 現在のカメラ座標系でのBVHを構築
     // Construct BVH in current camera coordinate system
     if (_camera->updated() || _scene->updated()) {
         construct_bvh();
-        rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_buffer);
-        rtx_cuda_malloc((void**)&_gpu_scene_threaded_bvh_buffer, sizeof(unsigned int) * _scene_threaded_bvh_buffer.size());
+        rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_node_buffer);
+        rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_aabb_buffer);
+        rtx_cuda_malloc((void**)&_gpu_scene_threaded_bvh_node_buffer, sizeof(unsigned int) * _scene_threaded_bvh_node_buffer.size());
+        rtx_cuda_malloc((void**)&_gpu_scene_threaded_bvh_aabb_buffer, sizeof(float) * _scene_threaded_bvh_aabb_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_node_buffer, (void*)_scene_threaded_bvh_node_buffer.data(), sizeof(unsigned int) * _scene_threaded_bvh_node_buffer.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_aabb_buffer, (void*)_scene_threaded_bvh_aabb_buffer.data(), sizeof(unsigned int) * _scene_threaded_bvh_aabb_buffer.size());
     }
 
     // レイ
     // Ray
     if (_prev_height != height || _prev_width != width) {
-        serialize_rays(height, width);
         int render_buffer_size = height * width * 3 * _options->num_rays_per_pixel();
+        serialize_rays(height, width);
         rtx_cuda_free((void**)&_gpu_ray_buffer);
         rtx_cuda_free((void**)&_gpu_render_buffer);
         rtx_cuda_malloc((void**)&_gpu_ray_buffer, sizeof(float) * _ray_buffer.size());
         rtx_cuda_malloc((void**)&_gpu_render_buffer, sizeof(float) * render_buffer_size);
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_buffer, (void*)_ray_buffer.data(), sizeof(unsigned int) * _ray_buffer.size());
         _render_buffer = rtx::array<float>(render_buffer_size);
         _prev_height = height;
         _prev_width = width;
@@ -197,7 +207,8 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         _gpu_face_count_buffer, _face_count_buffer.size(),
         _gpu_vertex_buffer, _vertex_buffer.size(),
         _gpu_vertex_count_buffer, _vertex_count_buffer.size(),
-        _gpu_scene_threaded_bvh_buffer, _scene_threaded_bvh_buffer.size(),
+        _gpu_scene_threaded_bvh_node_buffer, _scene_threaded_bvh_node_buffer.size(),
+        _gpu_scene_threaded_bvh_aabb_buffer, _scene_threaded_bvh_aabb_buffer.size(),
         _gpu_render_buffer, _render_buffer.size(),
         num_rays,
         _options->num_rays_per_pixel(),

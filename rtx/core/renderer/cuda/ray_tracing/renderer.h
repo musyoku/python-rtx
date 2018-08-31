@@ -21,7 +21,8 @@ private:
     rtx::array<int> _face_count_buffer;
     rtx::array<int> _vertex_offset_buffer;
     rtx::array<int> _vertex_count_buffer;
-    rtx::array<unsigned int> _scene_threaded_bvh_buffer;
+    rtx::array<unsigned int> _scene_threaded_bvh_node_buffer;
+    rtx::array<float> _scene_threaded_bvh_aabb_buffer;
     rtx::array<float> _render_buffer;
     // device
     float* _gpu_ray_buffer;
@@ -31,7 +32,8 @@ private:
     int* _gpu_face_count_buffer;
     int* _gpu_vertex_offset_buffer;
     int* _gpu_vertex_count_buffer;
-    unsigned int* _gpu_scene_threaded_bvh_buffer;
+    unsigned int* _gpu_scene_threaded_bvh_node_buffer;
+    float* _gpu_scene_threaded_bvh_aabb_buffer;
     float* _gpu_render_buffer;
 
     std::shared_ptr<Scene> _scene;
