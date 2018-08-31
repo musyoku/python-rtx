@@ -19,7 +19,9 @@ namespace bvh {
             std::shared_ptr<geometry::GeometryBVH> _geometry_bvh;
             glm::vec4f _aabb_min;
             glm::vec4f _aabb_max;
-            Node(std::vector<int> assigned_object_indices, std::vector<std::shared_ptr<Geometry>>& geometry_array);
+            Node(std::vector<int> assigned_object_indices,
+                std::vector<std::shared_ptr<Geometry>>& geometry_array,
+                int& current_index);
             std::shared_ptr<Node> _left;
             std::shared_ptr<Node> _right;
             std::shared_ptr<Node> _miss;
@@ -30,6 +32,9 @@ namespace bvh {
             void collect_children(std::vector<std::shared_ptr<Node>>& children);
         };
         class SceneBVH {
+        private:
+            int _node_current_index;
+
         public:
             SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array);
             std::shared_ptr<Node> _root;

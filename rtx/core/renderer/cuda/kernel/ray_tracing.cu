@@ -19,6 +19,19 @@ __global__ void test_kernel(const float* vertices, int num_vertices)
 }
 
 __global__ void render(
+    const float* ray_buffer,
+    const int* face_vertex_index_buffer,
+    const int* face_count_buffer,
+    const float* vertex_buffer,
+    const int* vertex_count_buffer,
+    const float* render_buffer,
+    const int num_rays_per_thread,
+    const int num_rays,
+    const int path_depth)
+{
+}
+
+__global__ void _render(
     const float* rays,
     const float* face_vertices,
     const float* face_colors,
@@ -383,124 +396,62 @@ __global__ void render(
         color_per_ray[ray_index * 3 + 2] = color_b;
     }
 }
-
 void rtx_cuda_malloc(void** gpu_buffer, size_t size)
 {
     cudaMalloc(gpu_buffer, size);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(status));
+    }
 }
 void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size)
 {
-    cudaMemcpy(*gpu_buffer, *cpu_buffer, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gpu_buffer, cpu_buffer, size, cudaMemcpyHostToDevice);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(status));
+    }
+}
+void rtx_cuda_memcpy_device_to_host(void* cpu_buffer, void* gpu_buffer, size_t size)
+{
+    cudaMemcpy(cpu_buffer, gpu_buffer, size, cudaMemcpyDeviceToHost);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(status));
+    }
 }
 void rtx_cuda_free(void** buffer)
 {
-    if (*buffer != nullptr) {
+    if (*buffer != NULL) {
         cudaFree(*buffer);
-        *buffer = nullptr;
+        cudaError_t status = cudaGetLastError();
+        if (status != 0) {
+            fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(status));
+        }
+        *buffer = NULL;
     }
 }
-
-void rtx_cuda_alloc(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& gpu_camera_inv_matrix,
-    const float* rays,
-    const float* face_vertices,
-    const float* face_colors,
-    const int* object_types,
-    const int* material_types,
-    const float* camera_inv_matrix,
-    const int num_rays,
-    const int rays_stride,
-    const int num_faces,
-    const int faces_stride,
-    const int colors_stride,
-    const int num_pixels,
-    const int num_rays_per_pixel)
-{
-    cudaMalloc((void**)&gpu_rays, sizeof(float) * num_rays * rays_stride);
-    cudaMemcpy(gpu_rays, rays, sizeof(float) * num_rays * rays_stride, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_face_vertices, sizeof(float) * num_faces * faces_stride);
-    cudaMemcpy(gpu_face_vertices, face_vertices, sizeof(float) * num_faces * faces_stride, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_face_colors, sizeof(float) * num_faces * colors_stride);
-    cudaMemcpy(gpu_face_colors, face_colors, sizeof(float) * num_faces * colors_stride, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_object_types, sizeof(int) * num_faces);
-    cudaMemcpy(gpu_object_types, object_types, sizeof(int) * num_faces, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_material_types, sizeof(int) * num_faces);
-    cudaMemcpy(gpu_material_types, material_types, sizeof(int) * num_faces, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_camera_inv_matrix, sizeof(float) * 16);
-    cudaMemcpy(gpu_camera_inv_matrix, camera_inv_matrix, sizeof(float) * 16, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&gpu_color_per_ray, sizeof(float) * num_pixels * 3 * num_rays_per_pixel);
-}
-
-void rtx_cuda_copy(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_camera_inv_matrix,
-    const float* rays,
-    const float* face_vertices,
-    const float* camera_inv_matrix,
-    const int num_rays,
-    const int rays_stride,
-    const int num_faces,
-    const int faces_stride)
-{
-    cudaMemcpy(gpu_rays, rays, sizeof(float) * num_rays * rays_stride, cudaMemcpyHostToDevice);
-    cudaMemcpy(gpu_face_vertices, face_vertices, sizeof(float) * num_faces * faces_stride, cudaMemcpyHostToDevice);
-    cudaMemcpy(gpu_camera_inv_matrix, camera_inv_matrix, sizeof(float) * 16, cudaMemcpyHostToDevice);
-}
-
-void rtx_cuda_delete(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& gpu_camera_inv_matrix)
-{
-    cudaFree(gpu_rays);
-    cudaFree(gpu_face_vertices);
-    cudaFree(gpu_face_colors);
-    cudaFree(gpu_object_types);
-    cudaFree(gpu_material_types);
-    cudaFree(gpu_color_per_ray);
-    cudaFree(gpu_camera_inv_matrix);
-}
-
 void cuda_device_reset()
 {
     cudaDeviceReset();
 }
-
 void rtx_cuda_ray_tracing_render(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& color_per_ray,
-    float*& gpu_camera_inv_matrix,
+    float*& gpu_ray_buffer,
+    int*& gpu_face_vertex_index_buffer,
+    int*& gpu_face_count_buffer,
+    float*& gpu_vertex_buffer,
+    int*& gpu_vertex_count_buffer,
+    float*& gpu_render_buffer,
     const int num_rays,
-    const int num_faces,
-    const int faces_stride,
-    const int colors_stride,
-    const int path_depth,
-    const int num_pixels,
-    const int num_rays_per_pixel)
+    const int num_rays_per_pixel,
+    const int max_path_depth)
 {
-    assert(num_rays == num_pixels * num_rays_per_pixel);
+    assert(gpu_ray_buffer != nullptr);
+    assert(gpu_face_vertex_index_buffer != nullptr);
+    assert(gpu_face_count_buffer != nullptr);
+    assert(gpu_vertex_buffer != nullptr);
+    assert(gpu_vertex_count_buffer != nullptr);
+    assert(gpu_render_buffer != nullptr);
 
     int num_threads = 128;
     int num_blocks = (num_rays - 1) / num_threads + 1;
@@ -516,25 +467,16 @@ void rtx_cuda_ray_tracing_render(
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
 
-    int thread_offset = 0;
-    for (int k = 0; k < num_kernels; k++) {
-        render<<<num_blocks, num_threads>>>(
-            gpu_rays,
-            gpu_face_vertices,
-            gpu_face_colors,
-            gpu_object_types,
-            gpu_material_types,
-            gpu_color_per_ray,
-            gpu_camera_inv_matrix,
-            num_rays_per_thread,
-            thread_offset,
-            num_rays,
-            num_faces,
-            faces_stride,
-            colors_stride,
-            path_depth);
-        thread_offset += num_rays_per_kernel;
-    }
+    render<<<num_blocks, num_threads>>>(
+        gpu_ray_buffer,
+        gpu_face_vertex_index_buffer,
+        gpu_face_count_buffer,
+        gpu_vertex_buffer,
+        gpu_vertex_count_buffer,
+        gpu_render_buffer,
+        num_rays_per_thread,
+        num_rays,
+        max_path_depth);
     cudaThreadSynchronize();
 
     // cudaDeviceProp dev;
@@ -547,9 +489,8 @@ void rtx_cuda_ray_tracing_render(
 
     cudaError_t status = cudaGetLastError();
     if (status != 0) {
-        fprintf(stderr, "%s\n", cudaGetErrorString(status));
+        fprintf(stderr, "CUDA Error: %s\n", cudaGetErrorString(status));
     }
-    cudaMemcpy(color_per_ray, gpu_color_per_ray, sizeof(float) * num_pixels * 3 * num_rays_per_pixel, cudaMemcpyDeviceToHost);
 }
 
 // void rtx_launch_test_kernel()

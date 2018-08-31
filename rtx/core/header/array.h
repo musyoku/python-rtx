@@ -73,5 +73,11 @@ public:
     {
         return _size;
     }
+    T* data()
+    {
+        std::cout << _array << std::endl;
+        std::cout << &_array << std::endl;
+        return _array;
+    }
 };
 }

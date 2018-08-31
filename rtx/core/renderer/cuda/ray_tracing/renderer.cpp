@@ -15,18 +15,29 @@ namespace py = pybind11;
 
 RayTracingCUDARenderer::RayTracingCUDARenderer()
 {
-    _gpu_rays = nullptr;
-    _gpu_faces = nullptr;
-    _gpu_vertices = nullptr;
-    _gpu_object_colors = nullptr;
-    _gpu_geometry_types = nullptr;
-    _gpu_material_types = nullptr;
-    _gpu_color_buffer = nullptr;
+    _gpu_ray_buffer = NULL;
+    _gpu_face_vertex_index_buffer = NULL;
+    _gpu_vertex_buffer = NULL;
+    _gpu_face_offset_buffer = NULL;
+    _gpu_face_count_buffer = NULL;
+    _gpu_vertex_offset_buffer = NULL;
+    _gpu_vertex_count_buffer = NULL;
+    _gpu_scene_threaded_bvh_buffer = NULL;
+    _gpu_render_buffer = NULL;
 }
 RayTracingCUDARenderer::~RayTracingCUDARenderer()
 {
-    rtx_cuda_free((void**)&_gpu_faces);
-    rtx_cuda_free((void**)&_gpu_vertices);
+    rtx_cuda_free((void**)&_gpu_ray_buffer);
+    rtx_cuda_free((void**)&_gpu_face_vertex_index_buffer);
+    rtx_cuda_free((void**)&_gpu_vertex_buffer);
+    rtx_cuda_free((void**)&_gpu_face_offset_buffer);
+    rtx_cuda_free((void**)&_gpu_face_count_buffer);
+    rtx_cuda_free((void**)&_gpu_vertex_offset_buffer);
+    rtx_cuda_free((void**)&_gpu_vertex_count_buffer);
+    rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_buffer);
+    rtx_cuda_free((void**)&_gpu_render_buffer);
+    rtx_cuda_free((void**)&_gpu_face_vertex_index_buffer);
+    rtx_cuda_free((void**)&_gpu_ray_buffer);
 }
 void RayTracingCUDARenderer::transform_geometries_to_view_space()
 {
@@ -53,52 +64,56 @@ void RayTracingCUDARenderer::serialize_geometries()
     }
     int num_objects = _scene->_mesh_array.size();
     int stride = 4;
-    _faces = rtx::array<int>(num_faces * stride);
-    _vertices = rtx::array<float>(num_vertices * stride);
-    _vertex_serialization_offsets = rtx::array<int>(num_objects);
-    _face_serialization_offsets = rtx::array<int>(num_objects);
+    _face_vertex_index_buffer = rtx::array<int>(num_faces * stride);
+    _vertex_buffer = rtx::array<float>(num_vertices * stride);
+    _face_offset_buffer = rtx::array<int>(num_objects);
+    _face_count_buffer = rtx::array<int>(num_objects);
+    _vertex_offset_buffer = rtx::array<int>(num_objects);
+    _vertex_count_buffer = rtx::array<int>(num_objects);
     int buffer_index = 0;
 
     // 各頂点をモデル座標系からカメラ座標系に変換
     // Transform vertices from model space to camera space
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
-        int next_buffer_index = geometry->serialize_vertices(_vertices, buffer_index);
+        int next_buffer_index = geometry->serialize_vertices(_vertex_buffer, buffer_index);
         assert(next_buffer_index == buffer_index + geometry->num_vertices() * stride);
-        _vertex_serialization_offsets[object_index] = buffer_index;
+        _vertex_offset_buffer[object_index] = buffer_index;
+        _vertex_count_buffer[object_index] = geometry->num_vertices();
         buffer_index = next_buffer_index;
     }
-    assert(buffer_index == _vertices.size());
+    assert(buffer_index == _vertex_buffer.size());
 
     buffer_index = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
-        int vertex_offset = _vertex_serialization_offsets[object_index];
-        int next_buffer_index = geometry->serialize_faces(_faces, buffer_index, vertex_offset);
+        int vertex_offset = _vertex_offset_buffer[object_index];
+        int next_buffer_index = geometry->serialize_faces(_face_vertex_index_buffer, buffer_index, vertex_offset);
         assert(next_buffer_index == buffer_index + geometry->num_faces() * stride);
-        _face_serialization_offsets[object_index] = buffer_index;
+        _face_offset_buffer[object_index] = buffer_index;
+        _face_count_buffer[object_index] = geometry->num_faces();
         buffer_index = next_buffer_index;
     }
 
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        std::cout << "vertex_offset: " << _vertex_serialization_offsets[object_index] << " face_offset: " << _face_serialization_offsets[object_index] << std::endl;
+        std::cout << "vertex_offset: " << _vertex_offset_buffer[object_index] << " face_offset: " << _face_offset_buffer[object_index] << std::endl;
     }
-    assert(buffer_index == _faces.size());
+    assert(buffer_index == _face_vertex_index_buffer.size());
 }
 void RayTracingCUDARenderer::construct_bvh()
 {
     _bvh = std::make_unique<bvh::scene::SceneBVH>(_transformed_geometry_array);
     int num_nodes = _bvh->num_nodes();
-    _scene_bvh_nodes = rtx::array<unsigned int>(num_nodes);
-    _bvh->serialize(_scene_bvh_nodes);
+    _scene_threaded_bvh_buffer = rtx::array<unsigned int>(num_nodes);
+    _bvh->serialize(_scene_threaded_bvh_buffer);
 }
 
 void RayTracingCUDARenderer::serialize_rays(int height, int width)
 {
     int num_rays_per_pixel = _options->num_rays_per_pixel();
     int num_rays = height * width * num_rays_per_pixel;
-    int stride = 6;
-    _rays = rtx::array<float>(num_rays * stride);
+    int stride = 8;
+    _ray_buffer = rtx::array<float>(num_rays * stride);
     std::default_random_engine generator;
     std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -115,14 +130,16 @@ void RayTracingCUDARenderer::serialize_rays(int height, int width)
                     int index = y * width * num_rays_per_pixel * stride + x * num_rays_per_pixel * stride + m * stride;
 
                     // direction
-                    _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(width) - 1.0f;
-                    _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(height) - 1.0f) / aspect_ratio;
-                    _rays[index + 2] = -origin.z;
+                    _ray_buffer[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(width) - 1.0f;
+                    _ray_buffer[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(height) - 1.0f) / aspect_ratio;
+                    _ray_buffer[index + 2] = -origin.z;
+                    _ray_buffer[index + 3] = 1.0f;
 
                     // origin
-                    _rays[index + 3] = origin.x;
-                    _rays[index + 4] = origin.y;
-                    _rays[index + 5] = origin.z;
+                    _ray_buffer[index + 4] = origin.x;
+                    _ray_buffer[index + 5] = origin.y;
+                    _ray_buffer[index + 6] = origin.z;
+                    _ray_buffer[index + 7] = 1.0f;
                 }
             }
         }
@@ -139,32 +156,59 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
     // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
         serialize_geometries();
-        rtx_cuda_free((void**)&_gpu_vertices);
-        rtx_cuda_malloc((void**)&_gpu_vertices, sizeof(float) * _vertices.size());
-        rtx_cuda_free((void**)&_gpu_faces);
-        rtx_cuda_malloc((void**)&_gpu_faces, sizeof(int) * _faces.size());
+        rtx_cuda_free((void**)&_gpu_vertex_buffer);
+        rtx_cuda_free((void**)&_gpu_vertex_count_buffer);
+        rtx_cuda_free((void**)&_gpu_face_vertex_index_buffer);
+        rtx_cuda_free((void**)&_gpu_face_count_buffer);
+        rtx_cuda_malloc((void**)&_gpu_vertex_buffer, sizeof(float) * _vertex_buffer.size());
+        rtx_cuda_malloc((void**)&_gpu_vertex_count_buffer, sizeof(float) * _vertex_count_buffer.size());
+        rtx_cuda_malloc((void**)&_gpu_face_vertex_index_buffer, sizeof(int) * _face_vertex_index_buffer.size());
+        rtx_cuda_malloc((void**)&_gpu_face_count_buffer, sizeof(int) * _face_count_buffer.size());
     }
 
     // 現在のカメラ座標系でのBVHを構築
     // Construct BVH in current camera coordinate system
     if (_camera->updated() || _scene->updated()) {
         construct_bvh();
-        rtx_cuda_free((void**)&_gpu_scene_bvh_nodes);
-        rtx_cuda_malloc((void**)&_gpu_scene_bvh_nodes, sizeof(unsigned int) * _scene_bvh_nodes.size());
+        rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_buffer);
+        rtx_cuda_malloc((void**)&_gpu_scene_threaded_bvh_buffer, sizeof(unsigned int) * _scene_threaded_bvh_buffer.size());
     }
 
     // レイ
     // Ray
     if (_prev_height != height || _prev_width != width) {
         serialize_rays(height, width);
-        std::cout << _gpu_rays << std::endl;
-        rtx_cuda_free((void**)&_gpu_rays);
-        std::cout << _gpu_rays << std::endl;
-        rtx_cuda_malloc((void**)&_gpu_rays, sizeof(float) * _rays.size());
-        std::cout << _gpu_rays << std::endl;
+        int render_buffer_size = height * width * 3 * _options->num_rays_per_pixel();
+        rtx_cuda_free((void**)&_gpu_ray_buffer);
+        rtx_cuda_free((void**)&_gpu_render_buffer);
+        rtx_cuda_malloc((void**)&_gpu_ray_buffer, sizeof(float) * _ray_buffer.size());
+        rtx_cuda_malloc((void**)&_gpu_render_buffer, sizeof(float) * render_buffer_size);
+        _render_buffer = rtx::array<float>(render_buffer_size);
         _prev_height = height;
         _prev_width = width;
     }
+
+    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays = height * width * num_rays_per_pixel;
+
+    rtx_cuda_ray_tracing_render(
+        _gpu_ray_buffer,
+        _gpu_face_vertex_index_buffer,
+        _gpu_face_count_buffer,
+        _gpu_vertex_buffer,
+        _gpu_vertex_count_buffer,
+        _gpu_render_buffer,
+        num_rays,
+        _options->num_rays_per_pixel(),
+        _options->path_depth());
+
+    std::cout << _gpu_render_buffer << std::endl;
+    int render_buffer_size = height * width * 3 * _options->num_rays_per_pixel();
+    assert(_render_buffer.size() == render_buffer_size);
+    rtx_cuda_memcpy_device_to_host((void*)_render_buffer.data(), (void*)_gpu_render_buffer, sizeof(float) * render_buffer_size);
+
+    _scene->set_updated(true);
+    _camera->set_updated(true);
 }
 void RayTracingCUDARenderer::render(
     std::shared_ptr<Scene> scene,
@@ -209,7 +253,7 @@ void RayTracingCUDARenderer::render(
     // int color_stride = 3;
     // if (_initialized == false) {
     //     std::cout << num_faces << " * " << faces_stride << std::endl;
-    //     _vertices = new float[num_faces * faces_stride];
+    //     _vertex_buffer = new float[num_faces * faces_stride];
     //     _face_colors = new float[num_faces * color_stride];
     //     _object_types = new int[num_faces];
     //     _material_types = new int[num_faces];
@@ -260,11 +304,11 @@ void RayTracingCUDARenderer::render(
     //     if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
     //         SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
     //         int index = face_index * faces_stride;
-    //         _vertices[index + 0] = sphere->_center.x;
-    //         _vertices[index + 1] = sphere->_center.y;
-    //         _vertices[index + 2] = sphere->_center.z;
-    //         _vertices[index + 3] = 1.0f;
-    //         _vertices[index + 4] = sphere->_radius;
+    //         _vertex_buffer[index + 0] = sphere->_center.x;
+    //         _vertex_buffer[index + 1] = sphere->_center.y;
+    //         _vertex_buffer[index + 2] = sphere->_center.z;
+    //         _vertex_buffer[index + 3] = 1.0f;
+    //         _vertex_buffer[index + 4] = sphere->_radius;
 
     //         index = face_index * color_stride;
     //         glm::vec3 color = material->color();
@@ -280,14 +324,14 @@ void RayTracingCUDARenderer::render(
     //     if (geometry->type() == RTX_GEOMETRY_TYPE) {
     //         BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
     //         int index = face_index * faces_stride;
-    //         _vertices[index + 0] = box->_min.x;
-    //         _vertices[index + 1] = box->_min.y;
-    //         _vertices[index + 2] = box->_min.z;
-    //         _vertices[index + 3] = 1.0f;
-    //         _vertices[index + 4] = box->_max.x;
-    //         _vertices[index + 5] = box->_max.y;
-    //         _vertices[index + 6] = box->_max.z;
-    //         _vertices[index + 7] = 1.0f;
+    //         _vertex_buffer[index + 0] = box->_min.x;
+    //         _vertex_buffer[index + 1] = box->_min.y;
+    //         _vertex_buffer[index + 2] = box->_min.z;
+    //         _vertex_buffer[index + 3] = 1.0f;
+    //         _vertex_buffer[index + 4] = box->_max.x;
+    //         _vertex_buffer[index + 5] = box->_max.y;
+    //         _vertex_buffer[index + 6] = box->_max.z;
+    //         _vertex_buffer[index + 7] = 1.0f;
 
     //         index = face_index * color_stride;
     //         glm::vec3 color = material->color();
@@ -308,20 +352,20 @@ void RayTracingCUDARenderer::render(
     //             glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
 
     //             int index = face_index * faces_stride;
-    //             _vertices[index + 0] = va.x;
-    //             _vertices[index + 1] = va.y;
-    //             _vertices[index + 2] = va.z;
-    //             _vertices[index + 3] = 1.0f;
+    //             _vertex_buffer[index + 0] = va.x;
+    //             _vertex_buffer[index + 1] = va.y;
+    //             _vertex_buffer[index + 2] = va.z;
+    //             _vertex_buffer[index + 3] = 1.0f;
 
-    //             _vertices[index + 4] = vb.x;
-    //             _vertices[index + 5] = vb.y;
-    //             _vertices[index + 6] = vb.z;
-    //             _vertices[index + 7] = 1.0f;
+    //             _vertex_buffer[index + 4] = vb.x;
+    //             _vertex_buffer[index + 5] = vb.y;
+    //             _vertex_buffer[index + 6] = vb.z;
+    //             _vertex_buffer[index + 7] = 1.0f;
 
-    //             _vertices[index + 8] = vc.x;
-    //             _vertices[index + 9] = vc.y;
-    //             _vertices[index + 10] = vc.z;
-    //             _vertices[index + 11] = 1.0f;
+    //             _vertex_buffer[index + 8] = vc.x;
+    //             _vertex_buffer[index + 9] = vc.y;
+    //             _vertex_buffer[index + 10] = vc.z;
+    //             _vertex_buffer[index + 11] = 1.0f;
 
     //             index = face_index * color_stride;
     //             glm::vec3 color = material->color();
@@ -342,7 +386,7 @@ void RayTracingCUDARenderer::render(
     // int rays_stride = 7;
 
     // if (_initialized == false) {
-    //     _rays = new float[num_rays * rays_stride];
+    //     _ray_buffer = new float[num_rays * rays_stride];
     // }
     // glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
     // if (camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
@@ -358,17 +402,17 @@ void RayTracingCUDARenderer::render(
     //             int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
 
     //             // direction
-    //             _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-    //             _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f) / aspect_ratio;
-    //             _rays[index + 2] = -origin.z;
+    //             _ray_buffer[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+    //             _ray_buffer[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f) / aspect_ratio;
+    //             _ray_buffer[index + 2] = -origin.z;
 
     //             // origin
-    //             _rays[index + 3] = origin.x;
-    //             _rays[index + 4] = origin.y;
-    //             _rays[index + 5] = origin.z;
+    //             _ray_buffer[index + 3] = origin.x;
+    //             _ray_buffer[index + 4] = origin.y;
+    //             _ray_buffer[index + 5] = origin.z;
 
     //             // length
-    //             _rays[index + 6] = 1.0f;
+    //             _ray_buffer[index + 6] = 1.0f;
     //         }
     //     }
     // }
@@ -381,15 +425,15 @@ void RayTracingCUDARenderer::render(
     // if (_initialized == false) {
     //     _camera_inv_matrix = new float[16];
     //     rtx_cuda_alloc(
-    //         _gpu_rays,
+    //         _gpu_ray_buffer,
     //         _gpu_face_vertices,
     //         _gpu_face_colors,
     //         _gpu_object_types,
     //         _gpu_material_types,
     //         _gpu_color_per_ray,
     //         _gpu_camera_inv_matrix,
-    //         _rays,
-    //         _vertices,
+    //         _ray_buffer,
+    //         _vertex_buffer,
     //         _face_colors,
     //         _object_types,
     //         _material_types,
@@ -424,11 +468,11 @@ void RayTracingCUDARenderer::render(
     // _camera_inv_matrix[13] = inv_camera[3][1];
     // _camera_inv_matrix[14] = inv_camera[3][2];
     // _camera_inv_matrix[15] = inv_camera[3][3];
-    // rtx_cuda_copy(_gpu_rays,
+    // rtx_cuda_copy(_gpu_ray_buffer,
     //     _gpu_face_vertices,
     //     _gpu_camera_inv_matrix,
-    //     _rays,
-    //     _vertices,
+    //     _ray_buffer,
+    //     _vertex_buffer,
     //     _camera_inv_matrix,
     //     num_rays,
     //     rays_stride,
@@ -436,7 +480,7 @@ void RayTracingCUDARenderer::render(
     //     faces_stride);
 
     // rtx_cuda_ray_tracing_render(
-    //     _gpu_rays,
+    //     _gpu_ray_buffer,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
@@ -472,17 +516,17 @@ void RayTracingCUDARenderer::render(
     // }
 
     // _initialized = true;
-    // rtx_cuda_delete(_gpu_rays,
+    // rtx_cuda_delete(_gpu_ray_buffer,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
     //     _gpu_material_types,
     //     _gpu_color_per_ray);
-    // delete[] _vertices;
+    // delete[] _vertex_buffer;
     // delete[] _face_colors;
     // delete[] _object_types;
     // delete[] _material_types;
-    // delete[] _rays;
+    // delete[] _ray_buffer;
     // delete[] _color_per_ray;
 }
 void RayTracingCUDARenderer::render(
@@ -525,7 +569,7 @@ void RayTracingCUDARenderer::render(
     // int faces_stride = 4 * 3;
     // int color_stride = 3;
     // if (_initialized == false) {
-    //     _vertices = new float[num_faces * faces_stride];
+    //     _vertex_buffer = new float[num_faces * faces_stride];
     //     _face_colors = new float[num_faces * color_stride];
     //     _object_types = new int[num_faces];
     //     _material_types = new int[num_faces];
@@ -576,11 +620,11 @@ void RayTracingCUDARenderer::render(
     //         if (geometry->type() == RTX_GEOMETRY_TYPE_SPHERE) {
     //             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
     //             int index = face_index * faces_stride;
-    //             _vertices[index + 0] = sphere->_center.x;
-    //             _vertices[index + 1] = sphere->_center.y;
-    //             _vertices[index + 2] = sphere->_center.z;
-    //             _vertices[index + 3] = 1.0f;
-    //             _vertices[index + 4] = sphere->_radius;
+    //             _vertex_buffer[index + 0] = sphere->_center.x;
+    //             _vertex_buffer[index + 1] = sphere->_center.y;
+    //             _vertex_buffer[index + 2] = sphere->_center.z;
+    //             _vertex_buffer[index + 3] = 1.0f;
+    //             _vertex_buffer[index + 4] = sphere->_radius;
 
     //             index = face_index * color_stride;
     //             glm::vec3 color = material->color();
@@ -595,14 +639,14 @@ void RayTracingCUDARenderer::render(
     //         if (geometry->type() == RTX_GEOMETRY_TYPE) {
     //             BoxGeometry* box = static_cast<BoxGeometry*>(geometry.get());
     //             int index = face_index * faces_stride;
-    //             _vertices[index + 0] = box->_min.x;
-    //             _vertices[index + 1] = box->_min.y;
-    //             _vertices[index + 2] = box->_min.z;
-    //             _vertices[index + 3] = 1.0f;
-    //             _vertices[index + 4] = box->_max.x;
-    //             _vertices[index + 5] = box->_max.y;
-    //             _vertices[index + 6] = box->_max.z;
-    //             _vertices[index + 7] = 1.0f;
+    //             _vertex_buffer[index + 0] = box->_min.x;
+    //             _vertex_buffer[index + 1] = box->_min.y;
+    //             _vertex_buffer[index + 2] = box->_min.z;
+    //             _vertex_buffer[index + 3] = 1.0f;
+    //             _vertex_buffer[index + 4] = box->_max.x;
+    //             _vertex_buffer[index + 5] = box->_max.y;
+    //             _vertex_buffer[index + 6] = box->_max.z;
+    //             _vertex_buffer[index + 7] = 1.0f;
 
     //             index = face_index * color_stride;
     //             glm::vec3 color = material->color();
@@ -622,20 +666,20 @@ void RayTracingCUDARenderer::render(
     //                 glm::vec3& vc = standard_geometry->_vertex_array[face[2]];
 
     //                 int index = face_index * faces_stride;
-    //                 _vertices[index + 0] = va.x;
-    //                 _vertices[index + 1] = va.y;
-    //                 _vertices[index + 2] = va.z;
-    //                 _vertices[index + 3] = 1.0f;
+    //                 _vertex_buffer[index + 0] = va.x;
+    //                 _vertex_buffer[index + 1] = va.y;
+    //                 _vertex_buffer[index + 2] = va.z;
+    //                 _vertex_buffer[index + 3] = 1.0f;
 
-    //                 _vertices[index + 4] = vb.x;
-    //                 _vertices[index + 5] = vb.y;
-    //                 _vertices[index + 6] = vb.z;
-    //                 _vertices[index + 7] = 1.0f;
+    //                 _vertex_buffer[index + 4] = vb.x;
+    //                 _vertex_buffer[index + 5] = vb.y;
+    //                 _vertex_buffer[index + 6] = vb.z;
+    //                 _vertex_buffer[index + 7] = 1.0f;
 
-    //                 _vertices[index + 8] = vc.x;
-    //                 _vertices[index + 9] = vc.y;
-    //                 _vertices[index + 10] = vc.z;
-    //                 _vertices[index + 11] = 1.0f;
+    //                 _vertex_buffer[index + 8] = vc.x;
+    //                 _vertex_buffer[index + 9] = vc.y;
+    //                 _vertex_buffer[index + 10] = vc.z;
+    //                 _vertex_buffer[index + 11] = 1.0f;
 
     //                 index = face_index * color_stride;
     //                 glm::vec3 color = material->color();
@@ -656,7 +700,7 @@ void RayTracingCUDARenderer::render(
     // int rays_stride = 7;
 
     // if (_initialized == false) {
-    //     _rays = new float[num_rays * rays_stride];
+    //     _ray_buffer = new float[num_rays * rays_stride];
 
     //     for (int y = 0; y < _height; y++) {
     //         for (int x = 0; x < _width; x++) {
@@ -666,17 +710,17 @@ void RayTracingCUDARenderer::render(
     //                 int index = y * _width * num_rays_per_pixel * rays_stride + x * num_rays_per_pixel * rays_stride + m * rays_stride;
 
     //                 // direction
-    //                 _rays[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
-    //                 _rays[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
-    //                 _rays[index + 2] = -1.0f;
+    //                 _ray_buffer[index + 0] = 2.0f * float(x + supersampling_noise(generator)) / float(_width) - 1.0f;
+    //                 _ray_buffer[index + 1] = -(2.0f * float(y + supersampling_noise(generator)) / float(_height) - 1.0f);
+    //                 _ray_buffer[index + 2] = -1.0f;
 
     //                 // origin
-    //                 _rays[index + 3] = 0.0f;
-    //                 _rays[index + 4] = 0.0f;
-    //                 _rays[index + 5] = 1.0f;
+    //                 _ray_buffer[index + 3] = 0.0f;
+    //                 _ray_buffer[index + 4] = 0.0f;
+    //                 _ray_buffer[index + 5] = 1.0f;
 
     //                 // length
-    //                 _rays[index + 6] = 1.0f;
+    //                 _ray_buffer[index + 6] = 1.0f;
     //             }
     //         }
     //     }
@@ -689,15 +733,15 @@ void RayTracingCUDARenderer::render(
     // if (_initialized == false) {
     //     _camera_inv_matrix = new float[16];
     //     rtx_cuda_alloc(
-    //         _gpu_rays,
+    //         _gpu_ray_buffer,
     //         _gpu_face_vertices,
     //         _gpu_face_colors,
     //         _gpu_object_types,
     //         _gpu_material_types,
     //         _gpu_color_per_ray,
     //         _gpu_camera_inv_matrix,
-    //         _rays,
-    //         _vertices,
+    //         _ray_buffer,
+    //         _vertex_buffer,
     //         _face_colors,
     //         _object_types,
     //         _material_types,
@@ -716,10 +760,10 @@ void RayTracingCUDARenderer::render(
     // // std::cout << inv_camera[1][0] << ", " << inv_camera[1][1] << ", " << inv_camera[1][2] << ", " << inv_camera[1][3] << std::endl;
     // // std::cout << inv_camera[2][0] << ", " << inv_camera[2][1] << ", " << inv_camera[2][2] << ", " << inv_camera[2][3] << std::endl;
     // // std::cout << inv_camera[3][0] << ", " << inv_camera[3][1] << ", " << inv_camera[3][2] << ", " << inv_camera[3][3] << std::endl;
-    // rtx_cuda_copy(_gpu_rays, _gpu_face_vertices, _gpu_camera_inv_matrix, _rays, _vertices, _camera_inv_matrix, num_rays, rays_stride, num_faces, faces_stride);
+    // rtx_cuda_copy(_gpu_ray_buffer, _gpu_face_vertices, _gpu_camera_inv_matrix, _ray_buffer, _vertex_buffer, _camera_inv_matrix, num_rays, rays_stride, num_faces, faces_stride);
 
     // rtx_cuda_ray_tracing_render(
-    //     _gpu_rays,
+    //     _gpu_ray_buffer,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
@@ -754,17 +798,17 @@ void RayTracingCUDARenderer::render(
     // }
 
     // _initialized = true;
-    // rtx_cuda_delete(_gpu_rays,
+    // rtx_cuda_delete(_gpu_ray_buffer,
     //     _gpu_face_vertices,
     //     _gpu_face_colors,
     //     _gpu_object_types,
     //     _gpu_material_types,
     //     _gpu_color_per_ray);
-    // delete[] _vertices;
+    // delete[] _vertex_buffer;
     // delete[] _face_colors;
     // delete[] _object_types;
     // delete[] _material_types;
-    // delete[] _rays;
+    // delete[] _ray_buffer;
     // delete[] _color_per_ray;
 }
 }

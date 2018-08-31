@@ -2,66 +2,17 @@
 
 void rtx_cuda_malloc(void** gpu_buffer, size_t size);
 void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size);
+void rtx_cuda_memcpy_device_to_host(void* cpu_buffer, void* gpu_buffer, size_t size);
 void rtx_cuda_free(void** buffer);
-
-void rtx_cuda_alloc(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& gpu_camera_inv_matrix,
-    const float* rays,
-    const float* face_vertices,
-    const float* face_colors,
-    const int* object_types,
-    const int* material_types,
-    const float* camera_matrix,
-    const int num_rays,
-    const int rays_stride,
-    const int num_faces,
-    const int faces_stride,
-    const int color_stride,
-    const int num_pixels,
-    const int num_rays_per_pixel);
-
-void rtx_cuda_delete(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& gpu_camera_inv_matrix);
-
-void rtx_cuda_copy(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_camera_matrix,
-    const float* rays,
-    const float* face_vertices,
-    const float* camera_matrix,
-    const int num_rays,
-    const int rays_stride,
-    const int num_faces,
-    const int faces_stride);
+void cuda_device_reset();
 
 void rtx_cuda_ray_tracing_render(
-    float*& gpu_rays,
-    float*& gpu_face_vertices,
-    float*& gpu_face_colors,
-    int*& gpu_object_types,
-    int*& gpu_material_types,
-    float*& gpu_color_per_ray,
-    float*& color_per_ray,
-    float*& gpu_camera_matrix,
+    float*& gpu_ray_buffer,
+    int*& gpu_face_vertex_index_buffer,
+    int*& gpu_face_count_buffer,
+    float*& gpu_vertex_buffer,
+    int*& gpu_vertex_count_buffer,
+    float*& gpu_render_buffer,
     const int num_rays,
-    const int num_faces,
-    const int faces_stride,
-    const int color_stride,
-    const int path_depth,
-    const int num_pixels,
-    const int num_rays_per_pixel);
-
-void cuda_device_reset();
+    const int num_rays_per_pixel,
+    const int max_path_depth);

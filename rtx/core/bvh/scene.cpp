@@ -9,7 +9,6 @@
 namespace rtx {
 namespace bvh {
     namespace scene {
-        static unsigned int node_current_index = 0;
         int detect_longest_axis(const glm::vec3f& axis_length)
         {
             if (axis_length.x > axis_length.y) {
@@ -37,17 +36,18 @@ namespace bvh {
             return a.second < b.second;
         }
         Node::Node(std::vector<int> assigned_object_indices,
-            std::vector<std::shared_ptr<Geometry>>& geometry_array)
+            std::vector<std::shared_ptr<Geometry>>& geometry_array,
+            int& current_index)
         {
-            std::cout << "===================================" << std::endl;
+            // std::cout << "===================================" << std::endl;
             assert(assigned_object_indices.size() > 0);
             assert(assigned_object_indices.size() <= geometry_array.size());
             _assigned_object_indices = assigned_object_indices;
-            _index = node_current_index;
-            std::cout << "id: " << _index << std::endl;
-            node_current_index++;
-            if (node_current_index > 254) {
-                throw std::runtime_error("too many bvh nodes");
+            _index = current_index;
+            // std::cout << "id: " << _index << std::endl;
+            current_index++;
+            if (current_index > 253) {
+                throw std::runtime_error("BVH Error: Too many nodes.");
             }
             _aabb_max = glm::vec4f(0.0f);
             _aabb_min = glm::vec4f(0.0f);
@@ -78,11 +78,11 @@ namespace bvh {
                 min_center.x = geometry->_center.x < min_center.x ? geometry->_center.x : min_center.x;
                 min_center.y = geometry->_center.y < min_center.y ? geometry->_center.y : min_center.y;
                 min_center.z = geometry->_center.z < min_center.z ? geometry->_center.z : min_center.z;
-                std::cout << geometry->type() << ": " << geometry->_center.x << ", " << geometry->_center.y << ", " << geometry->_center.z << std::endl;
+                // std::cout << geometry->type() << ": " << geometry->_center.x << ", " << geometry->_center.y << ", " << geometry->_center.z << std::endl;
             }
             const glm::vec3f axis_length = max_center - min_center;
             int longest_axis = detect_longest_axis(axis_length);
-            std::cout << "longest: " << longest_axis << std::endl;
+            // std::cout << "longest: " << longest_axis << std::endl;
             std::vector<std::pair<int, float>> object_center_array;
             for (int object_id : assigned_object_indices) {
                 auto& geometry = geometry_array.at(object_id);
@@ -119,8 +119,8 @@ namespace bvh {
             // for (auto index : right_assigned_indices) {
             //     std::cout << index << std::endl;
             // }
-            _left = std::make_shared<Node>(left_assigned_indices, geometry_array);
-            _right = std::make_shared<Node>(right_assigned_indices, geometry_array);
+            _left = std::make_shared<Node>(left_assigned_indices, geometry_array, current_index);
+            _right = std::make_shared<Node>(right_assigned_indices, geometry_array, current_index);
         }
         void Node::set_hit_and_miss_links()
         {
@@ -166,7 +166,8 @@ namespace bvh {
             for (int object_id = 0; object_id < (int)geometry_array.size(); object_id++) {
                 assigned_object_indices.push_back(object_id);
             }
-            _root = std::make_shared<Node>(assigned_object_indices, geometry_array);
+            _node_current_index = 0;
+            _root = std::make_shared<Node>(assigned_object_indices, geometry_array, _node_current_index);
             _root->set_hit_and_miss_links();
         }
         int SceneBVH::num_nodes()
@@ -188,7 +189,6 @@ namespace bvh {
                 unsigned int object_id_bit = node->_is_leaf ? node->_assigned_object_indices[0] : 255;
                 unsigned int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
                 buffer[node->_index] = binary_path;
-                // std::cout << "    id: " << node->_index;
                 // std::cout << " left: ";
                 // if (node->_left) {
                 //     std::cout << node->_left->_index;

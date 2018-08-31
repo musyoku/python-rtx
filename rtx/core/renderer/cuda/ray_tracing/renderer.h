@@ -14,25 +14,25 @@ namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
 private:
     // host
-    rtx::array<float> _rays;
-    rtx::array<int> _faces;
-    rtx::array<float> _vertices;
-    rtx::array<int> _face_serialization_offsets;
-    rtx::array<int> _vertex_serialization_offsets;
-    rtx::array<float> _object_colors;
-    rtx::array<int> _geometry_types;
-    rtx::array<int> _material_types;
-    rtx::array<float> _color_buffer;
-    rtx::array<unsigned int> _scene_bvh_nodes;
+    rtx::array<float> _ray_buffer;
+    rtx::array<int> _face_vertex_index_buffer;
+    rtx::array<float> _vertex_buffer;
+    rtx::array<int> _face_offset_buffer;
+    rtx::array<int> _face_count_buffer;
+    rtx::array<int> _vertex_offset_buffer;
+    rtx::array<int> _vertex_count_buffer;
+    rtx::array<unsigned int> _scene_threaded_bvh_buffer;
+    rtx::array<float> _render_buffer;
     // device
-    float* _gpu_rays;
-    int* _gpu_faces;
-    float* _gpu_vertices;
-    float* _gpu_object_colors;
-    int* _gpu_geometry_types;
-    int* _gpu_material_types;
-    float* _gpu_color_buffer;
-    unsigned int* _gpu_scene_bvh_nodes;
+    float* _gpu_ray_buffer;
+    int* _gpu_face_vertex_index_buffer;
+    float* _gpu_vertex_buffer;
+    int* _gpu_face_offset_buffer;
+    int* _gpu_face_count_buffer;
+    int* _gpu_vertex_offset_buffer;
+    int* _gpu_vertex_count_buffer;
+    unsigned int* _gpu_scene_threaded_bvh_buffer;
+    float* _gpu_render_buffer;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
