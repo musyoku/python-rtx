@@ -2,7 +2,8 @@ CXX = g++
 INCLUDE = -I../rtx/external $(shell pkg-config --cflags glfw3) $(shell python3 -m pybind11 --includes) $(shell python3-config --includes)
 LIBRARIES = -L/usr/local/cuda-9.1/lib64
 LDFLAGS = $(shell pkg-config --static --libs glfw3) $(shell python3-config --ldflags) -pthread
-CXXFLAGS = -O0 -g -Wall -Wformat -march=native -std=c++14
+CXXFLAGS = -O0 -g -Wall -Wformat -march=native -std=c++14 -fopenmp
+NVCCFLAGS = -ccbin=$(CXX) --ptxas-options=-v
 SOURCES = $(wildcard ../rtx/external/gl3w/*.c) \
 		  $(wildcard ../rtx/core/class/*.cpp) \
 		  $(wildcard ../rtx/core/geometry/*.cpp) \
@@ -36,7 +37,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 ../rtx/core/renderer/cuda/kernel/%.o: ../rtx/core/renderer/cuda/kernel/%.cu
-	nvcc -ccbin=$(CXX) -Xcompiler "-fPIC" -c $< -o $@
+	nvcc $(NVCCFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:

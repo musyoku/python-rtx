@@ -19,16 +19,54 @@ __global__ void test_kernel(const float* vertices, int num_vertices)
 }
 
 __global__ void render(
-    const float* ray_buffer,
-    const int* face_vertex_index_buffer,
-    const int* face_count_buffer,
-    const float* vertex_buffer,
-    const int* vertex_count_buffer,
-    const float* render_buffer,
+    const float* ray_buffer, const int ray_buffer_size,
+    const int* face_vertex_index_buffer, const int face_vertex_index_buffer_size,
+    const int* face_count_buffer, const int face_count_buffer_size,
+    const float* vertex_buffer, const int vertex_buffer_size,
+    const int* vertex_count_buffer, const int vertex_count_buffer_size,
+    const unsigned int* scene_threaded_bvh_buffer, const int scene_threaded_bvh_buffer_size,
+    const float* render_buffer, const int render_buffer_size,
     const int num_rays_per_thread,
     const int num_rays,
     const int path_depth)
 {
+    extern __shared__ int shared_memory[];
+    unsigned int thread_id = threadIdx.x;
+    curandStateXORWOW_t state;
+    curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
+
+    int* shared_face_vertex_index_buffer = shared_memory;
+    int* shared_face_count_buffer = &shared_memory[face_vertex_index_buffer_size];
+    float* shared_vertex_buffer = (float*)&shared_memory[face_count_buffer_size];
+    int* shared_vertex_count_buffer = &shared_memory[vertex_buffer_size];
+    unsigned int* shared_scene_threaded_bvh_buffer = (unsigned int*)&shared_memory[vertex_count_buffer_size];
+    if(thread_id == 0){
+        printf("vertex_index_buffer:");
+        for(int i = 0;i < face_vertex_index_buffer_size;i++){
+            printf("%d ", shared_face_vertex_index_buffer[i]);
+        }
+        printf("\n");
+        printf("face_count_buffer:");
+        for(int i = 0;i < face_count_buffer_size;i++){
+            printf("%d ", shared_face_count_buffer[i]);
+        }
+        printf("\n");
+        printf("vertex_buffer:");
+        for(int i = 0;i < vertex_buffer_size;i++){
+            printf("%f ", shared_vertex_buffer[i]);
+        }
+        printf("\n");
+        printf("vertex_count_buffer:");
+        for(int i = 0;i < vertex_count_buffer_size;i++){
+            printf("%d ", shared_vertex_count_buffer[i]);
+        }
+        printf("\n");
+        printf("scene_threaded_bvh_buffer:");
+        for(int i = 0;i < scene_threaded_bvh_buffer_size;i++){
+            printf("%d ", shared_scene_threaded_bvh_buffer[i]);
+        }
+        printf("\n");
+    }
 }
 
 __global__ void _render(
@@ -398,35 +436,34 @@ __global__ void _render(
 }
 void rtx_cuda_malloc(void** gpu_buffer, size_t size)
 {
-    cudaMalloc(gpu_buffer, size);
+    cudaError_t error = cudaMalloc(gpu_buffer, size);
+    printf("malloc %p\n", *gpu_buffer);
     cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(status));
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
     }
 }
 void rtx_cuda_memcpy_host_to_device(void** gpu_buffer, void** cpu_buffer, size_t size)
 {
-    cudaMemcpy(gpu_buffer, cpu_buffer, size, cudaMemcpyHostToDevice);
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(status));
+    cudaError_t error = cudaMemcpy(gpu_buffer, cpu_buffer, size, cudaMemcpyHostToDevice);
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(error));
     }
 }
 void rtx_cuda_memcpy_device_to_host(void* cpu_buffer, void* gpu_buffer, size_t size)
 {
-    cudaMemcpy(cpu_buffer, gpu_buffer, size, cudaMemcpyDeviceToHost);
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(status));
+    cudaError_t error = cudaMemcpy(cpu_buffer, gpu_buffer, size, cudaMemcpyDeviceToHost);
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(error));
     }
 }
 void rtx_cuda_free(void** buffer)
 {
     if (*buffer != NULL) {
-        cudaFree(*buffer);
-        cudaError_t status = cudaGetLastError();
-        if (status != 0) {
-            fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(status));
+        printf("free %p\n", *buffer);
+        cudaError_t error = cudaFree(*buffer);
+        if (error != cudaSuccess) {
+            fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(error));
         }
         *buffer = NULL;
     }
@@ -436,22 +473,24 @@ void cuda_device_reset()
     cudaDeviceReset();
 }
 void rtx_cuda_ray_tracing_render(
-    float*& gpu_ray_buffer,
-    int*& gpu_face_vertex_index_buffer,
-    int*& gpu_face_count_buffer,
-    float*& gpu_vertex_buffer,
-    int*& gpu_vertex_count_buffer,
-    float*& gpu_render_buffer,
+    float*& gpu_ray_buffer, const int ray_buffer_size,
+    int*& gpu_face_vertex_index_buffer, const int face_vertex_index_buffer_size,
+    int*& gpu_face_count_buffer, const int face_count_buffer_size,
+    float*& gpu_vertex_buffer, const int vertex_buffer_size,
+    int*& gpu_vertex_count_buffer, const int vertex_count_buffer_size,
+    unsigned int*& gpu_scene_threaded_bvh, const int scene_threaded_bvh_size,
+    float*& gpu_render_buffer, const int render_buffer_size,
     const int num_rays,
     const int num_rays_per_pixel,
     const int max_path_depth)
 {
-    assert(gpu_ray_buffer != nullptr);
-    assert(gpu_face_vertex_index_buffer != nullptr);
-    assert(gpu_face_count_buffer != nullptr);
-    assert(gpu_vertex_buffer != nullptr);
-    assert(gpu_vertex_count_buffer != nullptr);
-    assert(gpu_render_buffer != nullptr);
+    assert(gpu_ray_buffer != NULL);
+    assert(gpu_face_vertex_index_buffer != NULL);
+    assert(gpu_face_count_buffer != NULL);
+    assert(gpu_vertex_buffer != NULL);
+    assert(gpu_vertex_count_buffer != NULL);
+    assert(gpu_scene_threaded_bvh != NULL);
+    assert(gpu_render_buffer != NULL);
 
     int num_threads = 128;
     int num_blocks = (num_rays - 1) / num_threads + 1;
@@ -464,20 +503,31 @@ void rtx_cuda_ray_tracing_render(
     int num_rays_per_thread = num_rays / (num_threads * num_blocks * num_kernels) + 1;
     int num_rays_per_kernel = num_rays / num_kernels;
 
+    int shared_memory_bytes = sizeof(float) * (vertex_buffer_size) + sizeof(int) * (face_vertex_index_buffer_size + face_count_buffer_size + vertex_count_buffer_size) + sizeof(unsigned int) * (scene_threaded_bvh_size);
+
+    printf("shared memory: %d bytes\n", shared_memory_bytes);
+
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
-
-    render<<<num_blocks, num_threads>>>(
-        gpu_ray_buffer,
-        gpu_face_vertex_index_buffer,
-        gpu_face_count_buffer,
-        gpu_vertex_buffer,
-        gpu_vertex_count_buffer,
-        gpu_render_buffer,
+    render<<<num_blocks, num_threads, shared_memory_bytes>>>(
+        gpu_ray_buffer, ray_buffer_size,
+        gpu_face_vertex_index_buffer, face_vertex_index_buffer_size,
+        gpu_face_count_buffer, face_count_buffer_size,
+        gpu_vertex_buffer, vertex_buffer_size,
+        gpu_vertex_count_buffer, vertex_count_buffer_size,
+        gpu_scene_threaded_bvh, scene_threaded_bvh_size,
+        gpu_render_buffer, render_buffer_size,
         num_rays_per_thread,
         num_rays,
         max_path_depth);
-    cudaThreadSynchronize();
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
 
     // cudaDeviceProp dev;
     // cudaGetDeviceProperties(&dev, 0);
@@ -486,11 +536,6 @@ void rtx_cuda_ray_tracing_render(
     // printf(" total global memory : %d (MB)\n", dev.totalGlobalMem/1024/1024);
     // printf(" shared memory / block : %d (KB)\n", dev.sharedMemPerBlock/1024);
     // printf(" register / block : %d\n", dev.regsPerBlock);
-
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error: %s\n", cudaGetErrorString(status));
-    }
 }
 
 // void rtx_launch_test_kernel()

@@ -16,8 +16,9 @@
 using namespace rtx;
 namespace py = pybind11;
 
-int main()
+void run()
 {
+
     std::shared_ptr<Scene> scene = std::make_shared<Scene>();
     float colors[3][3] = { { 1.0f, 1.0f, 0.25f }, { 1.0f, 0.25f, 1.0f }, { 0.25f, 1.0f, 1.0f } };
     float shift[3] = { -1.125, 0, 1.125 };
@@ -61,7 +62,11 @@ int main()
 
     stbi_write_bmp("render.bmp", width, height, 3, pixels);
     delete[] pixels;
+}
 
+int main()
+{
+    run();
     cuda_device_reset();
     return 0;
 }

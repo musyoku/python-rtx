@@ -192,12 +192,13 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
     int num_rays = height * width * num_rays_per_pixel;
 
     rtx_cuda_ray_tracing_render(
-        _gpu_ray_buffer,
-        _gpu_face_vertex_index_buffer,
-        _gpu_face_count_buffer,
-        _gpu_vertex_buffer,
-        _gpu_vertex_count_buffer,
-        _gpu_render_buffer,
+        _gpu_ray_buffer, _ray_buffer.size(),
+        _gpu_face_vertex_index_buffer, _face_vertex_index_buffer.size(),
+        _gpu_face_count_buffer, _face_count_buffer.size(),
+        _gpu_vertex_buffer, _vertex_buffer.size(),
+        _gpu_vertex_count_buffer, _vertex_count_buffer.size(),
+        _gpu_scene_threaded_bvh_buffer, _scene_threaded_bvh_buffer.size(),
+        _gpu_render_buffer, _render_buffer.size(),
         num_rays,
         _options->num_rays_per_pixel(),
         _options->path_depth());
