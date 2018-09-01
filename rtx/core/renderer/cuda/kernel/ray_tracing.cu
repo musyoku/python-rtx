@@ -40,15 +40,15 @@ __global__ void render(
     const unsigned int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     const float* scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
-    const int num_rays_per_thread,
     const int num_rays,
+    const int num_rays_per_thread,
     const int max_bounce)
 {
     extern __shared__ int shared_memory[];
     unsigned int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
-    
+
     unsigned int offset = 0;
     int* shared_face_vertex_index_array = &shared_memory[offset];
     offset += face_vertex_index_array_size;
@@ -68,7 +68,7 @@ __global__ void render(
         // memcpy(shared_face_vertex_index_array, face_vertex_index_array, sizeof(int) * face_vertex_index_array_size);
         for (int i = 0; i < face_vertex_index_array_size; i++) {
             shared_face_vertex_index_array[i] = face_vertex_index_array[i];
-            printf("%d %d\n", shared_face_vertex_index_array[i], face_vertex_index_array[i]);
+            // printf("%d %d\n", shared_face_vertex_index_array[i], face_vertex_index_array[i]);
         }
         // printf("\n");
         // printf("face_count_array:\n");
@@ -188,10 +188,17 @@ __global__ void render(
             // BVH traversal
             scene_bvh_current_node_id = 0;
             for (int traversal = 0; traversal < scene_threaded_bvh_node_array_size; traversal++) {
+
+                if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
+                    break;
+                }
+
+                assert(scene_bvh_current_node_id < scene_threaded_bvh_node_array_size);
                 scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
                 scene_bvh_object_id = 0xFF & scene_bvh_binary_node;
                 scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
                 scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
+
                 if (scene_bvh_object_id == SCENE_BVH_INNER_NODE) {
                     scene_bvh_current_node_id = scene_bvh_hit_node_id;
                 } else {
@@ -248,12 +255,8 @@ __global__ void render(
                         scene_bvh_current_node_id = scene_bvh_hit_node_id;
                     }
                 }
-                if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
-                    break;
-                }
 
-
-                if(traversal == 1){
+                if (traversal == 1) {
                     render_array[ray_index * 3 + 0] = 1.0f;
                     render_array[ray_index * 3 + 1] = 1.0f;
                     render_array[ray_index * 3 + 2] = 1.0f;
@@ -765,8 +768,8 @@ void rtx_cuda_ray_tracing_render(
         gpu_scene_threaded_bvh_node_array, scene_threaded_bvh_node_array_size,
         gpu_scene_threaded_bvh_aabb_array, scene_threaded_bvh_aabb_array_size,
         gpu_render_array, render_array_size,
-        num_rays_per_thread,
         num_rays,
+        num_rays_per_thread,
         max_bounce);
     cudaError_t status = cudaGetLastError();
     if (status != 0) {

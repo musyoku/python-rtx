@@ -73,8 +73,6 @@ void RayTracingCUDARenderer::serialize_geometries()
     _vertex_count_array = rtx::array<int>(num_objects);
     int array_index = 0;
 
-    // 各頂点をモデル座標系からカメラ座標系に変換
-    // Transform vertices from model space to camera space
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
         int next_array_index = geometry->serialize_vertices(_vertex_array, array_index);
@@ -149,14 +147,10 @@ void RayTracingCUDARenderer::serialize_rays(int height, int width)
 }
 void RayTracingCUDARenderer::render_objects(int height, int width)
 {
-    // Transform
-    if (_scene->updated()) {
-        transform_geometries_to_view_space();
-    }
-
     // GPUの線形メモリへ転送するデータを準備する
     // Construct arrays to transfer to the Linear Memory of GPU
     if (_scene->updated()) {
+        transform_geometries_to_view_space();
         serialize_geometries();
         rtx_cuda_free((void**)&_gpu_vertex_array);
         rtx_cuda_free((void**)&_gpu_vertex_count_array);
@@ -170,11 +164,17 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_count_array, (void*)_vertex_count_array.data(), sizeof(float) * _vertex_count_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_index_array, (void*)_face_vertex_index_array.data(), sizeof(int) * _face_vertex_index_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_count_array, (void*)_face_count_array.data(), sizeof(int) * _face_count_array.size());
+    } else {
+        if (_camera->updated()) {
+            transform_geometries_to_view_space();
+            serialize_geometries();
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_vertex_array.data(), sizeof(float) * _vertex_array.size());
+        }
     }
 
     // 現在のカメラ座標系でのBVHを構築
     // Construct BVH in current camera coordinate system
-    if (_camera->updated() || _scene->updated()) {
+    if (_scene->updated()) {
         construct_bvh();
         rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_node_array);
         rtx_cuda_free((void**)&_gpu_scene_threaded_bvh_aabb_array);
@@ -182,6 +182,12 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         rtx_cuda_malloc((void**)&_gpu_scene_threaded_bvh_aabb_array, sizeof(float) * _scene_threaded_bvh_aabb_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_node_array, (void*)_scene_threaded_bvh_node_array.data(), sizeof(unsigned int) * _scene_threaded_bvh_node_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_aabb_array, (void*)_scene_threaded_bvh_aabb_array.data(), sizeof(unsigned int) * _scene_threaded_bvh_aabb_array.size());
+    } else {
+        if (_camera->updated()) {
+            construct_bvh();
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_node_array, (void*)_scene_threaded_bvh_node_array.data(), sizeof(unsigned int) * _scene_threaded_bvh_node_array.size());
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_scene_threaded_bvh_aabb_array, (void*)_scene_threaded_bvh_aabb_array.data(), sizeof(float) * _scene_threaded_bvh_aabb_array.size());
+        }
     }
 
     // レイ
