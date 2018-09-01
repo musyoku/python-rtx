@@ -14,27 +14,27 @@ namespace rtx {
 class RayTracingCUDARenderer : public Renderer {
 private:
     // host
-    rtx::array<float> _ray_buffer;
-    rtx::array<int> _face_vertex_index_buffer;
-    rtx::array<float> _vertex_buffer;
-    rtx::array<int> _face_offset_buffer;
-    rtx::array<int> _face_count_buffer;
-    rtx::array<int> _vertex_offset_buffer;
-    rtx::array<int> _vertex_count_buffer;
-    rtx::array<unsigned int> _scene_threaded_bvh_node_buffer;
-    rtx::array<float> _scene_threaded_bvh_aabb_buffer;
-    rtx::array<float> _render_buffer;
+    rtx::array<float> _ray_array;
+    rtx::array<int> _face_vertex_index_array;
+    rtx::array<float> _vertex_array;
+    rtx::array<int> _face_offset_array;
+    rtx::array<int> _face_count_array;
+    rtx::array<int> _vertex_offset_array;
+    rtx::array<int> _vertex_count_array;
+    rtx::array<unsigned int> _scene_threaded_bvh_node_array;
+    rtx::array<float> _scene_threaded_bvh_aabb_array;
+    rtx::array<float> _render_array;
     // device
-    float* _gpu_ray_buffer;
-    int* _gpu_face_vertex_index_buffer;
-    float* _gpu_vertex_buffer;
-    int* _gpu_face_offset_buffer;
-    int* _gpu_face_count_buffer;
-    int* _gpu_vertex_offset_buffer;
-    int* _gpu_vertex_count_buffer;
-    unsigned int* _gpu_scene_threaded_bvh_node_buffer;
-    float* _gpu_scene_threaded_bvh_aabb_buffer;
-    float* _gpu_render_buffer;
+    float* _gpu_ray_array;
+    int* _gpu_face_vertex_index_array;
+    float* _gpu_vertex_array;
+    int* _gpu_face_offset_array;
+    int* _gpu_face_count_array;
+    int* _gpu_vertex_offset_array;
+    int* _gpu_vertex_count_array;
+    unsigned int* _gpu_scene_threaded_bvh_node_array;
+    float* _gpu_scene_threaded_bvh_aabb_array;
+    float* _gpu_render_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
@@ -57,11 +57,11 @@ public:
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
         std::shared_ptr<RayTracingOptions> options,
-        pybind11::array_t<float, pybind11::array::c_style> buffer);
+        pybind11::array_t<float, pybind11::array::c_style> array);
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
         std::shared_ptr<RayTracingOptions> options,
-        unsigned char* buffer,
+        unsigned char* array,
         int height,
         int width,
         int channels);

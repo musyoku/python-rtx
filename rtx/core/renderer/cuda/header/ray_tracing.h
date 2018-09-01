@@ -1,20 +1,20 @@
 #pragma once
 
-void rtx_cuda_malloc(void** gpu_buffer, size_t size);
-void rtx_cuda_memcpy_host_to_device(void* gpu_buffer, void* cpu_buffer, size_t size);
-void rtx_cuda_memcpy_device_to_host(void* cpu_buffer, void* gpu_buffer, size_t size);
-void rtx_cuda_free(void** buffer);
+void rtx_cuda_malloc(void** gpu_array, size_t size);
+void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size);
+void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size);
+void rtx_cuda_free(void** array);
 void cuda_device_reset();
 
 void rtx_cuda_ray_tracing_render(
-    float*& gpu_ray_buffer, const int ray_buffer_size,
-    int*& gpu_face_vertex_index_buffer, const int face_vertex_index_buffer_size,
-    int*& gpu_face_count_buffer, const int face_count_buffer_size,
-    float*& gpu_vertex_buffer, const int vertex_buffer_size,
-    int*& gpu_vertex_count_buffer, const int vertex_count_buffer,
-    unsigned int*& gpu_scene_threaded_bvh_node_buffer, const int scene_threaded_bvh_node_buffer_size,
-    float*& gpu_scene_threaded_bvh_aabb_buffer, const int scene_threaded_bvh_aabb_buffer_size,
-    float*& gpu_render_buffer, const int render_buffer_size,
+    float*& gpu_ray_array, const int ray_array_size,
+    int*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
+    int*& gpu_face_count_array, const int face_count_array_size,
+    float*& gpu_vertex_array, const int vertex_array_size,
+    int*& gpu_vertex_count_array, const int vertex_count_array,
+    unsigned int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    float*& gpu_scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
+    float*& gpu_render_array, const int render_array_size,
     const int num_rays,
     const int num_rays_per_pixel,
     const int max_path_depth);

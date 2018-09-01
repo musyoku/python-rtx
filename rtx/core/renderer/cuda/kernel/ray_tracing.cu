@@ -18,67 +18,303 @@ __global__ void test_kernel(const float* vertices, int num_vertices)
     }
 }
 
+__device__ void printb(unsigned int v)
+{
+    unsigned int mask = 1 << 32;
+    do
+        printf("%u", mask & v);
+    // printf("%s", mask & v ? '1' : '0');
+    while (mask >>= 1);
+    printf("%s", '\n');
+}
+
+#define SCENE_BVH_TERMINAL_NODE 255
+#define SCENE_BVH_INNER_NODE 255
+
 __global__ void render(
-    const float* ray_buffer, const int ray_buffer_size,
-    const int* face_vertex_index_buffer, const int face_vertex_index_buffer_size,
-    const int* face_count_buffer, const int face_count_buffer_size,
-    const float* vertex_buffer, const int vertex_buffer_size,
-    const int* vertex_count_buffer, const int vertex_count_buffer_size,
-    const unsigned int* scene_threaded_bvh_node_buffer, const int scene_threaded_bvh_node_buffer_size,
-    const float* scene_threaded_bvh_aabb_buffer, const int scene_threaded_bvh_aabb_buffer_size,
-    const float* render_buffer, const int render_buffer_size,
+    const float* ray_array, const int ray_array_size,
+    const int* face_vertex_index_array, const int face_vertex_index_array_size,
+    const int* face_count_array, const int face_count_array_size,
+    const float* vertex_array, const int vertex_array_size,
+    const int* vertex_count_array, const int vertex_count_array_size,
+    const unsigned int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    const float* scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
+    float* render_array, const int render_array_size,
     const int num_rays_per_thread,
     const int num_rays,
-    const int path_depth)
+    const int max_bounce)
 {
     extern __shared__ int shared_memory[];
     unsigned int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
+    
+    unsigned int offset = 0;
+    int* shared_face_vertex_index_array = &shared_memory[offset];
+    offset += face_vertex_index_array_size;
+    int* shared_face_count_array = &shared_memory[offset];
+    offset += face_count_array_size;
+    float* shared_vertex_array = (float*)&shared_memory[offset];
+    offset += vertex_array_size;
+    int* shared_vertex_count_array = &shared_memory[offset];
+    offset += vertex_count_array_size;
+    unsigned int* shared_scene_threaded_bvh_node_array = (unsigned int*)&shared_memory[offset];
+    offset += scene_threaded_bvh_node_array_size;
+    float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
+    offset += scene_threaded_bvh_aabb_array_size;
 
-    int* shared_face_vertex_index_buffer = shared_memory;
-    int* shared_face_count_buffer = &shared_memory[face_vertex_index_buffer_size];
-    float* shared_vertex_buffer = (float*)&shared_memory[face_count_buffer_size];
-    int* shared_vertex_count_buffer = &shared_memory[vertex_buffer_size];
-    unsigned int* shared_scene_threaded_bvh_node_buffer = (unsigned int*)&shared_memory[vertex_count_buffer_size];
-    float* shared_scene_threaded_bvh_aabb_buffer = (float*)&shared_memory[scene_threaded_bvh_node_buffer_size];
-    if(thread_id == 0){
-        printf("vertex_index_buffer:\n");
-        for(int i = 0;i < face_vertex_index_buffer_size;i++){
-            shared_face_vertex_index_buffer[i] = face_vertex_index_buffer[i];
-            printf("%d ", shared_face_vertex_index_buffer[i]);
+    if (thread_id == 0) {
+        // printf("vertex_index_array:\n");
+        // memcpy(shared_face_vertex_index_array, face_vertex_index_array, sizeof(int) * face_vertex_index_array_size);
+        for (int i = 0; i < face_vertex_index_array_size; i++) {
+            shared_face_vertex_index_array[i] = face_vertex_index_array[i];
+            printf("%d %d\n", shared_face_vertex_index_array[i], face_vertex_index_array[i]);
         }
-        printf("\n");
-        printf("face_count_buffer:\n");
-        for(int i = 0;i < face_count_buffer_size;i++){
-            shared_face_count_buffer[i] = face_count_buffer[i];
-            printf("%d ", shared_face_count_buffer[i]);
+        // printf("\n");
+        // printf("face_count_array:\n");
+        for (int i = 0; i < face_count_array_size; i++) {
+            shared_face_count_array[i] = face_count_array[i];
+            // printf("%d ", shared_face_count_array[i]);
         }
-        printf("\n");
-        printf("vertex_buffer:\n");
-        for(int i = 0;i < vertex_buffer_size;i++){
-            shared_vertex_buffer[i] = vertex_buffer[i];
-            printf("%f ", shared_vertex_buffer[i]);
+        // printf("\n");
+        // printf("vertex_array:\n");
+        for (int i = 0; i < vertex_array_size; i++) {
+            shared_vertex_array[i] = vertex_array[i];
+            // printf("%f ", shared_vertex_array[i]);
         }
-        printf("\n");
-        printf("vertex_count_buffer:\n");
-        for(int i = 0;i < vertex_count_buffer_size;i++){
-            shared_vertex_count_buffer[i] = vertex_count_buffer[i];
-            printf("%d ", shared_vertex_count_buffer[i]);
+        // printf("\n");
+        // printf("vertex_count_array:\n");
+        for (int i = 0; i < vertex_count_array_size; i++) {
+            shared_vertex_count_array[i] = vertex_count_array[i];
+            // printf("%d ", shared_vertex_count_array[i]);
         }
-        printf("\n");
-        printf("scene_threaded_bvh_node_buffer:\n");
-        for(int i = 0;i < scene_threaded_bvh_node_buffer_size;i++){
-            shared_scene_threaded_bvh_node_buffer[i] = scene_threaded_bvh_node_buffer[i];
-            printf("%u ", shared_scene_threaded_bvh_node_buffer[i]);
+        // printf("\n");
+        // printf("scene_threaded_bvh_node_array:\n");
+        for (int i = 0; i < scene_threaded_bvh_node_array_size; i++) {
+            shared_scene_threaded_bvh_node_array[i] = scene_threaded_bvh_node_array[i];
+            // printf("%u ", shared_scene_threaded_bvh_node_array[i]);
         }
-        printf("\n");
-        printf("scene_threaded_bvh_aabb_buffer:\n");
-        for(int i = 0;i < scene_threaded_bvh_aabb_buffer_size;i++){
-            shared_scene_threaded_bvh_aabb_buffer[i] = scene_threaded_bvh_aabb_buffer[i];
-            printf("%f ", scene_threaded_bvh_aabb_buffer[i]);
+        // printf("\n");
+        // printf("scene_threaded_bvh_aabb_array:\n");
+        for (int i = 0; i < scene_threaded_bvh_aabb_array_size; i++) {
+            shared_scene_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
+            // printf("%f ", scene_threaded_bvh_aabb_array[i]);
         }
-        printf("\n");
+        // printf("\n");
+    }
+    __syncthreads();
+
+    // if (thread_id == 0) {
+    //     for (int i = 0; i < face_vertex_index_array_size; i++) {
+    //         if (shared_face_vertex_index_array[i] != face_vertex_index_array[i]) {
+    //             printf("Error: shared_face_vertex_index_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < face_count_array_size; i++) {
+    //         if (shared_face_count_array[i] != face_count_array[i]) {
+    //             printf("Error: shared_face_count_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < vertex_array_size; i++) {
+    //         if (shared_vertex_array[i] != vertex_array[i]) {
+    //             printf("Error: shared_vertex_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < vertex_count_array_size; i++) {
+    //         if (shared_vertex_count_array[i] != vertex_count_array[i]) {
+    //             printf("Error: shared_vertex_count_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < scene_threaded_bvh_node_array_size; i++) {
+    //         if (shared_scene_threaded_bvh_node_array[i] != scene_threaded_bvh_node_array[i]) {
+    //             printf("Error: shared_scene_threaded_bvh_node_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < scene_threaded_bvh_aabb_array_size; i++) {
+    //         if (shared_scene_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
+    //             printf("Error: shared_scene_threaded_bvh_aabb_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    // }
+
+    int array_index;
+    float ray_direction_x;
+    float ray_direction_y;
+    float ray_direction_z;
+    float ray_origin_x;
+    float ray_origin_y;
+    float ray_origin_z;
+    float ray_direction_inv_x;
+    float ray_direction_inv_y;
+    float ray_direction_inv_z;
+    unsigned int scene_bvh_binary_node;
+    unsigned int scene_bvh_object_id;
+    unsigned int scene_bvh_current_node_id;
+    unsigned int scene_bvh_hit_node_id;
+    unsigned int scene_bvh_miss_node_id;
+    float aabb_max_x;
+    float aabb_max_y;
+    float aabb_max_z;
+    float aabb_min_x;
+    float aabb_min_y;
+    float aabb_min_z;
+    float tmin, tmax, tmp_tmin, tmp_tmax;
+
+    for (int n = 0; n < num_rays_per_thread; n++) {
+        unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
+        if (ray_index >= num_rays) {
+            return;
+        }
+
+        array_index = ray_index * 8;
+        ray_direction_x = ray_array[array_index + 0];
+        ray_direction_y = ray_array[array_index + 1];
+        ray_direction_z = ray_array[array_index + 2];
+        ray_origin_x = ray_array[array_index + 4];
+        ray_origin_y = ray_array[array_index + 5];
+        ray_origin_z = ray_array[array_index + 6];
+        ray_direction_inv_x = 1.0f / ray_direction_x;
+        ray_direction_inv_y = 1.0f / ray_direction_y;
+        ray_direction_inv_z = 1.0f / ray_direction_z;
+
+        for (int bounce = 0; bounce < max_bounce; bounce++) {
+
+            // BVH traversal
+            scene_bvh_current_node_id = 0;
+            for (int traversal = 0; traversal < scene_threaded_bvh_node_array_size; traversal++) {
+                scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
+                scene_bvh_object_id = 0xFF & scene_bvh_binary_node;
+                scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
+                scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
+                if (scene_bvh_object_id == SCENE_BVH_INNER_NODE) {
+                    scene_bvh_current_node_id = scene_bvh_hit_node_id;
+                } else {
+                    aabb_max_x = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 0];
+                    aabb_max_y = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 1];
+                    aabb_max_z = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 2];
+                    aabb_min_x = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 4];
+                    aabb_min_y = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 5];
+                    aabb_min_z = scene_threaded_bvh_aabb_array[scene_bvh_object_id * 8 + 6];
+
+                    // http://www.cs.utah.edu/~awilliam/box/box.pdf
+                    tmin = ((ray_direction_inv_x < 0 ? aabb_max_x : aabb_min_x) - ray_origin_x) * ray_direction_inv_x;
+                    tmax = ((ray_direction_inv_x < 0 ? aabb_min_x : aabb_max_x) - ray_origin_x) * ray_direction_inv_x;
+                    tmp_tmin = ((ray_direction_inv_y < 0 ? aabb_max_y : aabb_min_y) - ray_origin_y) * ray_direction_inv_y;
+                    tmp_tmax = ((ray_direction_inv_y < 0 ? aabb_min_y : aabb_max_y) - ray_origin_y) * ray_direction_inv_y;
+                    if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        continue;
+                    }
+                    if (tmp_tmin > tmin) {
+                        tmin = tmp_tmin;
+                    }
+                    if (tmp_tmax < tmax) {
+                        tmax = tmp_tmax;
+                    }
+                    tmp_tmin = ((ray_direction_inv_z < 0 ? aabb_max_z : aabb_min_z) - ray_origin_z) * ray_direction_inv_z;
+                    tmp_tmax = ((ray_direction_inv_z < 0 ? aabb_min_z : aabb_max_z) - ray_origin_z) * ray_direction_inv_z;
+                    if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        continue;
+                    }
+                    if (tmp_tmin > tmin) {
+                        tmin = tmp_tmin;
+                    }
+                    if (tmp_tmax < tmax) {
+                        tmax = tmp_tmax;
+                    }
+
+                    // if (thread_id == 0) {
+                    //     printf("index: %u hit: %u miss: %u object: %u binary: %u\n", scene_bvh_current_node_id,
+                    //         scene_bvh_hit_node_id, scene_bvh_miss_node_id, scene_bvh_object_id, scene_bvh_binary_node);
+                    //     // printf("node: %u %u\n", scene_bvh_current_node_id, scene_bvh_binary_node);
+                    //     // printf("object: %u\n", scene_bvh_object_id);
+                    //     // printf("miss: %u\n", scene_bvh_miss_node_id);
+                    //     // printf("hit: %u\n", scene_bvh_hit_node_id);
+                    //     // printf("AAAB(max): %f %f %f\n", aabb_max_x, aabb_max_y, aabb_max_z);
+                    //     // printf("AAAB(min): %f %f %f\n", aabb_min_x, aabb_min_y, aabb_min_z);
+                    //     // printf("t: %f %f\n", tmin, tmax);
+                    //     // printf("next: %u\n", scene_bvh_current_node_id);
+                    // }
+                    if (scene_bvh_hit_node_id == SCENE_BVH_TERMINAL_NODE) {
+                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                    } else {
+                        scene_bvh_current_node_id = scene_bvh_hit_node_id;
+                    }
+                }
+                if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
+                    break;
+                }
+
+
+                if(traversal == 1){
+                    render_array[ray_index * 3 + 0] = 1.0f;
+                    render_array[ray_index * 3 + 1] = 1.0f;
+                    render_array[ray_index * 3 + 2] = 1.0f;
+                    return;
+                }
+            }
+            return;
+
+            // // http://www.cs.utah.edu/~awilliam/box/box.pdf
+            // float _min_x = shared_face_vertices[index + 0];
+            // float _min_y = shared_face_vertices[index + 1];
+            // float _min_z = shared_face_vertices[index + 2];
+            // float _max_x = shared_face_vertices[index + 4];
+            // float _max_y = shared_face_vertices[index + 5];
+            // float _max_z = shared_face_vertices[index + 6];
+
+            // float min_x = shared_camera_inv_matrix[0][0] * _min_x + shared_camera_inv_matrix[1][0] * _min_y + shared_camera_inv_matrix[2][0] * _min_z + shared_camera_inv_matrix[3][0];
+            // float min_y = shared_camera_inv_matrix[0][1] * _min_x + shared_camera_inv_matrix[1][1] * _min_y + shared_camera_inv_matrix[2][1] * _min_z + shared_camera_inv_matrix[3][1];
+            // float min_z = shared_camera_inv_matrix[0][2] * _min_x + shared_camera_inv_matrix[1][2] * _min_y + shared_camera_inv_matrix[2][2] * _min_z + shared_camera_inv_matrix[3][2];
+
+            // float max_x = shared_camera_inv_matrix[0][0] * _max_x + shared_camera_inv_matrix[1][0] * _max_y + shared_camera_inv_matrix[2][0] * _max_z + shared_camera_inv_matrix[3][0];
+            // float max_y = shared_camera_inv_matrix[0][1] * _max_x + shared_camera_inv_matrix[1][1] * _max_y + shared_camera_inv_matrix[2][1] * _max_z + shared_camera_inv_matrix[3][1];
+            // float max_z = shared_camera_inv_matrix[0][2] * _max_x + shared_camera_inv_matrix[1][2] * _max_y + shared_camera_inv_matrix[2][2] * _max_z + shared_camera_inv_matrix[3][2];
+
+            // const bool sign_x = ray_direction_inv_x < 0;
+            // const bool sign_y = ray_direction_inv_y < 0;
+            // const bool sign_z = ray_direction_inv_z < 0;
+            // float tmin, tmax, tymin, tymax, tzmin, tzmax;
+            // tmin = ((sign_x ? max_x : min_x) - ray_origin_x) * ray_direction_inv_x;
+            // tmax = ((sign_x ? min_x : max_x) - ray_origin_x) * ray_direction_inv_x;
+            // tymin = ((sign_y ? max_y : min_y) - ray_origin_y) * ray_direction_inv_y;
+            // tymax = ((sign_y ? min_y : max_y) - ray_origin_y) * ray_direction_inv_y;
+            // if ((tmin > tymax) || (tymin > tmax)) {
+            //     continue;
+            // }
+            // if (tymin > tmin) {
+            //     tmin = tymin;
+            // }
+            // if (tymax < tmax) {
+            //     tmax = tymax;
+            // }
+            // tzmin = ((sign_z ? max_z : min_z) - ray_origin_z) * ray_direction_inv_z;
+            // tzmax = ((sign_z ? min_z : max_z) - ray_origin_z) * ray_direction_inv_z;
+            // if ((tmin > tzmax) || (tzmin > tmax)) {
+            //     continue;
+            // }
+            // if (tzmin > tmin) {
+            //     tmin = tzmin;
+            // }
+            // if (tzmax < tmax) {
+            //     tmax = tzmax;
+            // }
+            // material_type = RTX_MATERIAL_TYPE_EMISSIVE;
+
+            // hit_color_r = 1.0f;
+            // hit_color_g = 1.0f;
+            // hit_color_b = 1.0f;
+
+            // did_hit_object = true;
+            // continue;
+        }
     }
 }
 
@@ -96,7 +332,7 @@ __global__ void _render(
     const int num_faces,
     const int faces_stride,
     const int colors_stride,
-    const int max_path_depth)
+    const int max_bounce)
 {
     unsigned int tid = threadIdx.x;
     curandStateXORWOW_t state;
@@ -181,7 +417,7 @@ __global__ void _render(
         float reflection_decay_b = 1.0f;
         bool did_hit_light = false;
 
-        for (int depth = 0; depth < max_path_depth; depth++) {
+        for (int depth = 0; depth < max_bounce; depth++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
 
@@ -447,38 +683,38 @@ __global__ void _render(
         color_per_ray[ray_index * 3 + 2] = color_b;
     }
 }
-void rtx_cuda_malloc(void** gpu_buffer, size_t size)
+void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
-    cudaError_t error = cudaMalloc(gpu_buffer, size);
-    printf("malloc %p\n", *gpu_buffer);
+    cudaError_t error = cudaMalloc(gpu_array, size);
+    printf("malloc %p\n", *gpu_array);
     cudaError_t status = cudaGetLastError();
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
     }
 }
-void rtx_cuda_memcpy_host_to_device(void* gpu_buffer, void* cpu_buffer, size_t size)
+void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size)
 {
-    cudaError_t error = cudaMemcpy(gpu_buffer, cpu_buffer, size, cudaMemcpyHostToDevice);
+    cudaError_t error = cudaMemcpy(gpu_array, cpu_array, size, cudaMemcpyHostToDevice);
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(error));
     }
 }
-void rtx_cuda_memcpy_device_to_host(void* cpu_buffer, void* gpu_buffer, size_t size)
+void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size)
 {
-    cudaError_t error = cudaMemcpy(cpu_buffer, gpu_buffer, size, cudaMemcpyDeviceToHost);
+    cudaError_t error = cudaMemcpy(cpu_array, gpu_array, size, cudaMemcpyDeviceToHost);
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(error));
     }
 }
-void rtx_cuda_free(void** buffer)
+void rtx_cuda_free(void** array)
 {
-    if (*buffer != NULL) {
-        printf("free %p\n", *buffer);
-        cudaError_t error = cudaFree(*buffer);
+    if (*array != NULL) {
+        printf("free %p\n", *array);
+        cudaError_t error = cudaFree(*array);
         if (error != cudaSuccess) {
             fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(error));
         }
-        *buffer = NULL;
+        *array = NULL;
     }
 }
 void cuda_device_reset()
@@ -486,56 +722,52 @@ void cuda_device_reset()
     cudaDeviceReset();
 }
 void rtx_cuda_ray_tracing_render(
-    float*& gpu_ray_buffer, const int ray_buffer_size,
-    int*& gpu_face_vertex_index_buffer, const int face_vertex_index_buffer_size,
-    int*& gpu_face_count_buffer, const int face_count_buffer_size,
-    float*& gpu_vertex_buffer, const int vertex_buffer_size,
-    int*& gpu_vertex_count_buffer, const int vertex_count_buffer_size,
-    unsigned int*& gpu_scene_threaded_bvh_node_buffer, const int scene_threaded_bvh_node_buffer_size,
-    float*& gpu_scene_threaded_bvh_aabb_buffer, const int scene_threaded_bvh_aabb_buffer_size,
-    float*& gpu_render_buffer, const int render_buffer_size,
+    float*& gpu_ray_array, const int ray_array_size,
+    int*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
+    int*& gpu_face_count_array, const int face_count_array_size,
+    float*& gpu_vertex_array, const int vertex_array_size,
+    int*& gpu_vertex_count_array, const int vertex_count_array_size,
+    unsigned int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    float*& gpu_scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
+    float*& gpu_render_array, const int render_array_size,
     const int num_rays,
     const int num_rays_per_pixel,
-    const int max_path_depth)
+    const int max_bounce)
 {
-    assert(gpu_ray_buffer != NULL);
-    assert(gpu_face_vertex_index_buffer != NULL);
-    assert(gpu_face_count_buffer != NULL);
-    assert(gpu_vertex_buffer != NULL);
-    assert(gpu_vertex_count_buffer != NULL);
-    assert(gpu_scene_threaded_bvh_node_buffer != NULL);
-    assert(gpu_scene_threaded_bvh_aabb_buffer != NULL);
-    assert(gpu_render_buffer != NULL);
+    assert(gpu_ray_array != NULL);
+    assert(gpu_face_vertex_index_array != NULL);
+    assert(gpu_face_count_array != NULL);
+    assert(gpu_vertex_array != NULL);
+    assert(gpu_vertex_count_array != NULL);
+    assert(gpu_scene_threaded_bvh_node_array != NULL);
+    assert(gpu_scene_threaded_bvh_aabb_array != NULL);
+    assert(gpu_render_array != NULL);
 
     int num_threads = 128;
     int num_blocks = (num_rays - 1) / num_threads + 1;
 
-    num_blocks = 1;
+    int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int num_kernels = 1;
-    assert(num_rays % num_kernels == 0);
-
-    int num_rays_per_thread = num_rays / (num_threads * num_blocks * num_kernels) + 1;
-    int num_rays_per_kernel = num_rays / num_kernels;
-
-    int shared_memory_bytes = sizeof(float) * (vertex_buffer_size + scene_threaded_bvh_aabb_buffer_size) + sizeof(int) * (face_vertex_index_buffer_size + face_count_buffer_size + vertex_count_buffer_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_buffer_size);
+    int shared_memory_bytes = sizeof(float) * (vertex_array_size + scene_threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + face_count_array_size + vertex_count_array_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_array_size);
 
     printf("shared memory: %d bytes\n", shared_memory_bytes);
+    num_blocks = 1;
+    num_rays_per_thread = 1;
 
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
     render<<<num_blocks, num_threads, shared_memory_bytes>>>(
-        gpu_ray_buffer, ray_buffer_size,
-        gpu_face_vertex_index_buffer, face_vertex_index_buffer_size,
-        gpu_face_count_buffer, face_count_buffer_size,
-        gpu_vertex_buffer, vertex_buffer_size,
-        gpu_vertex_count_buffer, vertex_count_buffer_size,
-        gpu_scene_threaded_bvh_node_buffer, scene_threaded_bvh_node_buffer_size,
-        gpu_scene_threaded_bvh_aabb_buffer, scene_threaded_bvh_aabb_buffer_size,
-        gpu_render_buffer, render_buffer_size,
+        gpu_ray_array, ray_array_size,
+        gpu_face_vertex_index_array, face_vertex_index_array_size,
+        gpu_face_count_array, face_count_array_size,
+        gpu_vertex_array, vertex_array_size,
+        gpu_vertex_count_array, vertex_count_array_size,
+        gpu_scene_threaded_bvh_node_array, scene_threaded_bvh_node_array_size,
+        gpu_scene_threaded_bvh_aabb_array, scene_threaded_bvh_aabb_array_size,
+        gpu_render_array, render_array_size,
         num_rays_per_thread,
         num_rays,
-        max_path_depth);
+        max_bounce);
     cudaError_t status = cudaGetLastError();
     if (status != 0) {
         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));

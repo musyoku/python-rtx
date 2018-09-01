@@ -173,12 +173,12 @@ namespace bvh {
         int SceneBVH::num_nodes()
         {
             int num_nodes = _root->num_children() + 1;
-            std::cout << "#nodes: " << num_nodes << std::endl;
+            // std::cout << "#nodes: " << num_nodes << std::endl;
             return num_nodes;
         }
         void SceneBVH::serialize(rtx::array<unsigned int>& node_buffer, rtx::array<float>& aabb_buffer)
         {
-            std::cout << "serialize:" << std::endl;
+            // std::cout << "serialize:" << std::endl;
             int num_nodes = this->num_nodes();
             assert(node_buffer.size() == num_nodes);
             std::vector<std::shared_ptr<Node>> children = { _root };
@@ -197,6 +197,8 @@ namespace bvh {
                 aabb_buffer[node->_index * 8 + 5] = node->_aabb_min.y;
                 aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
                 aabb_buffer[node->_index * 8 + 7] = 1.0f;
+                // std::cout << " index: ";
+                // std::cout << node->_index;
                 // std::cout << " left: ";
                 // if (node->_left) {
                 //     std::cout << node->_left->_index;
@@ -213,8 +215,11 @@ namespace bvh {
                 // if (node->_miss) {
                 //     std::cout << node->_miss->_index;
                 // }
-                // std::bitset<32> x(binary_path);
-                // std::cout << " binary: " << x;
+                // std::cout << " object: ";
+                // if (node->_assigned_object_indices.size() == 1) {
+                //     std::cout << node->_assigned_object_indices[0];
+                // }
+                // std::cout << " binary: " << binary_path;
                 // std::cout << std::endl;
             }
         }
