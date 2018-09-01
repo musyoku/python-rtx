@@ -240,8 +240,27 @@ void RayTracingCUDARenderer::render(
 
     int height = array.shape(0);
     int width = array.shape(1);
+    auto pixel = array.mutable_unchecked<3>();
 
     render_objects(height, width);
+
+    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float sum_r = 0.0f;
+            float sum_g = 0.0f;
+            float sum_b = 0.0f;
+            for (int m = 0; m < num_rays_per_pixel; m++) {
+                int index = y * width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
+                sum_r += _render_array[index + 0];
+                sum_g += _render_array[index + 1];
+                sum_b += _render_array[index + 2];
+            }
+            pixel(y, x, 0) = sum_r / float(num_rays_per_pixel);
+            pixel(y, x, 1) = sum_g / float(num_rays_per_pixel);
+            pixel(y, x, 2) = sum_b / float(num_rays_per_pixel);
+        }
+    }
 
     // int channels = array.shape(2);
     // if (channels != 3) {

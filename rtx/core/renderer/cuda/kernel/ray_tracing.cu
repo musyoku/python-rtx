@@ -172,6 +172,11 @@ __global__ void render(
             return;
         }
 
+        render_array[ray_index * 3 + 0] = 1.0f;
+        render_array[ray_index * 3 + 1] = 1.0f;
+        render_array[ray_index * 3 + 2] = 1.0f;
+        continue;
+
         array_index = ray_index * 8;
         ray_direction_x = ray_array[array_index + 0];
         ray_direction_y = ray_array[array_index + 1];
@@ -193,7 +198,6 @@ __global__ void render(
                     break;
                 }
 
-                assert(scene_bvh_current_node_id < scene_threaded_bvh_node_array_size);
                 scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
                 scene_bvh_object_id = 0xFF & scene_bvh_binary_node;
                 scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
@@ -256,14 +260,18 @@ __global__ void render(
                     }
                 }
 
-                if (traversal == 1) {
-                    render_array[ray_index * 3 + 0] = 1.0f;
-                    render_array[ray_index * 3 + 1] = 1.0f;
-                    render_array[ray_index * 3 + 2] = 1.0f;
-                    return;
-                }
+                // if (traversal == 1) {
+                //     render_array[ray_index * 3 + 0] = 1.0f;
+                //     render_array[ray_index * 3 + 1] = 1.0f;
+                //     render_array[ray_index * 3 + 2] = 1.0f;
+                //     return;
+                // }
             }
-            return;
+
+            render_array[ray_index * 3 + 0] = 1.0f;
+            render_array[ray_index * 3 + 1] = 1.0f;
+            render_array[ray_index * 3 + 2] = 1.0f;
+            continue;
 
             // // http://www.cs.utah.edu/~awilliam/box/box.pdf
             // float _min_x = shared_face_vertices[index + 0];
@@ -748,14 +756,14 @@ void rtx_cuda_ray_tracing_render(
 
     int num_threads = 128;
     int num_blocks = (num_rays - 1) / num_threads + 1;
+    num_blocks = 512;
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
     int shared_memory_bytes = sizeof(float) * (vertex_array_size + scene_threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + face_count_array_size + vertex_count_array_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_array_size);
 
     printf("shared memory: %d bytes\n", shared_memory_bytes);
-    num_blocks = 1;
-    num_rays_per_thread = 1;
+    // num_rays_per_thread = 1;
 
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
