@@ -199,11 +199,10 @@ namespace bvh {
                 aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
                 aabb_buffer[node->_index * 8 + 7] = 1.0f;
 
-                if(object_id_bit == 3){
-                    std::cout << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << std::endl;
-                }
+                // std::cout << "node: " << node->_index << " object: " << object_id_bit << " "
+                //           << "max: " << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << " ";
+                // std::cout << "min: " << node->_aabb_min.x << ", " << node->_aabb_min.y << ", " << node->_aabb_min.z << std::endl;
 
-                
                 // std::cout << " index: ";
                 // std::cout << node->_index;
                 // std::cout << " left: ";

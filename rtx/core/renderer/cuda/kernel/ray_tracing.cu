@@ -229,14 +229,14 @@ __global__ void render(
                     if (scene_bvh_object_index == SCENE_BVH_INNER_NODE) {
                         scene_bvh_current_node_id = scene_bvh_hit_node_id;
                     } else {
-                        assert(scene_bvh_object_index * 8 + 0 < scene_threaded_bvh_aabb_array_size);
-                        assert(scene_bvh_object_index * 8 + 7 < scene_threaded_bvh_aabb_array_size);
-                        aabb_max_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 0];
-                        aabb_max_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 1];
-                        aabb_max_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 2];
-                        aabb_min_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 4];
-                        aabb_min_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 5];
-                        aabb_min_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_object_index * 8 + 6];
+                        assert(scene_bvh_current_node_id * 8 + 0 < scene_threaded_bvh_aabb_array_size);
+                        assert(scene_bvh_current_node_id * 8 + 7 < scene_threaded_bvh_aabb_array_size);
+                        aabb_max_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 0];
+                        aabb_max_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 1];
+                        aabb_max_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 2];
+                        aabb_min_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 4];
+                        aabb_min_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 5];
+                        aabb_min_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 6];
 
                         // http://www.cs.utah.edu/~awilliam/box/box.pdf
                         tmin = ((ray_direction_inv_x < 0 ? aabb_max_x : aabb_min_x) - ray_origin_x) * ray_direction_inv_x;
@@ -244,18 +244,6 @@ __global__ void render(
                         tmp_tmin = ((ray_direction_inv_y < 0 ? aabb_max_y : aabb_min_y) - ray_origin_y) * ray_direction_inv_y;
                         tmp_tmax = ((ray_direction_inv_y < 0 ? aabb_min_y : aabb_max_y) - ray_origin_y) * ray_direction_inv_y;
 
-
-                        if (scene_bvh_object_index == 3 && ray_index == 10 * 32 + 5) {
-                            printf("+traversal: %d max: %f %f dir: %f inv: %f tmax: %f tmin: %f ttmax: %f ttmin: %f \n", traversal, aabb_max_z, aabb_min_z, ray_direction_z, ray_direction_inv_z, tmax, tmin, tmp_tmax, tmp_tmin);
-                            printf("AABB(max): (%f, %f, %f) min: (%f, %f, %f)\n", aabb_max_x, aabb_max_y, aabb_max_z, aabb_min_x, aabb_min_y, aabb_min_z);
-                            printf("ray: (%f, %f, %f)\n", ray_direction_x, ray_direction_y, ray_direction_z);
-                            printf("object: %d\n", scene_bvh_object_index);
-                            reflection_decay_r = 0.0f;
-                            reflection_decay_g = 0.0f;
-                            reflection_decay_b = 0.0f;
-                        }
-
-                        
                         if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
                             scene_bvh_current_node_id = scene_bvh_miss_node_id;
                             continue;
@@ -942,7 +930,6 @@ __global__ void render(
 //                     hit_color_r = 1.0f;
 //                     hit_color_g = 1.0f;
 //                     hit_color_b = 1.0f;
-
 
 //                     did_hit_object = true;
 //                     continue;
