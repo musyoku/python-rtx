@@ -1,5 +1,6 @@
 #include "standard.h"
 #include <cfloat>
+#include <cassert>
 #include <iostream>
 
 namespace rtx {
@@ -91,7 +92,7 @@ int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int ve
 
 void StandardGeometry::compute_axis_aligned_bounding_box()
 {
-    _aabb_max = glm::vec4f(0.0f);
+    _aabb_max = glm::vec4f(-FLT_MAX);
     _aabb_min = glm::vec4f(FLT_MAX);
     for (auto vertex : _vertex_array) {
         _aabb_max.x = vertex.x > _aabb_max.x ? vertex.x : _aabb_max.x;
@@ -101,6 +102,14 @@ void StandardGeometry::compute_axis_aligned_bounding_box()
         _aabb_min.y = vertex.y < _aabb_min.y ? vertex.y : _aabb_min.y;
         _aabb_min.z = vertex.z < _aabb_min.z ? vertex.z : _aabb_min.z;
     }
+
+    assert(_aabb_min.x < FLT_MAX);
+    assert(_aabb_min.y < FLT_MAX);
+    assert(_aabb_min.z < FLT_MAX);
+    assert(_aabb_max.x > -FLT_MAX);
+    assert(_aabb_max.y > -FLT_MAX);
+    assert(_aabb_max.z > -FLT_MAX);
+
     _center = (_aabb_max - _aabb_min) / 2.0f;
 }
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
@@ -110,7 +119,6 @@ std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     for (auto vertex : _vertex_array) {
         glm::vec4f v = transformation_matrix * vertex;
-        std::cout << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ") <- ("  << vertex.x << ", " << vertex.y << ", " << vertex.z << ", " << vertex.w << ")" << std::endl;
         geometry->_vertex_array.emplace_back(v);
     }
     geometry->compute_axis_aligned_bounding_box();

@@ -44,16 +44,17 @@ namespace bvh {
             assert(assigned_object_indices.size() <= geometry_array.size());
             _assigned_object_indices = assigned_object_indices;
             _index = current_index;
+            _is_leaf = false;
             // std::cout << "id: " << _index << std::endl;
             current_index++;
             if (current_index > 253) {
                 throw std::runtime_error("BVH Error: Too many nodes.");
             }
-            _aabb_max = glm::vec4f(0.0f);
-            _aabb_min = glm::vec4f(0.0f);
+            _aabb_max = glm::vec4f(-FLT_MAX);
+            _aabb_min = glm::vec4f(FLT_MAX);
 
-            for (int object_id : assigned_object_indices) {
-                auto& geometry = geometry_array.at(object_id);
+            for (int object_index : assigned_object_indices) {
+                auto& geometry = geometry_array.at(object_index);
                 _aabb_max.x = geometry->_aabb_max.x > _aabb_max.x ? geometry->_aabb_max.x : _aabb_max.x;
                 _aabb_max.y = geometry->_aabb_max.y > _aabb_max.y ? geometry->_aabb_max.y : _aabb_max.y;
                 _aabb_max.z = geometry->_aabb_max.z > _aabb_max.z ? geometry->_aabb_max.z : _aabb_max.z;
@@ -68,10 +69,10 @@ namespace bvh {
                 return;
             }
 
-            glm::vec3f max_center = glm::vec3f(0.0f);
+            glm::vec3f max_center = glm::vec3f(-FLT_MAX);
             glm::vec3f min_center = glm::vec3f(FLT_MAX);
-            for (int object_id : assigned_object_indices) {
-                auto& geometry = geometry_array.at(object_id);
+            for (int object_index : assigned_object_indices) {
+                auto& geometry = geometry_array.at(object_index);
                 max_center.x = geometry->_center.x > max_center.x ? geometry->_center.x : max_center.x;
                 max_center.y = geometry->_center.y > max_center.y ? geometry->_center.y : max_center.y;
                 max_center.z = geometry->_center.z > max_center.z ? geometry->_center.z : max_center.z;
@@ -84,14 +85,14 @@ namespace bvh {
             int longest_axis = detect_longest_axis(axis_length);
             // std::cout << "longest: " << longest_axis << std::endl;
             std::vector<std::pair<int, float>> object_center_array;
-            for (int object_id : assigned_object_indices) {
-                auto& geometry = geometry_array.at(object_id);
+            for (int object_index : assigned_object_indices) {
+                auto& geometry = geometry_array.at(object_index);
                 if (longest_axis == RTX_AXIS_X) {
-                    object_center_array.emplace_back(object_id, geometry->_center.x);
+                    object_center_array.emplace_back(object_index, geometry->_center.x);
                 } else if (longest_axis == RTX_AXIS_Y) {
-                    object_center_array.emplace_back(object_id, geometry->_center.y);
+                    object_center_array.emplace_back(object_index, geometry->_center.y);
                 } else {
-                    object_center_array.emplace_back(object_id, geometry->_center.z);
+                    object_center_array.emplace_back(object_index, geometry->_center.z);
                 }
             }
             std::sort(object_center_array.begin(), object_center_array.end(), compare_position);
@@ -163,8 +164,8 @@ namespace bvh {
         SceneBVH::SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array)
         {
             std::vector<int> assigned_object_indices;
-            for (int object_id = 0; object_id < (int)geometry_array.size(); object_id++) {
-                assigned_object_indices.push_back(object_id);
+            for (int object_index = 0; object_index < (int)geometry_array.size(); object_index++) {
+                assigned_object_indices.push_back(object_index);
             }
             _node_current_index = 0;
             _root = std::make_shared<Node>(assigned_object_indices, geometry_array, _node_current_index);
@@ -197,6 +198,12 @@ namespace bvh {
                 aabb_buffer[node->_index * 8 + 5] = node->_aabb_min.y;
                 aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
                 aabb_buffer[node->_index * 8 + 7] = 1.0f;
+
+                if(object_id_bit == 3){
+                    std::cout << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << std::endl;
+                }
+
+                
                 // std::cout << " index: ";
                 // std::cout << node->_index;
                 // std::cout << " left: ";
@@ -215,10 +222,7 @@ namespace bvh {
                 // if (node->_miss) {
                 //     std::cout << node->_miss->_index;
                 // }
-                // std::cout << " object: ";
-                // if (node->_assigned_object_indices.size() == 1) {
-                //     std::cout << node->_assigned_object_indices[0];
-                // }
+                // std::cout << " object: " << object_id_bit;
                 // std::cout << " binary: " << binary_path;
                 // std::cout << std::endl;
             }

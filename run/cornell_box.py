@@ -85,8 +85,8 @@ box.set_position((-1, -box_size / 2 + 1.6, -1))
 box.set_rotation((0, math.pi / 5, 0))
 scene.add(box)
 
-screen_width = 512
-screen_height = 512
+screen_width = 32
+screen_height = 32
 
 render_options = rtx.RayTracingOptions()
 render_options.num_rays_per_pixel = 1
@@ -105,7 +105,7 @@ camera = rtx.PerspectiveCamera(
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 # renderer.render(scene, camera, render_options, render_buffer)
 camera_rad = 0
-camera_rad = math.pi / 10
+camera_rad = math.pi / 10 * 5
 radius = 5.5
 while True:
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))

@@ -82,11 +82,11 @@ void RayTracingCUDARenderer::serialize_geometries()
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
         int next_array_index = geometry->serialize_vertices(_vertex_array, array_index);
-        std::cout << "vertex: ";
-        for(int i = 0;i < geometry->num_vertices();i++){
-            std::cout << "(" << _vertex_array[(vertex_offset + i) * 4 + 0] << ", " << _vertex_array[(vertex_offset + i) * 4 + 1] << ", " << _vertex_array[(vertex_offset + i) * 4 + 2] << ") ";
-        }
-        std::cout << std::endl;
+        // std::cout << "vertex: ";
+        // for(int i = 0;i < geometry->num_vertices();i++){
+        //     std::cout << "(" << _vertex_array[(vertex_offset + i) * 4 + 0] << ", " << _vertex_array[(vertex_offset + i) * 4 + 1] << ", " << _vertex_array[(vertex_offset + i) * 4 + 2] << ") ";
+        // }
+        // std::cout << std::endl;
         assert(next_array_index == array_index + geometry->num_vertices() * stride);
         _object_vertex_offset_array[object_index] = vertex_offset;
         _object_vertex_count_array[object_index] = geometry->num_vertices();
@@ -98,15 +98,15 @@ void RayTracingCUDARenderer::serialize_geometries()
     array_index = 0;
     int face_offset = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        std::cout << "object: " << object_index << std::endl;
+        // std::cout << "object: " << object_index << std::endl;
         auto& geometry = _transformed_geometry_array.at(object_index);
         int vertex_offset = _object_vertex_offset_array[object_index];
         int next_array_index = geometry->serialize_faces(_face_vertex_index_array, array_index, vertex_offset);
-        std::cout << "face: ";
-        for(int i = array_index;i < next_array_index;i++){
-            std::cout << _face_vertex_index_array[i] << " ";
-        }
-        std::cout << std::endl;
+        // std::cout << "face: ";
+        // for(int i = array_index;i < next_array_index;i++){
+        //     std::cout << _face_vertex_index_array[i] << " ";
+        // }
+        // std::cout << std::endl;
         assert(next_array_index == array_index + geometry->num_faces() * stride);
         _object_face_offset_array[object_index] = face_offset;
         _object_face_count_array[object_index] = geometry->num_faces();
