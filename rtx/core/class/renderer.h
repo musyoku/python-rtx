@@ -5,8 +5,5 @@
 
 namespace rtx {
 class Renderer {
-public:
-    int _width;
-    int _height;
 };
 }

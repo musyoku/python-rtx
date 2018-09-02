@@ -9,12 +9,14 @@ void cuda_device_reset();
 void rtx_cuda_ray_tracing_render(
     float*& gpu_ray_array, const int ray_array_size,
     int*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
-    int*& gpu_face_count_array, const int face_count_array_size,
     float*& gpu_vertex_array, const int vertex_array_size,
-    int*& gpu_vertex_count_array, const int vertex_count_array,
+    int*& gpu_object_face_count_array, const int object_face_count_array_size,
+    int*& gpu_object_face_offset_array, const int object_face_offset_array_size,
+    int*& gpu_object_vertex_count_array, const int object_vertex_count_array,
+    int*& gpu_object_vertex_offset_array, const int object_vertex_offset_array,
     unsigned int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     float*& gpu_scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float*& gpu_render_array, const int render_array_size,
     const int num_rays,
     const int num_rays_per_pixel,
-    const int max_path_depth);
+    const int max_bounce);

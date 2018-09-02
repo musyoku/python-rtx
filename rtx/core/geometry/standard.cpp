@@ -110,6 +110,7 @@ std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     for (auto vertex : _vertex_array) {
         glm::vec4f v = transformation_matrix * vertex;
+        std::cout << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ") <- ("  << vertex.x << ", " << vertex.y << ", " << vertex.z << ", " << vertex.w << ")" << std::endl;
         geometry->_vertex_array.emplace_back(v);
     }
     geometry->compute_axis_aligned_bounding_box();

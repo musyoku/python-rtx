@@ -89,8 +89,8 @@ screen_width = 512
 screen_height = 512
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 512
-render_options.path_depth = 5
+render_options.num_rays_per_pixel = 1
+render_options.path_depth = 1
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(
@@ -105,7 +105,7 @@ camera = rtx.PerspectiveCamera(
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 # renderer.render(scene, camera, render_options, render_buffer)
 camera_rad = 0
-# camera_rad = math.pi / 10
+camera_rad = math.pi / 10
 radius = 5.5
 while True:
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
@@ -118,4 +118,4 @@ while True:
     plt.imshow(pixels, interpolation="none")
     plt.pause(1e-8)
 
-    camera_rad += math.pi / 10
+    # camera_rad += math.pi / 10

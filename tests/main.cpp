@@ -52,7 +52,7 @@ void run()
     unsigned char* pixels = new unsigned char[height * width * channels];
     render->render(scene, camera, options, pixels, height, width, channels);
     auto start = std::chrono::system_clock::now();
-    int repeat = 1;
+    int repeat = 5;
     for (int i = 0; i < repeat; i++) {
         render->render(scene, camera, options, pixels, height, width, channels);
     }
