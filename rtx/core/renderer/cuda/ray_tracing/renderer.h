@@ -21,6 +21,7 @@ private:
     rtx::array<int> _object_face_count_array;
     rtx::array<int> _object_vertex_offset_array;
     rtx::array<int> _object_vertex_count_array;
+    rtx::array<int> _object_geometry_type_array;
     rtx::array<unsigned int> _scene_threaded_bvh_node_array;
     rtx::array<float> _scene_threaded_bvh_aabb_array;
     rtx::array<float> _render_array;
@@ -32,6 +33,7 @@ private:
     int* _gpu_object_face_count_array;
     int* _gpu_object_vertex_offset_array;
     int* _gpu_object_vertex_count_array;
+    int* _gpu_object_geometry_type_array;
     unsigned int* _gpu_scene_threaded_bvh_node_array;
     float* _gpu_scene_threaded_bvh_aabb_array;
     float* _gpu_render_array;

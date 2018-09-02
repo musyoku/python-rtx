@@ -22,6 +22,7 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_object_face_count_array = NULL;
     _gpu_object_vertex_offset_array = NULL;
     _gpu_object_vertex_count_array = NULL;
+    _gpu_object_geometry_type_array = NULL;
     _gpu_scene_threaded_bvh_node_array = NULL;
     _gpu_scene_threaded_bvh_aabb_array = NULL;
     _gpu_render_array = NULL;
@@ -76,8 +77,15 @@ void RayTracingCUDARenderer::serialize_geometries()
     _object_face_count_array = rtx::array<int>(num_objects);
     _object_vertex_offset_array = rtx::array<int>(num_objects);
     _object_vertex_count_array = rtx::array<int>(num_objects);
-    int array_index = 0;
+    _object_geometry_type_array = rtx::array<int>(num_objects);
 
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& geometry = _transformed_geometry_array.at(object_index);
+        _object_geometry_type_array[object_index] = geometry->type();
+    }
+
+
+    int array_index = 0;
     int vertex_offset = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
@@ -167,8 +175,8 @@ void RayTracingCUDARenderer::serialize_rays(int height, int width)
 }
 void RayTracingCUDARenderer::render_objects(int height, int width)
 {
-    // GPUの線形メモリへ転送するデータを準備する
-    // Construct arrays to transfer to the Linear Memory of GPU
+    // GPUメモリへ転送するデータを準備する
+    // Construct arrays to transfer to the GPU memory
     if (_scene->updated()) {
         transform_geometries_to_view_space();
         serialize_geometries();
@@ -178,18 +186,21 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         rtx_cuda_free((void**)&_gpu_object_face_offset_array);
         rtx_cuda_free((void**)&_gpu_object_vertex_count_array);
         rtx_cuda_free((void**)&_gpu_object_vertex_offset_array);
+        rtx_cuda_free((void**)&_gpu_object_geometry_type_array);
         rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(float) * _vertex_array.size());
         rtx_cuda_malloc((void**)&_gpu_face_vertex_index_array, sizeof(int) * _face_vertex_index_array.size());
         rtx_cuda_malloc((void**)&_gpu_object_face_count_array, sizeof(int) * _object_face_count_array.size());
         rtx_cuda_malloc((void**)&_gpu_object_face_offset_array, sizeof(int) * _object_face_offset_array.size());
-        rtx_cuda_malloc((void**)&_gpu_object_vertex_count_array, sizeof(float) * _object_vertex_count_array.size());
-        rtx_cuda_malloc((void**)&_gpu_object_vertex_offset_array, sizeof(float) * _object_vertex_offset_array.size());
+        rtx_cuda_malloc((void**)&_gpu_object_vertex_count_array, sizeof(int) * _object_vertex_count_array.size());
+        rtx_cuda_malloc((void**)&_gpu_object_vertex_offset_array, sizeof(int) * _object_vertex_offset_array.size());
+        rtx_cuda_malloc((void**)&_gpu_object_geometry_type_array, sizeof(int) * _object_geometry_type_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_vertex_array.data(), sizeof(float) * _vertex_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_index_array, (void*)_face_vertex_index_array.data(), sizeof(int) * _face_vertex_index_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_face_count_array, (void*)_object_face_count_array.data(), sizeof(int) * _object_face_count_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_face_offset_array, (void*)_object_face_offset_array.data(), sizeof(int) * _object_face_offset_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_vertex_count_array, (void*)_object_vertex_count_array.data(), sizeof(float) * _object_vertex_count_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_vertex_offset_array, (void*)_object_vertex_offset_array.data(), sizeof(float) * _object_vertex_offset_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_vertex_count_array, (void*)_object_vertex_count_array.data(), sizeof(int) * _object_vertex_count_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_vertex_offset_array, (void*)_object_vertex_offset_array.data(), sizeof(int) * _object_vertex_offset_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_geometry_type_array, (void*)_object_geometry_type_array.data(), sizeof(int) * _object_geometry_type_array.size());
     } else {
         if (_camera->updated()) {
             transform_geometries_to_view_space();
@@ -242,6 +253,7 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         _gpu_object_face_offset_array, _object_face_offset_array.size(),
         _gpu_object_vertex_count_array, _object_vertex_count_array.size(),
         _gpu_object_vertex_offset_array, _object_vertex_offset_array.size(),
+        _gpu_object_geometry_type_array, _object_geometry_type_array.size(),
         _gpu_scene_threaded_bvh_node_array, _scene_threaded_bvh_node_array.size(),
         _gpu_scene_threaded_bvh_aabb_array, _scene_threaded_bvh_aabb_array.size(),
         _gpu_render_array, _render_array.size(),
