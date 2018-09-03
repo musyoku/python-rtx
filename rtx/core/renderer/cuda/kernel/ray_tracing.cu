@@ -81,6 +81,7 @@ __global__ void bvh_kernel(
         }
     }
     __syncthreads();
+
     // if (thread_id == 0) {
     //     for (int i = 0; i < face_vertex_index_array_size; i++) {
     //         if (shared_face_vertex_index_array[i] != face_vertex_index_array[i]) {
@@ -132,9 +133,7 @@ __global__ void bvh_kernel(
     //     }
     // }
 
-    const float eps = 0.0000001;
     // bool did_hit_object;
-    int array_index;
     float ray_direction_x;
     float ray_direction_y;
     float ray_direction_z;
@@ -144,11 +143,11 @@ __global__ void bvh_kernel(
     float ray_direction_inv_x;
     float ray_direction_inv_y;
     float ray_direction_inv_z;
-    unsigned int scene_bvh_binary_node;
-    unsigned int scene_bvh_object_index;
-    unsigned int scene_bvh_current_node_id;
-    unsigned int scene_bvh_hit_node_id;
-    unsigned int scene_bvh_miss_node_id;
+    // unsigned int scene_bvh_binary_node;
+    // unsigned int scene_bvh_object_index;
+    // unsigned int scene_bvh_current_node_id;
+    // unsigned int scene_bvh_hit_node_id;
+    // unsigned int scene_bvh_miss_node_id;
     // float aabb_max_x;
     // float aabb_max_y;
     // float aabb_max_z;
@@ -169,7 +168,6 @@ __global__ void bvh_kernel(
     float reflection_decay_r;
     float reflection_decay_g;
     float reflection_decay_b;
-    float dot, norm;
     // float va_x, va_y, va_z;
     // float vb_x, vb_y, vb_z;
     // float vc_x, vc_y, vc_z;
@@ -180,7 +178,7 @@ __global__ void bvh_kernel(
             return;
         }
 
-        array_index = ray_index * 8;
+        int array_index = ray_index * 8;
         ray_direction_x = ray_array[array_index + 0];
         ray_direction_y = ray_array[array_index + 1];
         ray_direction_z = ray_array[array_index + 2];
@@ -200,7 +198,7 @@ __global__ void bvh_kernel(
             bool did_hit_object = false;
 
             // BVH traversal
-            scene_bvh_current_node_id = 0;
+            unsigned int scene_bvh_current_node_id = 0;
             for (int traversal = 0; traversal < scene_threaded_bvh_node_array_size; traversal++) {
 
                 if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
@@ -208,10 +206,10 @@ __global__ void bvh_kernel(
                 }
                 assert(scene_bvh_current_node_id < scene_threaded_bvh_node_array_size);
 
-                scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
-                scene_bvh_object_index = 0xFF & scene_bvh_binary_node;
-                scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
-                scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
+                unsigned int scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
+                unsigned int scene_bvh_object_index = 0xFF & scene_bvh_binary_node;
+                unsigned int scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
+                unsigned int scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
 
                 if (scene_bvh_object_index == SCENE_BVH_INNER_NODE) {
                     scene_bvh_current_node_id = scene_bvh_hit_node_id;
@@ -296,7 +294,7 @@ __global__ void bvh_kernel(
                     if (geometry_type == RTX_GEOMETRY_TYPE_STANDARD) {
 
                         for (int j = 0; j < faces_count; j++) {
-                            array_index = 4 * shared_face_vertex_index_array[(face_index_offset + j) * 4 + 0];
+                            int array_index = 4 * shared_face_vertex_index_array[(face_index_offset + j) * 4 + 0];
                             // if (thread_id == 0) {
                             //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
                             // }
@@ -347,7 +345,7 @@ __global__ void bvh_kernel(
                             float h_y = ray_direction_z * edge_ca_x - ray_direction_x * edge_ca_z;
                             float h_z = ray_direction_x * edge_ca_y - ray_direction_y * edge_ca_x;
                             float a = edge_ba_x * h_x + edge_ba_y * h_y + edge_ba_z * h_z;
-                            if (a > -eps && a < eps) {
+                            if (a > -0.0000001 && a < 0.0000001) {
                                 continue;
                             }
                             float f = 1.0f / a;
@@ -355,7 +353,7 @@ __global__ void bvh_kernel(
                             float s_x = ray_origin_x - va_x;
                             float s_y = ray_origin_y - va_y;
                             float s_z = ray_origin_z - va_z;
-                            dot = s_x * h_x + s_y * h_y + s_z * h_z;
+                            float dot = s_x * h_x + s_y * h_y + s_z * h_z;
                             float u = f * dot;
                             if (u < 0.0f || u > 1.0f) {
                                 continue;
@@ -372,7 +370,7 @@ __global__ void bvh_kernel(
                             float tmp_y = edge_ba_z * edge_ca_x - edge_ba_x * edge_ca_z;
                             float tmp_z = edge_ba_x * edge_ca_y - edge_ba_y * edge_ca_x;
 
-                            norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
+                            float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
 
                             tmp_x = tmp_x / norm;
                             tmp_y = tmp_y / norm;
@@ -411,7 +409,7 @@ __global__ void bvh_kernel(
                     } else if (geometry_type == RTX_GEOMETRY_TYPE_SPHERE) {
                         assert(faces_count == 1);
                         for (int j = 0; j < faces_count; j++) {
-                            array_index = 4 * shared_face_vertex_index_array[face_index_offset * 4 + 0];
+                            int array_index = 4 * shared_face_vertex_index_array[face_index_offset * 4 + 0];
                             assert(array_index + 0 < vertex_array_size);
 
                             float center_x = shared_vertex_array[array_index + 0];
@@ -452,7 +450,7 @@ __global__ void bvh_kernel(
                             float tmp_x = hit_point_x - center_x;
                             float tmp_y = hit_point_y - center_y;
                             float tmp_z = hit_point_z - center_z;
-                            norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
+                            float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
 
                             hit_face_normal_x = tmp_x / norm;
                             hit_face_normal_y = tmp_y / norm;
@@ -483,12 +481,12 @@ __global__ void bvh_kernel(
                 float diffuese_x = curand_normal(&state);
                 float diffuese_y = curand_normal(&state);
                 float diffuese_z = curand_normal(&state);
-                norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
+                float norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
                 diffuese_x /= norm;
                 diffuese_y /= norm;
                 diffuese_z /= norm;
 
-                dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
+                float dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
                 if (dot < 0.0f) {
                     diffuese_x = -diffuese_x;
                     diffuese_y = -diffuese_y;
@@ -642,8 +640,6 @@ __global__ void kernel(
     // }
 
     const float eps = 0.0000001;
-    bool did_hit_object;
-    int array_index;
     float ray_direction_x;
     float ray_direction_y;
     float ray_direction_z;
@@ -653,19 +649,6 @@ __global__ void kernel(
     float ray_direction_inv_x;
     float ray_direction_inv_y;
     float ray_direction_inv_z;
-    unsigned int scene_bvh_binary_node;
-    unsigned int scene_bvh_object_index;
-    unsigned int scene_bvh_current_node_id;
-    unsigned int scene_bvh_hit_node_id;
-    unsigned int scene_bvh_miss_node_id;
-    float aabb_max_x;
-    float aabb_max_y;
-    float aabb_max_z;
-    float aabb_min_x;
-    float aabb_min_y;
-    float aabb_min_z;
-    float tmin, tmax, tmp_tmin, tmp_tmax;
-    float min_distance;
     float hit_point_x;
     float hit_point_y;
     float hit_point_z;
@@ -678,10 +661,6 @@ __global__ void kernel(
     float reflection_decay_r;
     float reflection_decay_g;
     float reflection_decay_b;
-    float dot, norm;
-    float va_x, va_y, va_z;
-    float vb_x, vb_y, vb_z;
-    float vc_x, vc_y, vc_z;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
@@ -689,7 +668,7 @@ __global__ void kernel(
             return;
         }
 
-        array_index = ray_index * 8;
+        int array_index = ray_index * 8;
         ray_direction_x = ray_array[array_index + 0];
         ray_direction_y = ray_array[array_index + 1];
         ray_direction_z = ray_array[array_index + 2];
@@ -705,8 +684,8 @@ __global__ void kernel(
         reflection_decay_b = 1.0f;
 
         for (int bounce = 0; bounce < max_bounce; bounce++) {
-            min_distance = FLT_MAX;
-            did_hit_object = false;
+            float min_distance = FLT_MAX;
+            bool did_hit_object = false;
 
             for (int object_index = 0; object_index < object_face_count_array_size; object_index++) {
                 int faces_count = shared_object_face_count_array[object_index];
@@ -745,9 +724,9 @@ __global__ void kernel(
                         //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
-                        va_x = shared_vertex_array[array_index + 0];
-                        va_y = shared_vertex_array[array_index + 1];
-                        va_z = shared_vertex_array[array_index + 2];
+                        float va_x = shared_vertex_array[array_index + 0];
+                        float va_y = shared_vertex_array[array_index + 1];
+                        float va_z = shared_vertex_array[array_index + 2];
 
                         // if (thread_id == 0) {
                         //     printf("va: (%f, %f, %f)\n", va_x, va_y, va_z);
@@ -761,9 +740,9 @@ __global__ void kernel(
                         //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
-                        vb_x = shared_vertex_array[array_index + 0];
-                        vb_y = shared_vertex_array[array_index + 1];
-                        vb_z = shared_vertex_array[array_index + 2];
+                        float vb_x = shared_vertex_array[array_index + 0];
+                        float vb_y = shared_vertex_array[array_index + 1];
+                        float vb_z = shared_vertex_array[array_index + 2];
 
                         // if (thread_id == 0) {
                         //     printf("vb: (%f, %f, %f)\n", vb_x, vb_y, vb_z);
@@ -777,9 +756,9 @@ __global__ void kernel(
                         //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
-                        vc_x = shared_vertex_array[array_index + 0];
-                        vc_y = shared_vertex_array[array_index + 1];
-                        vc_z = shared_vertex_array[array_index + 2];
+                        float vc_x = shared_vertex_array[array_index + 0];
+                        float vc_y = shared_vertex_array[array_index + 1];
+                        float vc_z = shared_vertex_array[array_index + 2];
 
                         // if (thread_id == 0) {
                         //     printf("vc: (%f, %f, %f)\n", vc_x, vc_y, vc_z);
@@ -924,12 +903,12 @@ __global__ void kernel(
                 float diffuese_x = curand_normal(&state);
                 float diffuese_y = curand_normal(&state);
                 float diffuese_z = curand_normal(&state);
-                norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
+                float norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
                 diffuese_x /= norm;
                 diffuese_y /= norm;
                 diffuese_z /= norm;
 
-                dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
+                float dot = hit_face_normal_x * diffuese_x + hit_face_normal_y * diffuese_y + hit_face_normal_z * diffuese_z;
                 if (dot < 0.0f) {
                     diffuese_x = -diffuese_x;
                     diffuese_y = -diffuese_y;
@@ -1391,9 +1370,9 @@ void rtx_cuda_ray_tracing_render(
     assert(gpu_scene_threaded_bvh_aabb_array != NULL);
     assert(gpu_render_array != NULL);
 
-    int num_threads = 128;
+    int num_threads = 32;
     // int num_blocks = (num_rays - 1) / num_threads + 1;
-    int num_blocks = 512;
+    int num_blocks = 256;
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
@@ -1407,7 +1386,7 @@ void rtx_cuda_ray_tracing_render(
 
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
-    bvh_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
+    kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         gpu_ray_array, ray_array_size,
         gpu_face_vertex_index_array, face_vertex_index_array_size,
         gpu_vertex_array, vertex_array_size,
