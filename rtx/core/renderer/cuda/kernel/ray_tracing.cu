@@ -193,6 +193,8 @@ __global__ void bvh_kernel(
         reflection_decay_g = 1.0f;
         reflection_decay_b = 1.0f;
 
+        bool did_hit_light = false;
+
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
@@ -212,8 +214,6 @@ __global__ void bvh_kernel(
                 unsigned int scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
 
                 if (scene_bvh_object_index == SCENE_BVH_INNER_NODE) {
-                    scene_bvh_current_node_id = scene_bvh_hit_node_id;
-                } else {
                     assert(scene_bvh_current_node_id * 8 + 0 < scene_threaded_bvh_aabb_array_size);
                     assert(scene_bvh_current_node_id * 8 + 7 < scene_threaded_bvh_aabb_array_size);
                     float aabb_max_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 0];
@@ -269,6 +269,11 @@ __global__ void bvh_kernel(
                         tmax = tmp_tmax;
                     }
 
+                    if (tmax < 0.001) {
+                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        continue;
+                    }
+
                     // if (thread_id == 0) {
                     //     printf("index: %u hit: %u miss: %u object: %u binary: %u\n", scene_bvh_current_node_id,
                     //         scene_bvh_hit_node_id, scene_bvh_miss_node_id, scene_bvh_object_index, scene_bvh_binary_node);
@@ -282,6 +287,20 @@ __global__ void bvh_kernel(
                     //     // printf("next: %u\n", scene_bvh_current_node_id);
                     // }
 
+                    if (scene_bvh_current_node_id == 1) {
+
+                        reflection_decay_r = 0.0f;
+                        reflection_decay_g = 1.0f;
+                        reflection_decay_b = 0.0f;
+                    } else if (scene_bvh_current_node_id == 54) {
+
+                        reflection_decay_r = 1.0f;
+                        reflection_decay_g = 0.0f;
+                        reflection_decay_b = 0.0f;
+                    }
+
+                    scene_bvh_current_node_id = scene_bvh_hit_node_id;
+                } else {
                     int faces_count = shared_object_face_count_array[scene_bvh_object_index];
                     int face_index_offset = shared_object_face_offset_array[scene_bvh_object_index];
                     int vertices_count = shared_object_vertex_count_array[scene_bvh_object_index];
@@ -400,11 +419,20 @@ __global__ void bvh_kernel(
                             hit_face_normal_y = tmp_y;
                             hit_face_normal_z = tmp_z;
 
-                            hit_color_r = (tmp_x + 1.0f) / 2.0f;
-                            hit_color_g = (tmp_y + 1.0f) / 2.0f;
-                            hit_color_b = (tmp_z + 1.0f) / 2.0f;
+                            hit_color_r = 0.8f;
+                            hit_color_g = 0.8f;
+                            hit_color_b = 0.8f;
+
+                            if (scene_bvh_object_index == 2) {
+                                hit_color_r = 1.0f;
+                                hit_color_g = 1.0f;
+                                hit_color_b = 1.0f;
+                                did_hit_light = true;
+                                continue;
+                            }
 
                             did_hit_object = true;
+                            did_hit_light = false;
                         }
                     } else if (geometry_type == RTX_GEOMETRY_TYPE_SPHERE) {
                         assert(faces_count == 1);
@@ -456,11 +484,12 @@ __global__ void bvh_kernel(
                             hit_face_normal_y = tmp_y / norm;
                             hit_face_normal_z = tmp_z / norm;
 
-                            hit_color_r = (hit_face_normal_x + 1.0f) / 2.0f;
-                            hit_color_g = (hit_face_normal_y + 1.0f) / 2.0f;
-                            hit_color_b = (hit_face_normal_z + 1.0f) / 2.0f;
+                            hit_color_r = 0.8f;
+                            hit_color_g = 0.8f;
+                            hit_color_b = 0.8f;
 
                             did_hit_object = true;
+                            did_hit_light = false;
                         }
                     }
 
@@ -470,6 +499,13 @@ __global__ void bvh_kernel(
                         scene_bvh_current_node_id = scene_bvh_hit_node_id;
                     }
                 }
+            }
+
+            if (did_hit_light) {
+                reflection_decay_r *= hit_color_r;
+                reflection_decay_g *= hit_color_g;
+                reflection_decay_b *= hit_color_b;
+                break;
             }
 
             if (did_hit_object) {
@@ -506,10 +542,16 @@ __global__ void bvh_kernel(
             }
         }
 
-        assert(ray_index * 3 + 2 < render_array_size);
-        render_array[ray_index * 3 + 0] = reflection_decay_r;
-        render_array[ray_index * 3 + 1] = reflection_decay_g;
-        render_array[ray_index * 3 + 2] = reflection_decay_b;
+        if (did_hit_light == false) {
+            reflection_decay_r = 0.0f;
+            reflection_decay_g = 0.0f;
+            reflection_decay_b = 0.0f;
+        }
+
+        assert(ray_index * 4 + 2 < render_array_size);
+        render_array[ray_index * 4 + 0] = reflection_decay_r;
+        render_array[ray_index * 4 + 1] = reflection_decay_g;
+        render_array[ray_index * 4 + 2] = reflection_decay_b;
 
         // render_array[ray_index * 3 + 0] = (ray_direction_x + 1.0f) / 2.0f;
         // render_array[ray_index * 3 + 1] = (ray_direction_y + 1.0f) / 2.0f;
@@ -683,6 +725,8 @@ __global__ void kernel(
         reflection_decay_g = 1.0f;
         reflection_decay_b = 1.0f;
 
+        bool did_hit_light = false;
+
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
@@ -831,11 +875,20 @@ __global__ void kernel(
                         hit_face_normal_y = tmp_y;
                         hit_face_normal_z = tmp_z;
 
-                        hit_color_r = (tmp_x + 1.0f) / 2.0f;
-                        hit_color_g = (tmp_y + 1.0f) / 2.0f;
-                        hit_color_b = (tmp_z + 1.0f) / 2.0f;
+                        hit_color_r = 0.8f;
+                        hit_color_g = 0.8f;
+                        hit_color_b = 0.8f;
+
+                        if (object_index == 2) {
+                            hit_color_r = 1.0f;
+                            hit_color_g = 1.0f;
+                            hit_color_b = 1.0f;
+                            did_hit_light = true;
+                            continue;
+                        }
 
                         did_hit_object = true;
+                        did_hit_light = false;
                     }
                 } else if (geometry_type == RTX_GEOMETRY_TYPE_SPHERE) {
                     array_index = 4 * shared_face_vertex_index_array[face_index_offset * 4 + 0];
@@ -885,13 +938,21 @@ __global__ void kernel(
                     hit_face_normal_y = tmp_y / norm;
                     hit_face_normal_z = tmp_z / norm;
 
-                    hit_color_r = (hit_face_normal_x + 1.0f) / 2.0f;
-                    hit_color_g = (hit_face_normal_y + 1.0f) / 2.0f;
-                    hit_color_b = (hit_face_normal_z + 1.0f) / 2.0f;
+                    hit_color_r = 0.8f;
+                    hit_color_g = 0.8f;
+                    hit_color_b = 0.8f;
 
                     did_hit_object = true;
+                    did_hit_light = false;
                     continue;
                 }
+            }
+
+            if (did_hit_light) {
+                reflection_decay_r *= hit_color_r;
+                reflection_decay_g *= hit_color_g;
+                reflection_decay_b *= hit_color_b;
+                break;
             }
 
             if (did_hit_object) {
@@ -928,10 +989,16 @@ __global__ void kernel(
             }
         }
 
-        assert(ray_index * 3 + 2 < render_array_size);
-        render_array[ray_index * 3 + 0] = reflection_decay_r;
-        render_array[ray_index * 3 + 1] = reflection_decay_g;
-        render_array[ray_index * 3 + 2] = reflection_decay_b;
+        if (did_hit_light == false) {
+            reflection_decay_r = 0.0f;
+            reflection_decay_g = 0.0f;
+            reflection_decay_b = 0.0f;
+        }
+
+        assert(ray_index * 4 + 2 < render_array_size);
+        render_array[ray_index * 4 + 0] = reflection_decay_r;
+        render_array[ray_index * 4 + 1] = reflection_decay_g;
+        render_array[ray_index * 4 + 2] = reflection_decay_b;
 
         // render_array[ray_index * 3 + 0] = (ray_direction_x + 1.0f) / 2.0f;
         // render_array[ray_index * 3 + 1] = (ray_direction_y + 1.0f) / 2.0f;
@@ -1386,7 +1453,7 @@ void rtx_cuda_ray_tracing_render(
 
     // printf("rays: %d, rays_per_kernel: %d, num_rays_per_thread: %d\n", num_rays, num_rays_per_kernel, num_rays_per_thread);
     // printf("<<<%d, %d>>>\n", num_blocks, num_threads);
-    kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
+    bvh_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         gpu_ray_array, ray_array_size,
         gpu_face_vertex_index_array, face_vertex_index_array_size,
         gpu_vertex_array, vertex_array_size,

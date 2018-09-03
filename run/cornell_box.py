@@ -100,8 +100,8 @@ box.set_position((-1, -box_size / 2 + 1.6, -1))
 box.set_rotation((0, math.pi / 5, 0))
 scene.add(box)
 
-screen_width = 64
-screen_height = 64
+screen_width = 512
+screen_height = 512
 
 render_options = rtx.RayTracingOptions()
 render_options.num_rays_per_pixel = 32
@@ -123,7 +123,7 @@ camera_rad = 0
 # camera_rad = math.pi / 10 * 5
 radius = 5.5
 start = time.time()
-total_iterations = 500
+total_iterations = 100
 for n in range(total_iterations):
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
     camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
@@ -132,8 +132,8 @@ for n in range(total_iterations):
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
-    # plt.imshow(pixels, interpolation="none")
-    # plt.pause(1e-8)
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1e-8)
 
     camera_rad += math.pi / 10
 end = time.time()

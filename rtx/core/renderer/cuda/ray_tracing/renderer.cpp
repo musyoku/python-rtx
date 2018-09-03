@@ -230,7 +230,7 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
     // レイ
     // Ray
     if (_prev_height != height || _prev_width != width) {
-        int render_array_size = height * width * 3 * _options->num_rays_per_pixel();
+        int render_array_size = height * width * 4 * _options->num_rays_per_pixel();
         serialize_rays(height, width);
         rtx_cuda_free((void**)&_gpu_ray_array);
         rtx_cuda_free((void**)&_gpu_render_array);
@@ -261,7 +261,7 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         _options->num_rays_per_pixel(),
         _options->path_depth());
 
-    int render_array_size = height * width * 3 * _options->num_rays_per_pixel();
+    int render_array_size = height * width * 4 * _options->num_rays_per_pixel();
     assert(_render_array.size() == render_array_size);
     rtx_cuda_memcpy_device_to_host((void*)_render_array.data(), (void*)_gpu_render_array, sizeof(float) * render_array_size);
 
@@ -284,6 +284,7 @@ void RayTracingCUDARenderer::render(
 
     render_objects(height, width);
 
+    int stride = 4;
     int num_rays_per_pixel = _options->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -291,7 +292,7 @@ void RayTracingCUDARenderer::render(
             float sum_g = 0.0f;
             float sum_b = 0.0f;
             for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
+                int index = y * width * num_rays_per_pixel * stride + x * num_rays_per_pixel * stride + m * stride;
                 sum_r += _render_array[index + 0];
                 sum_g += _render_array[index + 1];
                 sum_b += _render_array[index + 2];
@@ -321,6 +322,7 @@ void RayTracingCUDARenderer::render(
 
     render_objects(height, width);
 
+    int stride = 4;
     int num_rays_per_pixel = _options->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -328,7 +330,7 @@ void RayTracingCUDARenderer::render(
             float sum_g = 0.0f;
             float sum_b = 0.0f;
             for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * width * num_rays_per_pixel * 3 + x * num_rays_per_pixel * 3 + m * 3;
+                int index = y * width * num_rays_per_pixel * stride + x * num_rays_per_pixel * stride + m * stride;
                 sum_r += _render_array[index + 0];
                 sum_g += _render_array[index + 1];
                 sum_b += _render_array[index + 2];
