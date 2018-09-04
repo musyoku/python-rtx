@@ -29,11 +29,12 @@ namespace bvh {
 class BVH {
 private:
     int _node_current_index;
+    int _num_nodes;
 
 public:
     BVH(std::shared_ptr<StandardGeometry>& geometry);
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
-    void serialize(rtx::array<unsigned int>& node_buffer, rtx::array<float>& aabb_buffer);
+    void serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer, int offset);
 };
 }

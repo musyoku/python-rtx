@@ -34,6 +34,7 @@ namespace bvh {
         class SceneBVH {
         private:
             int _node_current_index;
+            int _num_nodes;
 
         public:
             SceneBVH(std::vector<std::shared_ptr<Geometry>>& geometry_array);

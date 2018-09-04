@@ -1,5 +1,6 @@
 #pragma once
 #include "../../../class/ray.h"
+#include "../../../class/bvh.h"
 #include "../../../class/renderer.h"
 #include "../../../header/array.h"
 #include "../../../header/glm.h"
@@ -50,6 +51,12 @@ private:
     // an integer value obtained by concatenating 4 node indices represented by 8 bit integer
     rtx::array<int> _threaded_bvh_node_array;
 
+    // [bvh_index] -> #nodes of the BVH tree.
+    rtx::array<int> _threaded_bvh_num_nodes_array;
+
+    // [bvh_index] -> offset in _threaded_bvh_node_array
+    rtx::array<int> _threaded_bvh_index_offset_array;
+
     // [bvh_iondex * 8 + 0] -> aabb_max.x 
     // [bvh_iondex * 8 + 1] -> aabb_max.y 
     // [bvh_iondex * 8 + 2] -> aabb_max.z 
@@ -85,6 +92,9 @@ private:
     // [object_index] -> geometry
     std::vector<std::shared_ptr<Geometry>> _transformed_geometry_array;
 
+    // [object_index] -> bvh
+    std::vector<std::shared_ptr<BVH>> _bvh_array;
+
     // (object_index, bvh_index)
     std::unordered_map<int, int> _map_object_bvh;
 
@@ -94,6 +104,7 @@ private:
     void construct_bvh();
     void transform_geometries_to_view_space();
     void serialize_geometries();
+    void serialize_geometry_attributes();
     void serialize_rays(int height, int width);
     void render_objects(int height, int width);
 

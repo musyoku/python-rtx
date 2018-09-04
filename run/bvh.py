@@ -31,6 +31,7 @@ geometry = rtx.StandardGeometry(faces, vertices, 100)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
+bunny.set_scale((3, 3, 3))
 scene.add(bunny)
 
 screen_width = 512

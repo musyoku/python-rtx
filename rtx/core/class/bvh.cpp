@@ -286,34 +286,33 @@ BVH::BVH(std::shared_ptr<StandardGeometry>& geometry)
     _node_current_index = 0;
     _root = std::make_shared<Node>(assigned_face_indices, geometry, _node_current_index);
     _root->set_hit_and_miss_links();
+
+    _num_nodes = _root->num_children() + 1;
 }
 int BVH::num_nodes()
 {
-    int num_nodes = _root->num_children() + 1;
-    // std::cout << "#nodes: " << num_nodes << std::endl;
-    return num_nodes;
+    return _num_nodes;
 }
-void BVH::serialize(rtx::array<unsigned int>& node_buffer, rtx::array<float>& aabb_buffer)
+void BVH::serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer, int offset)
 {
     // std::cout << "serialize:" << std::endl;
-    int num_nodes = this->num_nodes();
-    assert(node_buffer.size() == num_nodes);
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
     for (auto& node : children) {
-        unsigned int hit_bit = node->_hit ? node->_hit->_index : 255;
-        unsigned int miss_bit = node->_miss ? node->_miss->_index : 255;
-        unsigned int object_id_bit = node->_is_leaf ? node->_assigned_face_indices[0] : 255;
-        unsigned int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
-        node_buffer[node->_index] = binary_path;
-        aabb_buffer[node->_index * 8 + 0] = node->_aabb_max.x;
-        aabb_buffer[node->_index * 8 + 1] = node->_aabb_max.y;
-        aabb_buffer[node->_index * 8 + 2] = node->_aabb_max.z;
-        aabb_buffer[node->_index * 8 + 3] = 1.0f;
-        aabb_buffer[node->_index * 8 + 4] = node->_aabb_min.x;
-        aabb_buffer[node->_index * 8 + 5] = node->_aabb_min.y;
-        aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
-        aabb_buffer[node->_index * 8 + 7] = 1.0f;
+        int hit_bit = node->_hit ? node->_hit->_index : 255;
+        int miss_bit = node->_miss ? node->_miss->_index : 255;
+        int object_id_bit = node->_is_leaf ? node->_assigned_face_indices[0] : 255;
+        int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
+        int j = node->_index + offset;
+        node_buffer[j] = binary_path;
+        aabb_buffer[j * 8 + 0] = node->_aabb_max.x;
+        aabb_buffer[j * 8 + 1] = node->_aabb_max.y;
+        aabb_buffer[j * 8 + 2] = node->_aabb_max.z;
+        aabb_buffer[j * 8 + 3] = 1.0f;
+        aabb_buffer[j * 8 + 4] = node->_aabb_min.x;
+        aabb_buffer[j * 8 + 5] = node->_aabb_min.y;
+        aabb_buffer[j * 8 + 6] = node->_aabb_min.z;
+        aabb_buffer[j * 8 + 7] = 1.0f;
 
         // std::cout << "node: " << node->_index << " object: " << object_id_bit << " "
         //           << "max: " << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << " ";
