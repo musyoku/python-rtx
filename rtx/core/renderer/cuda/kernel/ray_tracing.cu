@@ -19,7 +19,7 @@ __global__ void bvh_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_type_array_size,
-    const unsigned int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    const int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     const float* scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -27,11 +27,11 @@ __global__ void bvh_kernel(
     const int max_bounce)
 {
     extern __shared__ int shared_memory[];
-    unsigned int thread_id = threadIdx.x;
+    int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
-    unsigned int offset = 0;
+    int offset = 0;
     int* shared_face_vertex_index_array = &shared_memory[offset];
     offset += face_vertex_index_array_size;
     float* shared_vertex_array = (float*)&shared_memory[offset];
@@ -46,7 +46,7 @@ __global__ void bvh_kernel(
     offset += object_vertex_offset_array_size;
     int* shared_object_geometry_type_array = &shared_memory[offset];
     offset += object_geometry_type_array_size;
-    unsigned int* shared_scene_threaded_bvh_node_array = (unsigned int*)&shared_memory[offset];
+    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += scene_threaded_bvh_node_array_size;
     float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += scene_threaded_bvh_aabb_array_size;
@@ -143,11 +143,11 @@ __global__ void bvh_kernel(
     float ray_direction_inv_x;
     float ray_direction_inv_y;
     float ray_direction_inv_z;
-    // unsigned int scene_bvh_binary_node;
-    // unsigned int scene_bvh_object_index;
-    // unsigned int scene_bvh_current_node_id;
-    // unsigned int scene_bvh_hit_node_id;
-    // unsigned int scene_bvh_miss_node_id;
+    // int scene_bvh_binary_node;
+    // int scene_bvh_object_index;
+    // int scene_bvh_current_node_id;
+    // int scene_bvh_hit_node_id;
+    // int scene_bvh_miss_node_id;
     // float aabb_max_x;
     // float aabb_max_y;
     // float aabb_max_z;
@@ -173,7 +173,7 @@ __global__ void bvh_kernel(
     // float vc_x, vc_y, vc_z;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
-        unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
+        int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
         if (ray_index >= num_rays) {
             return;
         }
@@ -200,7 +200,7 @@ __global__ void bvh_kernel(
             bool did_hit_object = false;
 
             // BVH traversal
-            unsigned int scene_bvh_current_node_id = 0;
+            int scene_bvh_current_node_id = 0;
             for (int traversal = 0; traversal < scene_threaded_bvh_node_array_size; traversal++) {
 
                 if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
@@ -208,10 +208,10 @@ __global__ void bvh_kernel(
                 }
                 assert(scene_bvh_current_node_id < scene_threaded_bvh_node_array_size);
 
-                unsigned int scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
-                unsigned int scene_bvh_object_index = 0xFF & scene_bvh_binary_node;
-                unsigned int scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
-                unsigned int scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
+                int scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
+                int scene_bvh_object_index = 0xFF & scene_bvh_binary_node;
+                int scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
+                int scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
 
                 if (scene_bvh_object_index == SCENE_BVH_INNER_NODE) {
                     assert(scene_bvh_current_node_id * 8 + 0 < scene_threaded_bvh_aabb_array_size);
@@ -556,7 +556,7 @@ __global__ void global_memory_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_type_array_size,
-    const unsigned int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    const int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     const float* scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -564,11 +564,11 @@ __global__ void global_memory_kernel(
     const int max_bounce)
 {
     extern __shared__ int shared_memory[];
-    unsigned int thread_id = threadIdx.x;
+    int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
-    unsigned int offset = 0;
+    int offset = 0;
     int* shared_object_face_count_array = &shared_memory[offset];
     offset += object_face_count_array_size;
     int* shared_object_face_offset_array = &shared_memory[offset];
@@ -579,7 +579,7 @@ __global__ void global_memory_kernel(
     offset += object_vertex_offset_array_size;
     int* shared_object_geometry_type_array = &shared_memory[offset];
     offset += object_geometry_type_array_size;
-    unsigned int* shared_scene_threaded_bvh_node_array = (unsigned int*)&shared_memory[offset];
+    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += scene_threaded_bvh_node_array_size;
     float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += scene_threaded_bvh_aabb_array_size;
@@ -671,7 +671,7 @@ __global__ void global_memory_kernel(
     float reflection_decay_b;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
-        unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
+        int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
         if (ray_index >= num_rays) {
             return;
         }
@@ -981,7 +981,7 @@ __global__ void shared_memory_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_type_array_size,
-    const unsigned int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    const int* scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     const float* scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -989,11 +989,11 @@ __global__ void shared_memory_kernel(
     const int max_bounce)
 {
     extern __shared__ int shared_memory[];
-    unsigned int thread_id = threadIdx.x;
+    int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
-    unsigned int offset = 0;
+    int offset = 0;
     int* shared_face_vertex_index_array = &shared_memory[offset];
     offset += face_vertex_index_array_size;
     float* shared_vertex_array = (float*)&shared_memory[offset];
@@ -1008,7 +1008,7 @@ __global__ void shared_memory_kernel(
     offset += object_vertex_offset_array_size;
     int* shared_object_geometry_type_array = &shared_memory[offset];
     offset += object_geometry_type_array_size;
-    unsigned int* shared_scene_threaded_bvh_node_array = (unsigned int*)&shared_memory[offset];
+    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += scene_threaded_bvh_node_array_size;
     float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += scene_threaded_bvh_aabb_array_size;
@@ -1118,7 +1118,7 @@ __global__ void shared_memory_kernel(
     float reflection_decay_b;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
-        unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
+        int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
         if (ray_index >= num_rays) {
             return;
         }
@@ -1434,7 +1434,7 @@ __global__ void shared_memory_kernel(
 //     const int colors_stride,
 //     const int max_bounce)
 // {
-//     unsigned int tid = threadIdx.x;
+//     int tid = threadIdx.x;
 //     curandStateXORWOW_t state;
 //     curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
@@ -1475,7 +1475,7 @@ __global__ void shared_memory_kernel(
 //     __syncthreads();
 
 //     for (int n = 0; n < num_rays_per_thread; n++) {
-//         unsigned int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n + thread_offset;
+//         int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n + thread_offset;
 //         if (ray_index >= num_rays) {
 //             return;
 //         }
@@ -1830,7 +1830,7 @@ void rtx_cuda_ray_tracing_render(
     int*& gpu_object_vertex_count_array, const int object_vertex_count_array_size,
     int*& gpu_object_vertex_offset_array, const int object_vertex_offset_array_size,
     int*& gpu_object_geometry_type_array, const int object_geometry_type_array_size,
-    unsigned int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     float*& gpu_scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float*& gpu_render_array, const int render_array_size,
     const int num_rays,
@@ -1855,7 +1855,7 @@ void rtx_cuda_ray_tracing_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int required_shared_memory_bytes = sizeof(float) * (vertex_array_size + scene_threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_type_array_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_array_size);
+    int required_shared_memory_bytes = sizeof(float) * (vertex_array_size + scene_threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_type_array_size) + sizeof(int) * (scene_threaded_bvh_node_array_size);
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
@@ -1867,7 +1867,7 @@ void rtx_cuda_ray_tracing_render(
     printf("available: %d bytes\n", dev.sharedMemPerBlock);
 
     if(required_shared_memory_bytes > dev.sharedMemPerBlock){
-        int required_shared_memory_bytes = sizeof(float) * (scene_threaded_bvh_aabb_array_size) + sizeof(int) * (object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_type_array_size) + sizeof(unsigned int) * (scene_threaded_bvh_node_array_size);
+        int required_shared_memory_bytes = sizeof(float) * (scene_threaded_bvh_aabb_array_size) + sizeof(int) * (object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_type_array_size) + sizeof(int) * (scene_threaded_bvh_node_array_size);
         assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
             gpu_ray_array, ray_array_size,

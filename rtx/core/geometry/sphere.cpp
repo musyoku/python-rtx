@@ -5,7 +5,6 @@ SphereGeometry::SphereGeometry(float radius)
 {
     _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
     _radius = glm::vec4f(radius, radius, radius, 0.0f);
-    compute_axis_aligned_bounding_box();
 }
 int SphereGeometry::type() const
 {
@@ -53,12 +52,6 @@ std::shared_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_m
 {
     auto sphere = std::make_shared<SphereGeometry>(_radius[0]);
     sphere->_center = transformation_matrix * _center;
-    sphere->compute_axis_aligned_bounding_box();
     return sphere;
-}
-void SphereGeometry::compute_axis_aligned_bounding_box()
-{
-    _aabb_min = _center - _radius;
-    _aabb_max = _center + _radius;
 }
 }

@@ -8,11 +8,11 @@
 
 namespace rtx {
 class StandardGeometry : public Geometry {
-private:
+protected:
+    int _bvh_max_triangles_per_node = -1;
     void init(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces,
         pybind11::array_t<float, pybind11::array::c_style> vertices,
-        int num_bvh_split);
-    int _num_bvh_split;
+        int bvh_max_triangles_per_node);
 
 public:
     // 各面を構成する3頂点のインデックス
@@ -27,13 +27,14 @@ public:
         pybind11::array_t<float, pybind11::array::c_style> vertices);
     StandardGeometry(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces,
         pybind11::array_t<float, pybind11::array::c_style> vertices,
-        int num_bvh_split);
+        int bvh_max_triangles_per_node);
     int type() const override;
     int num_faces() const override;
     int num_vertices() const override;
     int serialize_vertices(rtx::array<float>& buffer, int start) const override;
     int serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const override;
-    void compute_axis_aligned_bounding_box() override;
     std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const override;
+    bool bvh_enabled() const override;
+    int bvh_max_triangles_per_node() const override;
 };
 }

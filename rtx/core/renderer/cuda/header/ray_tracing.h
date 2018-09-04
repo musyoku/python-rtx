@@ -15,7 +15,7 @@ void rtx_cuda_ray_tracing_render(
     int*& gpu_object_vertex_count_array, const int object_vertex_count_array_size,
     int*& gpu_object_vertex_offset_array, const int object_vertex_offset_array_size,
     int*& gpu_object_geometry_type_array, const int object_geometry_type_array_size,
-    unsigned int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
+    int*& gpu_scene_threaded_bvh_node_array, const int scene_threaded_bvh_node_array_size,
     float*& gpu_scene_threaded_bvh_aabb_array, const int scene_threaded_bvh_aabb_array_size,
     float*& gpu_render_array, const int render_array_size,
     const int num_rays,

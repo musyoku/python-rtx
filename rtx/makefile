@@ -9,7 +9,6 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/geometry/*.cpp) \
 		  $(wildcard ./core/material/mesh/*.cpp) \
 		  $(wildcard ./core/camera/*.cpp) \
-		  $(wildcard ./core/bvh/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/*.cpp) \
 		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cpp) \

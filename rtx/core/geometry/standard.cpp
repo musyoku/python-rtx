@@ -12,27 +12,27 @@ StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
     py::array_t<float, py::array::c_style> vertices)
 {
-    init(face_vertex_indeces, vertices, 1);
+    init(face_vertex_indeces, vertices, -1);
 }
 StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
     py::array_t<float, py::array::c_style> vertices,
-    int num_bvh_split)
+    int bvh_max_triangles_per_node)
 {
-    init(face_vertex_indeces, vertices, num_bvh_split);
+    init(face_vertex_indeces, vertices, bvh_max_triangles_per_node);
 }
 void StandardGeometry::init(
     py::array_t<int, py::array::c_style> np_face_vertex_indeces,
     py::array_t<float, py::array::c_style> np_vertices,
-    int num_bvh_split)
+    int bvh_max_triangles_per_node)
 {
-    _num_bvh_split = num_bvh_split;
     if (np_face_vertex_indeces.ndim() != 2) {
         throw std::runtime_error("(num_np_face_vertex_indeces.ndim() != 2) -> false");
     }
     if (np_vertices.ndim() != 2) {
         throw std::runtime_error("(num_np_vertices.ndim() != 2) -> false");
     }
+    _bvh_max_triangles_per_node = bvh_max_triangles_per_node;
     int num_faces = np_face_vertex_indeces.shape(0);
     int num_vertices = np_vertices.shape(0);
     int ndim_vertex = np_vertices.shape(1);
@@ -54,8 +54,6 @@ void StandardGeometry::init(
             _vertex_array.emplace_back(vertex);
         }
     }
-
-    _bvh = std::make_unique<bvh::geometry::GeometryBVH>(_face_vertex_indices_array, _vertex_array, _num_bvh_split);
 }
 int StandardGeometry::type() const
 {
@@ -94,39 +92,23 @@ int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int ve
     }
     return pos;
 }
-
-void StandardGeometry::compute_axis_aligned_bounding_box()
-{
-    _aabb_max = glm::vec4f(-FLT_MAX);
-    _aabb_min = glm::vec4f(FLT_MAX);
-    for (auto vertex : _vertex_array) {
-        _aabb_max.x = vertex.x > _aabb_max.x ? vertex.x : _aabb_max.x;
-        _aabb_max.y = vertex.y > _aabb_max.y ? vertex.y : _aabb_max.y;
-        _aabb_max.z = vertex.z > _aabb_max.z ? vertex.z : _aabb_max.z;
-        _aabb_min.x = vertex.x < _aabb_min.x ? vertex.x : _aabb_min.x;
-        _aabb_min.y = vertex.y < _aabb_min.y ? vertex.y : _aabb_min.y;
-        _aabb_min.z = vertex.z < _aabb_min.z ? vertex.z : _aabb_min.z;
-    }
-
-    assert(_aabb_min.x < FLT_MAX);
-    assert(_aabb_min.y < FLT_MAX);
-    assert(_aabb_min.z < FLT_MAX);
-    assert(_aabb_max.x > -FLT_MAX);
-    assert(_aabb_max.y > -FLT_MAX);
-    assert(_aabb_max.z > -FLT_MAX);
-
-    _center = (_aabb_max - _aabb_min) / 2.0f;
-}
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto geometry = std::make_shared<StandardGeometry>();
-    geometry->_num_bvh_split = _num_bvh_split;
+    geometry->_bvh_max_triangles_per_node = _bvh_max_triangles_per_node;
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     for (auto vertex : _vertex_array) {
         glm::vec4f v = transformation_matrix * vertex;
         geometry->_vertex_array.emplace_back(v);
     }
-    geometry->compute_axis_aligned_bounding_box();
     return geometry;
+}
+bool StandardGeometry::bvh_enabled() const
+{
+    return _bvh_max_triangles_per_node > 0;
+}
+int StandardGeometry::bvh_max_triangles_per_node() const
+{
+    return _bvh_max_triangles_per_node;
 }
 }

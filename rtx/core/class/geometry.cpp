@@ -2,8 +2,12 @@
 #include <cassert>
 
 namespace rtx {
-int Geometry::num_bvh_split()
+bool Geometry::bvh_enabled() const
 {
-    return _num_bvh_split;
+    return false;
+}
+int Geometry::bvh_max_triangles_per_node() const
+{
+    return -1;
 }
 }

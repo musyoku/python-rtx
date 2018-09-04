@@ -53,8 +53,5 @@ BoxGeometry::BoxGeometry(float width, float height, float depth)
     _vertex_array.emplace_back(glm::vec4f(width / 2.0f, -height / 2.0f, -depth / 2.0f, 1.0f));
     _vertex_array.emplace_back(glm::vec4f(-width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
     _vertex_array.emplace_back(glm::vec4f(width / 2.0f, -height / 2.0f, depth / 2.0f, 1.0f));
-
-    _bvh = std::make_unique<bvh::geometry::GeometryBVH>(_face_vertex_indices_array, _vertex_array, 1);
-    compute_axis_aligned_bounding_box();
 }
 }

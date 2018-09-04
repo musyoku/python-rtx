@@ -88,7 +88,7 @@ scene.add(box)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices)
+geometry = rtx.StandardGeometry(faces, vertices, 100)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
