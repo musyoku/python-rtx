@@ -1,5 +1,4 @@
 #pragma once
-#include "../bvh/geometry.h"
 #include "../header/array.h"
 #include "../header/enum.h"
 #include "../header/glm.h"
@@ -8,8 +7,7 @@
 namespace rtx {
 class Geometry {
 public:
-    int _num_bvh_split = 1;
-    std::unique_ptr<bvh::geometry::GeometryBVH> _bvh;
+    int _bvh_num_max_triangles_per_node = 0;
     glm::vec4f _aabb_min;
     glm::vec4f _center;
     glm::vec4f _aabb_max;

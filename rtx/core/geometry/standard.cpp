@@ -1,6 +1,6 @@
 #include "standard.h"
-#include <cfloat>
 #include <cassert>
+#include <cfloat>
 #include <iostream>
 
 namespace rtx {
@@ -28,16 +28,16 @@ void StandardGeometry::init(
 {
     _num_bvh_split = num_bvh_split;
     if (np_face_vertex_indeces.ndim() != 2) {
-        throw std::runtime_error("num_np_face_vertex_indeces.ndim() != 2");
+        throw std::runtime_error("(num_np_face_vertex_indeces.ndim() != 2) -> false");
     }
     if (np_vertices.ndim() != 2) {
-        throw std::runtime_error("num_np_vertices.ndim() != 2");
+        throw std::runtime_error("(num_np_vertices.ndim() != 2) -> false");
     }
     int num_faces = np_face_vertex_indeces.shape(0);
     int num_vertices = np_vertices.shape(0);
     int ndim_vertex = np_vertices.shape(1);
-    if (ndim_vertex != 4) {
-        throw std::runtime_error("ndim_vertex != 4");
+    if (ndim_vertex != 3 && ndim_vertex != 4) {
+        throw std::runtime_error("(ndim_vertex != 3 && ndim_vertex != 4) -> false");
     }
     auto faces = np_face_vertex_indeces.mutable_unchecked<2>();
     auto vertices = np_vertices.mutable_unchecked<2>();
@@ -46,8 +46,13 @@ void StandardGeometry::init(
         _face_vertex_indices_array.emplace_back(face);
     }
     for (int n = 0; n < num_vertices; n++) {
-        glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3));
-        _vertex_array.emplace_back(vertex);
+        if (ndim_vertex == 3) {
+            glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), 1.0f);
+            _vertex_array.emplace_back(vertex);
+        } else {
+            glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3));
+            _vertex_array.emplace_back(vertex);
+        }
     }
 
     _bvh = std::make_unique<bvh::geometry::GeometryBVH>(_face_vertex_indices_array, _vertex_array, _num_bvh_split);

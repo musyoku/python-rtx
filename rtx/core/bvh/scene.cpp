@@ -124,18 +124,18 @@ namespace bvh {
                 }
             }
             std::sort(object_center_array.begin(), object_center_array.end(), compare_position);
-            std::cout << "sort:" << std::endl;
-            for (auto& pair : object_center_array) {
-                std::cout << pair.first << ": " << pair.second << std::endl;
-            }
+            // std::cout << "sort:" << std::endl;
+            // for (auto& pair : object_center_array) {
+            //     std::cout << pair.first << ": " << pair.second << std::endl;
+            // }
             float whole_surface_area = compute_surface_area(_aabb_max, _aabb_min);
-            std::cout << "whole_surface_area: " << whole_surface_area << std::endl;
+            // std::cout << "whole_surface_area: " << whole_surface_area << std::endl;
 
             glm::vec3f volume_a_max(FLT_MAX);
             glm::vec3f volume_a_min(FLT_MAX);
             glm::vec3f volume_b_max(FLT_MAX);
             glm::vec3f volume_b_min(FLT_MAX);
-            std::cout << "==============================================================" << std::endl;
+            // std::cout << "==============================================================" << std::endl;
             
             float min_cost = FLT_MAX;
             int min_cost_split_index = 0;
@@ -178,17 +178,17 @@ namespace bvh {
                 }
                 float surface_a = compute_surface_area(volume_a_max, volume_a_min);
                 float surface_b = compute_surface_area(volume_b_max, volume_b_min);
-                std::cout << "split: " << split_index << ", surface_a: " << surface_a << ", surface_b: " << surface_b << std::endl;
-                std::cout << "split: " << split_index << ", faces_a: " << volume_a_num_faces << ", faces_b: " << volume_b_num_faces << std::endl;
-                std::cout << "split: " << split_index << ", a: " << (surface_a * volume_a_num_faces) << ", b: " << (surface_b * volume_b_num_faces) << std::endl;
+                // std::cout << "split: " << split_index << ", surface_a: " << surface_a << ", surface_b: " << surface_b << std::endl;
+                // std::cout << "split: " << split_index << ", faces_a: " << volume_a_num_faces << ", faces_b: " << volume_b_num_faces << std::endl;
+                // std::cout << "split: " << split_index << ", a: " << (surface_a * volume_a_num_faces) << ", b: " << (surface_b * volume_b_num_faces) << std::endl;
                 float cost = surface_a * volume_a_num_faces + surface_b * volume_b_num_faces;
                 if(cost < min_cost){
                     min_cost = cost;
                     min_cost_split_index = split_index;
                 }
             }
-            std::cout << "min_cost: " << min_cost << std::endl;
-            std::cout << "min_cost_split_index: " << min_cost_split_index << std::endl;
+            // std::cout << "min_cost: " << min_cost << std::endl;
+            // std::cout << "min_cost_split_index: " << min_cost_split_index << std::endl;
             // throw std::runtime_error("");
 
             int split_index = min_cost_split_index;
@@ -290,31 +290,31 @@ namespace bvh {
                 aabb_buffer[node->_index * 8 + 6] = node->_aabb_min.z;
                 aabb_buffer[node->_index * 8 + 7] = 1.0f;
 
-                std::cout << "node: " << node->_index << " object: " << object_id_bit << " "
-                          << "max: " << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << " ";
-                std::cout << "min: " << node->_aabb_min.x << ", " << node->_aabb_min.y << ", " << node->_aabb_min.z << std::endl;
+                // std::cout << "node: " << node->_index << " object: " << object_id_bit << " "
+                //           << "max: " << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << " ";
+                // std::cout << "min: " << node->_aabb_min.x << ", " << node->_aabb_min.y << ", " << node->_aabb_min.z << std::endl;
 
-                std::cout << " index: ";
-                std::cout << node->_index;
-                std::cout << " left: ";
-                if (node->_left) {
-                    std::cout << node->_left->_index;
-                }
-                std::cout << " right: ";
-                if (node->_right) {
-                    std::cout << node->_right->_index;
-                }
-                std::cout << " hit: ";
-                if (node->_hit) {
-                    std::cout << node->_hit->_index;
-                }
-                std::cout << " miss: ";
-                if (node->_miss) {
-                    std::cout << node->_miss->_index;
-                }
-                std::cout << " object: " << object_id_bit;
-                std::cout << " binary: " << binary_path;
-                std::cout << std::endl;
+                // std::cout << " index: ";
+                // std::cout << node->_index;
+                // std::cout << " left: ";
+                // if (node->_left) {
+                //     std::cout << node->_left->_index;
+                // }
+                // std::cout << " right: ";
+                // if (node->_right) {
+                //     std::cout << node->_right->_index;
+                // }
+                // std::cout << " hit: ";
+                // if (node->_hit) {
+                //     std::cout << node->_hit->_index;
+                // }
+                // std::cout << " miss: ";
+                // if (node->_miss) {
+                //     std::cout << node->_miss->_index;
+                // }
+                // std::cout << " object: " << object_id_bit;
+                // std::cout << " binary: " << binary_path;
+                // std::cout << std::endl;
             }
         }
     }

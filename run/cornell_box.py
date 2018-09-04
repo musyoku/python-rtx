@@ -2,6 +2,7 @@ import math
 import time
 import numpy as np
 import rtx
+import geometry as gm
 import matplotlib.pyplot as plt
 
 scene = rtx.Scene()
@@ -64,13 +65,6 @@ light.set_rotation((math.pi / 2, 0, 0))
 light.set_position((0, box_size / 2 - 0.01, 0))
 scene.add(light)
 
-# place ball
-# geometry = rtx.SphereGeometry(0.8)
-# material = rtx.MeshLambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
-# sphere = rtx.Mesh(geometry, material)
-# sphere.set_position((1.5, -box_size / 2 + 1, 0.5))
-# scene.add(sphere)
-
 # place balls
 shift = [-1, 0, 1]
 colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
@@ -91,6 +85,28 @@ box = rtx.Mesh(geometry, material)
 box.set_position((-1, -box_size / 2 + 0.8, 1))
 box.set_rotation((0, math.pi / 5, 0))
 scene.add(box)
+
+# place bunny
+faces, vertices = gm.load("bunny")
+geometry = rtx.StandardGeometry(faces, vertices)
+material = rtx.MeshLambertMaterial(
+    color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+bunny = rtx.Mesh(geometry, material)
+bunny.set_position((-1, 1, -1))
+bunny.set_rotation((0, 0, 0))
+bunny.set_scale((2, 2, 2))
+scene.add(bunny)
+
+# place teapot
+faces, vertices = gm.load("teapot")
+geometry = rtx.StandardGeometry(faces, vertices)
+material = rtx.MeshLambertMaterial(
+    color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+teapot = rtx.Mesh(geometry, material)
+teapot.set_position((0, 0.7, 0))
+teapot.set_rotation((0, math.pi / 4, 0))
+teapot.set_scale((1.5, 1.5, 1.5))
+scene.add(teapot)
 
 geometry = rtx.BoxGeometry(1.6, 3.2, 1.6)
 material = rtx.MeshLambertMaterial(
@@ -120,7 +136,7 @@ camera = rtx.PerspectiveCamera(
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 # renderer.render(scene, camera, render_options, render_buffer)
 camera_rad = 0
-# camera_rad = math.pi / 10 * 5
+# camera_rad = math.pi / 10 * 2
 radius = 5.5
 start = time.time()
 total_iterations = 100
@@ -136,5 +152,6 @@ for n in range(total_iterations):
     plt.pause(1e-8)
 
     camera_rad += math.pi / 10
+
 end = time.time()
 print(total_iterations / (end - start))
