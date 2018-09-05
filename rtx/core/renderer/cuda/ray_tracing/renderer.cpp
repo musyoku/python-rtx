@@ -54,15 +54,15 @@ void RayTracingCUDARenderer::transform_geometries_to_view_space()
 void RayTracingCUDARenderer::serialize_objects()
 {
     assert(_transformed_geometry_array.size() > 0);
-    int num_faces = 0;
-    int num_vertices = 0;
+    int total_faces = 0;
+    int total_vertices = 0;
     for (auto& geometry : _transformed_geometry_array) {
-        num_faces += geometry->num_faces();
-        num_vertices += geometry->num_vertices();
+        total_faces += geometry->num_faces();
+        total_vertices += geometry->num_vertices();
     }
     int num_objects = _transformed_geometry_array.size();
-    _cpu_face_vertex_indices_array = rtx::array<RTXGeometryFace>(num_faces);
-    _cpu_vertex_array = rtx::array<RTXGeometryVertex>(num_vertices);
+    _cpu_face_vertex_indices_array = rtx::array<RTXGeometryFace>(total_faces);
+    _cpu_vertex_array = rtx::array<RTXGeometryVertex>(total_vertices);
     _cpu_object_array = rtx::array<RTXObject>(num_objects);
 
     int serialized_array_offset = 0;
@@ -93,6 +93,7 @@ void RayTracingCUDARenderer::serialize_objects()
             auto& face_vertex_indices_array = standard->_face_vertex_indices_array;
             for (auto& node : nodes) {
                 int serialized_array_index = node->_assigned_face_index_start + serialized_array_offset;
+                assert(serialized_array_index < total_faces);
                 for (int face_index : node->_assigned_face_indices) {
                     glm::vec3i face = face_vertex_indices_array[face_index];
                     _cpu_face_vertex_indices_array[serialized_array_index] = { face[0] + serialized_array_offset, face[1] + serialized_array_offset, face[2] + serialized_array_offset };
@@ -155,9 +156,6 @@ void RayTracingCUDARenderer::construct_bvh()
         total_nodes += bvh->num_nodes();
         _map_object_bvh[object_index] = bvh_index;
         bvh_index++;
-    }
-    if (_bvh_array.size() > 128) {
-        throw std::runtime_error("We only support up to 128 BVH enabled objects.");
     }
     _cpu_threaded_bvh_array = rtx::array<RTXThreadedBVH>(total_nodes);
     _cpu_threaded_bvh_node_array = rtx::array<RTXThreadedBVHNode>(total_nodes);

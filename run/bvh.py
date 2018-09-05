@@ -70,7 +70,6 @@ for n in range(total_iterations):
     plt.pause(1e-8)
 
     camera_rad += math.pi / 10
-    exit()
 
 end = time.time()
 print(total_iterations / (end - start))

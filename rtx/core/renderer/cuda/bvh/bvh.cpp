@@ -304,6 +304,7 @@ BVH::BVH(std::shared_ptr<StandardGeometry>& geometry)
         assigned_face_indices.push_back(face_index);
     }
     _current_node_index = 0;
+    _current_assigned_face_index_offset = 0;
     _root = std::make_shared<Node>(assigned_face_indices, geometry, _current_node_index, _current_assigned_face_index_offset);
     _root->set_hit_and_miss_links();
 

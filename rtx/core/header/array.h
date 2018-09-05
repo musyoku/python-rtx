@@ -1,6 +1,8 @@
 #pragma once
 #include <cassert>
+#include <execinfo.h>
 #include <iostream>
+#include <unistd.h>
 
 namespace rtx {
 template <typename T>
@@ -59,12 +61,22 @@ public:
     }
     T& operator[](int index)
     {
+        if (index >= _size) {
+            void* bt[100];
+            int n = backtrace(bt, 100);
+            backtrace_symbols_fd(bt, n, STDERR_FILENO);
+        }
         assert(index < _size);
         assert(_array != nullptr);
         return _array[index];
     }
     const T& operator[](int index) const
     {
+        if (index >= _size) {
+            void* bt[100];
+            int n = backtrace(bt, 100);
+            backtrace_symbols_fd(bt, n, STDERR_FILENO);
+        }
         assert(index < _size);
         assert(_array != nullptr);
         return _array[index];
