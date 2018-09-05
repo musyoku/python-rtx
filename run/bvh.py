@@ -39,7 +39,7 @@ screen_height = 512
 
 render_options = rtx.RayTracingOptions()
 render_options.num_rays_per_pixel = 32
-render_options.path_depth = 5
+render_options.max_bounce = 5
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(

@@ -12,6 +12,7 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/cpu/*.cpp) \
 		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cpp) \
+		  $(wildcard ./core/renderer/cuda/bvh/*.cpp) \
 		  $(wildcard ./core/renderer/cuda/kernel/*.cu) \
 		  $(wildcard ./core/renderer/options/*.cpp) \
 		  pybind/rtx.cpp

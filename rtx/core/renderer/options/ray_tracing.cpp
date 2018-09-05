@@ -14,12 +14,12 @@ void RayTracingOptions::set_num_rays_per_pixel(int num)
     _num_rays_per_pixel = num;
 }
 
-int RayTracingOptions::path_depth()
+int RayTracingOptions::max_bounce()
 {
-    return _path_depth;
+    return _max_bounce;
 }
-void RayTracingOptions::set_path_depth(int depth)
+void RayTracingOptions::set_max_bounce(int bounce)
 {
-    _path_depth = depth;
+    _max_bounce = bounce;
 }
 }

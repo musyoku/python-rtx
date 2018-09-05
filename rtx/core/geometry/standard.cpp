@@ -67,30 +67,20 @@ int StandardGeometry::num_vertices() const
 {
     return _vertex_array.size();
 }
-int StandardGeometry::serialize_vertices(rtx::array<float>& buffer, int start) const
+void StandardGeometry::serialize_vertices(rtx::array<RTXGeometryVertex>& buffer, int array_offset) const
 {
-    int pos = start;
-    for (auto& vertex : _vertex_array) {
-        buffer[pos + 0] = vertex.x;
-        buffer[pos + 1] = vertex.y;
-        buffer[pos + 2] = vertex.z;
-        buffer[pos + 3] = vertex.w;
-        pos += 4;
+    for (int j = 0; j < _vertex_array.size(); j++) {
+        auto& vertex = _vertex_array[j];
+        buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z };
     }
-    return pos;
 }
 
-int StandardGeometry::serialize_faces(rtx::array<int>& buffer, int start, int vertex_index_offset) const
+void StandardGeometry::serialize_faces(rtx::array<RTXGeometryFace>& buffer, int array_offset, int vertex_index_offset) const
 {
-    int pos = start;
-    for (auto& face : _face_vertex_indices_array) {
-        buffer[pos + 0] = face[0] + vertex_index_offset;
-        buffer[pos + 1] = face[1] + vertex_index_offset;
-        buffer[pos + 2] = face[2] + vertex_index_offset;
-        buffer[pos + 3] = -1;
-        pos += 4;
+    for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
+        auto& face = _face_vertex_indices_array[j];
+        buffer[j + array_offset] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
     }
-    return pos;
 }
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {

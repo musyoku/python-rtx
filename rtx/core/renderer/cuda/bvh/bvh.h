@@ -1,7 +1,8 @@
 #pragma once
-#include "../geometry/standard.h"
-#include "../header/array.h"
-#include "../header/glm.h"
+#include "../../../geometry/standard.h"
+#include "../../../header/array.h"
+#include "../../../header/glm.h"
+#include "../header/ray_tracing.h"
 #include <memory>
 #include <vector>
 
@@ -35,6 +36,6 @@ public:
     BVH(std::shared_ptr<StandardGeometry>& geometry);
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
-    void serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer, int offset);
+    void serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset);
 };
 }

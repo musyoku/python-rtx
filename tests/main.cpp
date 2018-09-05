@@ -83,9 +83,9 @@ void test_structure()
 
     std::cout << "done" << std::endl;
 
-    rtx::array<CUDAThreadedBVHNode> struct_array(num_nodes);
-    CUDAThreadedBVHNode* gpu_struct_array;
-    rtx_cuda_malloc((void**)&gpu_struct_array, sizeof(CUDAThreadedBVHNode) * num_nodes);
+    rtx::array<RTXThreadedBVHNode> struct_array(num_nodes);
+    RTXThreadedBVHNode* gpu_struct_array;
+    rtx_cuda_malloc((void**)&gpu_struct_array, sizeof(RTXThreadedBVHNode) * num_nodes);
     for(int i = 0;i < 10;i++){
         auto start = std::chrono::system_clock::now();
         for (int n = 0; n < 100; n++) {

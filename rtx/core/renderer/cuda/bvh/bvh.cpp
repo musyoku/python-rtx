@@ -290,7 +290,7 @@ int BVH::num_nodes()
 {
     return _num_nodes;
 }
-void BVH::serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer, int offset)
+void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
@@ -299,28 +299,28 @@ void BVH::serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer
     for (auto& node : children) {
         int j = node->_index + offset;
 
-        if(node->_is_leaf){
+        RTXThreadedBVHNode cuda_node;
+        cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
+        cuda_node.miss_node_index = node->_miss ? node->_miss->_index : -1;
+        cuda_node.assigned_face_index_start = face_indices_start;
+        cuda_node.assigned_face_index_end = face_indices_end;
+        cuda_node.aabb_max.x = node->_aabb_max.x;
+        cuda_node.aabb_max.y = node->_aabb_max.y;
+        cuda_node.aabb_max.z = node->_aabb_max.z;
+        cuda_node.aabb_min.x = node->_aabb_min.x;
+        cuda_node.aabb_min.y = node->_aabb_min.y;
+        cuda_node.aabb_min.z = node->_aabb_min.z;
+
+        node_array[j] = cuda_node;
+
+        if (node->_is_leaf) {
             face_indices_end += node->_assigned_face_indices.size() - 1;
         }
-
-        node_buffer[j * 4 + 0] = node->_hit ? node->_hit->_index : -1;
-        node_buffer[j * 4 + 1] = node->_miss ? node->_miss->_index : -1;
-        node_buffer[j * 4 + 2] = face_indices_start;
-        node_buffer[j * 4 + 3] = face_indices_end;
-
-        aabb_buffer[j * 8 + 0] = node->_aabb_max.x;
-        aabb_buffer[j * 8 + 1] = node->_aabb_max.y;
-        aabb_buffer[j * 8 + 2] = node->_aabb_max.z;
-        aabb_buffer[j * 8 + 3] = 1.0f;
-        aabb_buffer[j * 8 + 4] = node->_aabb_min.x;
-        aabb_buffer[j * 8 + 5] = node->_aabb_min.y;
-        aabb_buffer[j * 8 + 6] = node->_aabb_min.z;
-        aabb_buffer[j * 8 + 7] = 1.0f;
 
         printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, face_indices_start, face_indices_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
         printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
 
-        if(node->_is_leaf){
+        if (node->_is_leaf) {
             face_indices_start += node->_assigned_face_indices.size();
         }
     }
