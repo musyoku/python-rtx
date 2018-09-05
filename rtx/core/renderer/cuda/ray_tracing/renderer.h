@@ -1,13 +1,14 @@
 #pragma once
-#include "../../../class/ray.h"
 #include "../../../class/bvh.h"
+#include "../../../class/ray.h"
 #include "../../../class/renderer.h"
 #include "../../../header/array.h"
 #include "../../../header/glm.h"
 #include "../../options/ray_tracing.h"
+#include "../header/ray_tracing.h"
 #include <array>
-#include <memory>
 #include <map>
+#include <memory>
 #include <pybind11/numpy.h>
 #include <random>
 
@@ -47,24 +48,24 @@ private:
     // an integer value obtained by concatenating 8 attribute values represented by 4 bit integer
     rtx::array<int> _object_geometry_attributes_array;
 
-    // [bvh_index] -> node connections
-    // an integer value obtained by concatenating 4 node indices represented by 8 bit integer
-    rtx::array<int> _threaded_bvh_node_array;
-
-    // [bvh_index] -> #nodes of the BVH tree.
+    rtx::array<int> _threaded_bvh_arguments_array;
     rtx::array<int> _threaded_bvh_num_nodes_array;
-
-    // [bvh_index] -> offset in _threaded_bvh_node_array
     rtx::array<int> _threaded_bvh_index_offset_array;
 
-    // [bvh_iondex * 8 + 0] -> aabb_max.x 
-    // [bvh_iondex * 8 + 1] -> aabb_max.y 
-    // [bvh_iondex * 8 + 2] -> aabb_max.z 
+    // [node_index * 4 + 0] -> hit link (node index)
+    // [node_index * 4 + 1] -> miss link (node index)
+    // [node_index * 4 + 3] -> assigned face indices start
+    // [node_index * 4 + 4] -> assigned face indices end
+    rtx::array<int> _threaded_bvh_node_array;
+
+    // [bvh_iondex * 8 + 0] -> aabb_max.x
+    // [bvh_iondex * 8 + 1] -> aabb_max.y
+    // [bvh_iondex * 8 + 2] -> aabb_max.z
     // [bvh_iondex * 8 + 3] -> -1
-    // [bvh_iondex * 8 + 4] -> aabb_min.x 
-    // [bvh_iondex * 8 + 5] -> aabb_min.y 
-    // [bvh_iondex * 8 + 6] -> aabb_min.z 
-    // [bvh_iondex * 8 + 7] -> -1 
+    // [bvh_iondex * 8 + 4] -> aabb_min.x
+    // [bvh_iondex * 8 + 5] -> aabb_min.y
+    // [bvh_iondex * 8 + 6] -> aabb_min.z
+    // [bvh_iondex * 8 + 7] -> -1
     rtx::array<float> _threaded_bvh_aabb_array;
 
     // [ray_index * 4 + 0] -> pixel.r
@@ -82,6 +83,8 @@ private:
     int* _gpu_object_vertex_count_array;
     int* _gpu_object_geometry_attributes_array;
     int* _gpu_threaded_bvh_node_array;
+    int* _gpu_threaded_bvh_num_nodes_array;
+    int* _gpu_threaded_bvh_index_offset_array;
     float* _gpu_threaded_bvh_aabb_array;
     float* _gpu_render_array;
 

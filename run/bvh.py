@@ -27,7 +27,7 @@ scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices, 100)
+geometry = rtx.StandardGeometry(faces, vertices, 500)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
@@ -70,6 +70,7 @@ for n in range(total_iterations):
     plt.pause(1e-8)
 
     camera_rad += math.pi / 10
+    exit()
 
 end = time.time()
 print(total_iterations / (end - start))

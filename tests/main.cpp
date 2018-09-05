@@ -64,9 +64,45 @@ void run()
     delete[] pixels;
 }
 
+void test_structure()
+{
+    int num_nodes = 1000;
+    rtx::array<int> node_array(num_nodes * 4);
+    int* gpu_node_array;
+    rtx_cuda_malloc((void**)&gpu_node_array, sizeof(int) * num_nodes * 4);
+    for(int i = 0;i < 10;i++){
+        auto start = std::chrono::system_clock::now();
+        for (int n = 0; n < 100; n++) {
+            launch_test_linear_kernel(gpu_node_array, num_nodes);
+        }
+        auto end = std::chrono::system_clock::now();
+        double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
+    }
+    rtx_cuda_free((void**)&gpu_node_array);
+
+    std::cout << "done" << std::endl;
+
+    rtx::array<CUDAThreadedBVHNode> struct_array(num_nodes);
+    CUDAThreadedBVHNode* gpu_struct_array;
+    rtx_cuda_malloc((void**)&gpu_struct_array, sizeof(CUDAThreadedBVHNode) * num_nodes);
+    for(int i = 0;i < 10;i++){
+        auto start = std::chrono::system_clock::now();
+        for (int n = 0; n < 100; n++) {
+            launch_test_struct_kernel(gpu_struct_array, num_nodes);
+        }
+        auto end = std::chrono::system_clock::now();
+        double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
+    }
+    rtx_cuda_free((void**)&gpu_struct_array);
+    std::cout << "done" << std::endl;
+}
+
 int main()
 {
-    run();
+    // run();
+    test_structure();
     cuda_device_reset();
     return 0;
 }

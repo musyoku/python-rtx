@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define SCENE_BVH_TERMINAL_NODE 255
-#define SCENE_BVH_INNER_NODE 255
+#define THREADED_BVH_TERMINAL_NODE 8191
+#define THREADED_BVH_INNER_NODE 63
 
 __global__ void bvh_kernel(
     const float* ray_array, const int ray_array_size,
@@ -19,7 +19,9 @@ __global__ void bvh_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_attributes_array_size,
-    const int* scene_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
+    const int* threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
     const float* scene_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -46,9 +48,9 @@ __global__ void bvh_kernel(
     offset += object_vertex_offset_array_size;
     int* shared_object_geometry_attributes_array = &shared_memory[offset];
     offset += object_geometry_attributes_array_size;
-    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
+    int* shared_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += threaded_bvh_node_array_size;
-    float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
+    float* shared_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += threaded_bvh_aabb_array_size;
 
     if (thread_id == 0) {
@@ -74,10 +76,10 @@ __global__ void bvh_kernel(
             shared_object_geometry_attributes_array[i] = object_geometry_type_array[i];
         }
         for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-            shared_scene_threaded_bvh_node_array[i] = scene_threaded_bvh_node_array[i];
+            shared_threaded_bvh_node_array[i] = threaded_bvh_node_array[i];
         }
         for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-            shared_scene_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
+            shared_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
         }
     }
     __syncthreads();
@@ -120,14 +122,14 @@ __global__ void bvh_kernel(
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_node_array[i] != scene_threaded_bvh_node_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_node_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_node_array[i] != threaded_bvh_node_array[i]) {
+    //             printf("Error: shared_threaded_bvh_node_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_aabb_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
+    //             printf("Error: shared_threaded_bvh_aabb_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
@@ -143,11 +145,11 @@ __global__ void bvh_kernel(
     float ray_direction_inv_x;
     float ray_direction_inv_y;
     float ray_direction_inv_z;
-    // int scene_bvh_binary_node;
-    // int scene_bvh_object_index;
-    // int scene_bvh_current_node_id;
-    // int scene_bvh_hit_node_id;
-    // int scene_bvh_miss_node_id;
+    // int bvh_binary_node;
+    // int bvh_object_index;
+    // int bvh_current_node_id;
+    // int bvh_hit_node_id;
+    // int bvh_miss_node_id;
     // float aabb_max_x;
     // float aabb_max_y;
     // float aabb_max_z;
@@ -200,28 +202,28 @@ __global__ void bvh_kernel(
             bool did_hit_object = false;
 
             // BVH traversal
-            int scene_bvh_current_node_id = 0;
+            int bvh_current_node_id = 0;
             for (int traversal = 0; traversal < threaded_bvh_node_array_size; traversal++) {
 
-                if (scene_bvh_current_node_id == SCENE_BVH_TERMINAL_NODE) {
+                if (bvh_current_node_id == THREADED_BVH_TERMINAL_NODE) {
                     break;
                 }
-                assert(scene_bvh_current_node_id < threaded_bvh_node_array_size);
+                assert(bvh_current_node_id < threaded_bvh_node_array_size);
 
-                int scene_bvh_binary_node = shared_scene_threaded_bvh_node_array[scene_bvh_current_node_id];
-                int scene_bvh_object_index = 0xFF & scene_bvh_binary_node;
-                int scene_bvh_miss_node_id = 0xFF & (scene_bvh_binary_node >> 8);
-                int scene_bvh_hit_node_id = 0xFF & (scene_bvh_binary_node >> 16);
+                int bvh_binary_node = shared_threaded_bvh_node_array[bvh_current_node_id];
+                int bvh_object_index = 0xFF & bvh_binary_node;
+                int bvh_miss_node_id = 0xFF & (bvh_binary_node >> 8);
+                int bvh_hit_node_id = 0xFF & (bvh_binary_node >> 16);
 
-                if (scene_bvh_object_index == SCENE_BVH_INNER_NODE) {
-                    assert(scene_bvh_current_node_id * 8 + 0 < threaded_bvh_aabb_array_size);
-                    assert(scene_bvh_current_node_id * 8 + 7 < threaded_bvh_aabb_array_size);
-                    float aabb_max_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 0];
-                    float aabb_max_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 1];
-                    float aabb_max_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 2];
-                    float aabb_min_x = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 4];
-                    float aabb_min_y = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 5];
-                    float aabb_min_z = shared_scene_threaded_bvh_aabb_array[scene_bvh_current_node_id * 8 + 6];
+                if (bvh_object_index == THREADED_BVH_INNER_NODE) {
+                    assert(bvh_current_node_id * 8 + 0 < threaded_bvh_aabb_array_size);
+                    assert(bvh_current_node_id * 8 + 7 < threaded_bvh_aabb_array_size);
+                    float aabb_max_x = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 0];
+                    float aabb_max_y = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 1];
+                    float aabb_max_z = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 2];
+                    float aabb_min_x = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 4];
+                    float aabb_min_y = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 5];
+                    float aabb_min_z = shared_threaded_bvh_aabb_array[bvh_current_node_id * 8 + 6];
 
                     // http://www.cs.utah.edu/~awilliam/box/box.pdf
                     float tmin = ((ray_direction_inv_x < 0 ? aabb_max_x : aabb_min_x) - ray_origin_x) * ray_direction_inv_x;
@@ -230,7 +232,7 @@ __global__ void bvh_kernel(
                     float tmp_tmax = ((ray_direction_inv_y < 0 ? aabb_min_y : aabb_max_y) - ray_origin_y) * ray_direction_inv_y;
 
                     if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        bvh_current_node_id = bvh_miss_node_id;
                         continue;
                     }
                     if (tmp_tmin > tmin) {
@@ -241,11 +243,11 @@ __global__ void bvh_kernel(
                     }
                     tmp_tmin = ((ray_direction_inv_z < 0 ? aabb_max_z : aabb_min_z) - ray_origin_z) * ray_direction_inv_z;
                     // tmp_tmax = ((ray_direction_inv_z < 0 ? aabb_min_z : aabb_max_z) - ray_origin_z) * ray_direction_inv_z;
-                    // if (scene_bvh_object_index == 3 && ray_index == 10 * 32 + 5) {
+                    // if (bvh_object_index == 3 && ray_index == 10 * 32 + 5) {
                     //     printf("+traversal: %d max: %f %f dir: %f inv: %f tmax: %f tmin: %f ttmax: %f ttmin: %f \n", traversal, aabb_max_z, aabb_min_z, ray_direction_z, ray_direction_inv_z, tmax, tmin, tmp_tmax, tmp_tmin);
                     //     printf("AABB(max): (%f, %f, %f) min: (%f, %f, %f)\n", aabb_max_x, aabb_max_y, aabb_max_z, aabb_min_x, aabb_min_y, aabb_min_z);
                     //     printf("ray: (%f, %f, %f)\n", ray_direction_x, ray_direction_y, ray_direction_z);
-                    //     printf("object: %d\n", scene_bvh_object_index);
+                    //     printf("object: %d\n", bvh_object_index);
                     //     reflection_decay_r = 0.0f;
                     //     reflection_decay_g = 0.0f;
                     //     reflection_decay_b = 0.0f;
@@ -259,7 +261,7 @@ __global__ void bvh_kernel(
                     //     reflection_decay_b = 0.0f;
                     // }
                     if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        bvh_current_node_id = bvh_miss_node_id;
                         continue;
                     }
                     if (tmp_tmin > tmin) {
@@ -270,32 +272,32 @@ __global__ void bvh_kernel(
                     }
 
                     if (tmax < 0.001) {
-                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                        bvh_current_node_id = bvh_miss_node_id;
                         continue;
                     }
 
                     // if (thread_id == 0) {
-                    //     printf("index: %u hit: %u miss: %u object: %u binary: %u\n", scene_bvh_current_node_id,
-                    //         scene_bvh_hit_node_id, scene_bvh_miss_node_id, scene_bvh_object_index, scene_bvh_binary_node);
-                    //     // printf("node: %u %u\n", scene_bvh_current_node_id, scene_bvh_binary_node);
-                    //     // printf("object: %u\n", scene_bvh_object_index);
-                    //     // printf("miss: %u\n", scene_bvh_miss_node_id);
-                    //     // printf("hit: %u\n", scene_bvh_hit_node_id);
+                    //     printf("index: %u hit: %u miss: %u object: %u binary: %u\n", bvh_current_node_id,
+                    //         bvh_hit_node_id, bvh_miss_node_id, bvh_object_index, bvh_binary_node);
+                    //     // printf("node: %u %u\n", bvh_current_node_id, bvh_binary_node);
+                    //     // printf("object: %u\n", bvh_object_index);
+                    //     // printf("miss: %u\n", bvh_miss_node_id);
+                    //     // printf("hit: %u\n", bvh_hit_node_id);
                     //     // printf("AAAB(max): %f %f %f\n", aabb_max_x, aabb_max_y, aabb_max_z);
                     //     // printf("AAAB(min): %f %f %f\n", aabb_min_x, aabb_min_y, aabb_min_z);
                     //     // printf("t: %f %f\n", tmin, tmax);
-                    //     // printf("next: %u\n", scene_bvh_current_node_id);
+                    //     // printf("next: %u\n", bvh_current_node_id);
                     // }
 
-                    scene_bvh_current_node_id = scene_bvh_hit_node_id;
+                    bvh_current_node_id = bvh_hit_node_id;
                 } else {
-                    int faces_count = shared_object_face_count_array[scene_bvh_object_index];
-                    int face_index_offset = shared_object_face_offset_array[scene_bvh_object_index];
-                    int vertices_count = shared_object_vertex_count_array[scene_bvh_object_index];
-                    int vertex_index_offset = shared_object_vertex_offset_array[scene_bvh_object_index];
-                    int geometry_type = shared_object_geometry_attributes_array[scene_bvh_object_index];
+                    int faces_count = shared_object_face_count_array[bvh_object_index];
+                    int face_index_offset = shared_object_face_offset_array[bvh_object_index];
+                    int vertices_count = shared_object_vertex_count_array[bvh_object_index];
+                    int vertex_index_offset = shared_object_vertex_offset_array[bvh_object_index];
+                    int geometry_type = shared_object_geometry_attributes_array[bvh_object_index];
                     // if (thread_id == 0) {
-                    //     printf("object: %u count: %d offset: %d\n", scene_bvh_object_index, vertices_count, vertex_index_offset);
+                    //     printf("object: %u count: %d offset: %d\n", bvh_object_index, vertices_count, vertex_index_offset);
                     // }
 
                     if (geometry_type == RTX_GEOMETRY_TYPE_STANDARD) {
@@ -303,7 +305,7 @@ __global__ void bvh_kernel(
                         for (int j = 0; j < faces_count; j++) {
                             int array_index = 4 * shared_face_vertex_index_array[(face_index_offset + j) * 4 + 0];
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float va_x = shared_vertex_array[array_index + 0];
@@ -316,7 +318,7 @@ __global__ void bvh_kernel(
 
                             array_index = 4 * shared_face_vertex_index_array[(face_index_offset + j) * 4 + 1];
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float vb_x = shared_vertex_array[array_index + 0];
@@ -329,7 +331,7 @@ __global__ void bvh_kernel(
 
                             array_index = 4 * shared_face_vertex_index_array[(face_index_offset + j) * 4 + 2];
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float vc_x = shared_vertex_array[array_index + 0];
@@ -411,7 +413,7 @@ __global__ void bvh_kernel(
                             hit_color_g = 0.8f;
                             hit_color_b = 0.8f;
 
-                            if (scene_bvh_object_index == 2) {
+                            if (bvh_object_index == 2) {
                                 hit_color_r = 1.0f;
                                 hit_color_g = 1.0f;
                                 hit_color_b = 1.0f;
@@ -481,10 +483,10 @@ __global__ void bvh_kernel(
                         }
                     }
 
-                    if (scene_bvh_hit_node_id == SCENE_BVH_TERMINAL_NODE) {
-                        scene_bvh_current_node_id = scene_bvh_miss_node_id;
+                    if (bvh_hit_node_id == THREADED_BVH_TERMINAL_NODE) {
+                        bvh_current_node_id = bvh_miss_node_id;
                     } else {
-                        scene_bvh_current_node_id = scene_bvh_hit_node_id;
+                        bvh_current_node_id = bvh_hit_node_id;
                     }
                 }
             }
@@ -556,7 +558,9 @@ __global__ void global_memory_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_attributes_array_size,
-    const int* scene_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
+    const int* threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
     const float* scene_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -571,17 +575,29 @@ __global__ void global_memory_kernel(
     int offset = 0;
     int* shared_object_face_count_array = &shared_memory[offset];
     offset += object_face_count_array_size;
+
     int* shared_object_face_offset_array = &shared_memory[offset];
     offset += object_face_offset_array_size;
+
     int* shared_object_vertex_count_array = &shared_memory[offset];
     offset += object_vertex_count_array_size;
+
     int* shared_object_vertex_offset_array = &shared_memory[offset];
     offset += object_vertex_offset_array_size;
+
     int* shared_object_geometry_attributes_array = &shared_memory[offset];
     offset += object_geometry_attributes_array_size;
-    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
+
+    int* shared_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += threaded_bvh_node_array_size;
-    float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
+
+    int* shared_threaded_bvh_num_nodes_array = (int*)&shared_memory[offset];
+    offset += threaded_bvh_num_nodes_array_size;
+
+    int* shared_threaded_bvh_index_offset_array = (int*)&shared_memory[offset];
+    offset += threaded_bvh_index_offset_array_size;
+
+    float* shared_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += threaded_bvh_aabb_array_size;
 
     if (thread_id == 0) {
@@ -601,13 +617,20 @@ __global__ void global_memory_kernel(
             shared_object_geometry_attributes_array[i] = object_geometry_type_array[i];
         }
         for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-            shared_scene_threaded_bvh_node_array[i] = scene_threaded_bvh_node_array[i];
+            shared_threaded_bvh_node_array[i] = threaded_bvh_node_array[i];
+        }
+        for (int i = 0; i < threaded_bvh_num_nodes_array_size; i++) {
+            shared_threaded_bvh_num_nodes_array[i] = threaded_bvh_num_nodes_array[i];
+        }
+        for (int i = 0; i < threaded_bvh_index_offset_array_size; i++) {
+            shared_threaded_bvh_index_offset_array[i] = threaded_bvh_index_offset_array[i];
         }
         for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-            shared_scene_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
+            shared_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
         }
     }
     __syncthreads();
+
     // if (thread_id == 0) {
     //     for (int i = 0; i < object_face_count_array_size; i++) {
     //         if (shared_object_face_count_array[i] != object_face_count_array[i]) {
@@ -634,14 +657,26 @@ __global__ void global_memory_kernel(
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_node_array[i] != scene_threaded_bvh_node_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_node_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_node_array[i] != threaded_bvh_node_array[i]) {
+    //             printf("Error: shared_threaded_bvh_node_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < threaded_bvh_num_nodes_array_size; i++) {
+    //         if (shared_threaded_bvh_num_nodes_array[i] != threaded_bvh_num_nodes_array[i]) {
+    //             printf("Error: shared_threaded_bvh_num_nodes_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    //     for (int i = 0; i < threaded_bvh_index_offset_array_size; i++) {
+    //         if (shared_threaded_bvh_index_offset_array[i] != threaded_bvh_index_offset_array[i]) {
+    //             printf("Error: shared_threaded_bvh_index_offset_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_aabb_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
+    //             printf("Error: shared_threaded_bvh_aabb_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
@@ -704,8 +739,9 @@ __global__ void global_memory_kernel(
                 int vertex_index_offset = shared_object_vertex_offset_array[object_index];
                 int geometry_attributes = shared_object_geometry_attributes_array[object_index];
                 bool bvh_enabled = (1 & geometry_attributes) == 1;
-                int bvh_node_index = 0xFF & (geometry_attributes >> 4);
+                int bvh_node_index = 0x7F & (geometry_attributes >> 1);
                 int geometry_type = 0xFF & (geometry_attributes >> 8);
+                assert(bvh_node_index < threaded_bvh_num_nodes_array_size);
                 // if (thread_id == 0) {
                 //     printf("object: %d\n", object_index);
                 //     printf("face: ");
@@ -728,7 +764,120 @@ __global__ void global_memory_kernel(
                 //     printf("\n");
                 // }
                 if (bvh_enabled) {
+                    // BVH traversal
+                    int num_nodes = shared_threaded_bvh_num_nodes_array[bvh_node_index];
+                    assert(num_nodes > 0);
+                    int bvh_node_offset = shared_threaded_bvh_index_offset_array[bvh_node_index];
 
+                    for (int traversal = 0; traversal < num_nodes; traversal++) {
+                        int bvh_binary_node = shared_threaded_bvh_node_array[traversal];
+                        int bvh_object_index = 0x3F & bvh_binary_node;
+                        int bvh_miss_node_id = 0x1FFF & (bvh_binary_node >> 6);
+                        int bvh_hit_node_id = 0x1FFF & (bvh_binary_node >> 19);
+                        if (thread_id == 0) {
+                            printf("traversal: %d object: %d miss: %d hit: %d \n", traversal, bvh_object_index, bvh_miss_node_id, bvh_hit_node_id);
+                        }
+                    }
+
+                    int bvh_current_node_id = 0;
+                    for (int traversal = 0; traversal < num_nodes; traversal++) {
+                        if (bvh_current_node_id == THREADED_BVH_TERMINAL_NODE) {
+                            break;
+                        }
+                        int array_index = bvh_current_node_id + bvh_node_offset;
+                        assert(array_index < threaded_bvh_node_array_size);
+
+                        int bvh_binary_node = shared_threaded_bvh_node_array[array_index];
+                        int bvh_object_index = 0x3F & bvh_binary_node;
+                        int bvh_miss_node_id = 0x1FFF & (bvh_binary_node >> 6);
+                        int bvh_hit_node_id = 0x1FFF & (bvh_binary_node >> 19);
+
+                        if (bvh_object_index == THREADED_BVH_INNER_NODE) {
+                            assert(array_index * 8 + 0 < threaded_bvh_aabb_array_size);
+                            assert(array_index * 8 + 7 < threaded_bvh_aabb_array_size);
+                            float aabb_max_x = shared_threaded_bvh_aabb_array[array_index * 8 + 0];
+                            float aabb_max_y = shared_threaded_bvh_aabb_array[array_index * 8 + 1];
+                            float aabb_max_z = shared_threaded_bvh_aabb_array[array_index * 8 + 2];
+                            float aabb_min_x = shared_threaded_bvh_aabb_array[array_index * 8 + 4];
+                            float aabb_min_y = shared_threaded_bvh_aabb_array[array_index * 8 + 5];
+                            float aabb_min_z = shared_threaded_bvh_aabb_array[array_index * 8 + 6];
+
+                            // http://www.cs.utah.edu/~awilliam/box/box.pdf
+                            float tmin = ((ray_direction_inv_x < 0 ? aabb_max_x : aabb_min_x) - ray_origin_x) * ray_direction_inv_x;
+                            float tmax = ((ray_direction_inv_x < 0 ? aabb_min_x : aabb_max_x) - ray_origin_x) * ray_direction_inv_x;
+                            float tmp_tmin = ((ray_direction_inv_y < 0 ? aabb_max_y : aabb_min_y) - ray_origin_y) * ray_direction_inv_y;
+                            float tmp_tmax = ((ray_direction_inv_y < 0 ? aabb_min_y : aabb_max_y) - ray_origin_y) * ray_direction_inv_y;
+
+                            if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                                bvh_current_node_id = bvh_miss_node_id;
+                                continue;
+                            }
+                            if (tmp_tmin > tmin) {
+                                tmin = tmp_tmin;
+                            }
+                            if (tmp_tmax < tmax) {
+                                tmax = tmp_tmax;
+                            }
+                            tmp_tmin = ((ray_direction_inv_z < 0 ? aabb_max_z : aabb_min_z) - ray_origin_z) * ray_direction_inv_z;
+                            // tmp_tmax = ((ray_direction_inv_z < 0 ? aabb_min_z : aabb_max_z) - ray_origin_z) * ray_direction_inv_z;
+                            // if (bvh_object_index == 3 && ray_index == 10 * 32 + 5) {
+                            //     printf("+traversal: %d max: %f %f dir: %f inv: %f tmax: %f tmin: %f ttmax: %f ttmin: %f \n", traversal, aabb_max_z, aabb_min_z, ray_direction_z, ray_direction_inv_z, tmax, tmin, tmp_tmax, tmp_tmin);
+                            //     printf("AABB(max): (%f, %f, %f) min: (%f, %f, %f)\n", aabb_max_x, aabb_max_y, aabb_max_z, aabb_min_x, aabb_min_y, aabb_min_z);
+                            //     printf("ray: (%f, %f, %f)\n", ray_direction_x, ray_direction_y, ray_direction_z);
+                            //     printf("object: %d\n", bvh_object_index);
+                            //     reflection_decay_r = 0.0f;
+                            //     reflection_decay_g = 0.0f;
+                            //     reflection_decay_b = 0.0f;
+                            // }
+                            // if (ray_index == 20 * 32 + 5) {
+                            //     printf("-traversal: %d max: %f %f dir: %f inv: %f tmax: %f tmin: %f ttmax: %f ttmin: %f \n", traversal, aabb_max_z, aabb_min_z, ray_direction_z, ray_direction_inv_z, tmax, tmin, tmp_tmax, tmp_tmin);
+                            //     printf("AABB(max): (%f, %f, %f) min: (%f, %f, %f)\n", aabb_max_x, aabb_max_y, aabb_max_z, aabb_min_x, aabb_min_y, aabb_min_z);
+                            //     printf("ray: (%f, %f, %f)\n", ray_direction_x, ray_direction_y, ray_direction_z);
+                            //     reflection_decay_r = 0.0f;
+                            //     reflection_decay_g = 0.0f;
+                            //     reflection_decay_b = 0.0f;
+                            // }
+                            if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                                bvh_current_node_id = bvh_miss_node_id;
+                                continue;
+                            }
+                            if (tmp_tmin > tmin) {
+                                tmin = tmp_tmin;
+                            }
+                            if (tmp_tmax < tmax) {
+                                tmax = tmp_tmax;
+                            }
+
+                            if (tmax < 0.001) {
+                                bvh_current_node_id = bvh_miss_node_id;
+                                continue;
+                            }
+
+                            // if (thread_id == 0) {
+                            //     printf("index: %u hit: %u miss: %u object: %u binary: %u\n", bvh_current_node_id,
+                            //         bvh_hit_node_id, bvh_miss_node_id, bvh_object_index, bvh_binary_node);
+                            //     // printf("node: %u %u\n", bvh_current_node_id, bvh_binary_node);
+                            //     // printf("object: %u\n", bvh_object_index);
+                            //     // printf("miss: %u\n", bvh_miss_node_id);
+                            //     // printf("hit: %u\n", bvh_hit_node_id);
+                            //     // printf("AAAB(max): %f %f %f\n", aabb_max_x, aabb_max_y, aabb_max_z);
+                            //     // printf("AAAB(min): %f %f %f\n", aabb_min_x, aabb_min_y, aabb_min_z);
+                            //     // printf("t: %f %f\n", tmin, tmax);
+                            //     // printf("next: %u\n", bvh_current_node_id);
+                            // }
+                            reflection_decay_r = 1.0f;
+                            reflection_decay_g = 0.0f;
+                            reflection_decay_b = 0.0f;
+
+                            bvh_current_node_id = bvh_hit_node_id;
+                        } else {
+                            if (bvh_hit_node_id == THREADED_BVH_TERMINAL_NODE) {
+                                bvh_current_node_id = bvh_miss_node_id;
+                            } else {
+                                bvh_current_node_id = bvh_hit_node_id;
+                            }
+                        }
+                    }
                 } else {
                     if (geometry_type == RTX_GEOMETRY_TYPE_STANDARD) {
                         for (int j = 0; j < faces_count; j++) {
@@ -737,7 +886,7 @@ __global__ void global_memory_kernel(
                                 continue;
                             }
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float va_x = vertex_array[array_index + 0];
@@ -753,7 +902,7 @@ __global__ void global_memory_kernel(
                                 continue;
                             }
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float vb_x = vertex_array[array_index + 0];
@@ -769,7 +918,7 @@ __global__ void global_memory_kernel(
                                 continue;
                             }
                             // if (thread_id == 0) {
-                            //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                            //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                             // }
                             assert(array_index + 0 < vertex_array_size);
                             float vc_x = vertex_array[array_index + 0];
@@ -988,7 +1137,9 @@ __global__ void shared_memory_kernel(
     const int* object_vertex_count_array, const int object_vertex_count_array_size,
     const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
     const int* object_geometry_type_array, const int object_geometry_attributes_array_size,
-    const int* scene_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int* threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
+    const int* threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
     const float* scene_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
     float* render_array, const int render_array_size,
     const int num_rays,
@@ -1015,9 +1166,9 @@ __global__ void shared_memory_kernel(
     offset += object_vertex_offset_array_size;
     int* shared_object_geometry_attributes_array = &shared_memory[offset];
     offset += object_geometry_attributes_array_size;
-    int* shared_scene_threaded_bvh_node_array = (int*)&shared_memory[offset];
+    int* shared_threaded_bvh_node_array = (int*)&shared_memory[offset];
     offset += threaded_bvh_node_array_size;
-    float* shared_scene_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
+    float* shared_threaded_bvh_aabb_array = (float*)&shared_memory[offset];
     offset += threaded_bvh_aabb_array_size;
 
     if (thread_id == 0) {
@@ -1043,10 +1194,10 @@ __global__ void shared_memory_kernel(
             shared_object_geometry_attributes_array[i] = object_geometry_type_array[i];
         }
         for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-            shared_scene_threaded_bvh_node_array[i] = scene_threaded_bvh_node_array[i];
+            shared_threaded_bvh_node_array[i] = threaded_bvh_node_array[i];
         }
         for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-            shared_scene_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
+            shared_threaded_bvh_aabb_array[i] = scene_threaded_bvh_aabb_array[i];
         }
     }
     __syncthreads();
@@ -1088,14 +1239,14 @@ __global__ void shared_memory_kernel(
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_node_array[i] != scene_threaded_bvh_node_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_node_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_node_array[i] != threaded_bvh_node_array[i]) {
+    //             printf("Error: shared_threaded_bvh_node_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
     //     for (int i = 0; i < threaded_bvh_aabb_array_size; i++) {
-    //         if (shared_scene_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
-    //             printf("Error: shared_scene_threaded_bvh_aabb_array missmatch at %d\n", i);
+    //         if (shared_threaded_bvh_aabb_array[i] != scene_threaded_bvh_aabb_array[i]) {
+    //             printf("Error: shared_threaded_bvh_aabb_array missmatch at %d\n", i);
     //             return;
     //         }
     //     }
@@ -1185,7 +1336,7 @@ __global__ void shared_memory_kernel(
                             continue;
                         }
                         // if (thread_id == 0) {
-                        //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                        //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
                         float va_x = shared_vertex_array[array_index + 0];
@@ -1201,7 +1352,7 @@ __global__ void shared_memory_kernel(
                             continue;
                         }
                         // if (thread_id == 0) {
-                        //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                        //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
                         float vb_x = shared_vertex_array[array_index + 0];
@@ -1217,7 +1368,7 @@ __global__ void shared_memory_kernel(
                             continue;
                         }
                         // if (thread_id == 0) {
-                        //     printf("object: %u face: %d vertex: %d\n", scene_bvh_object_index, j, array_index);
+                        //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
                         // }
                         assert(array_index + 0 < vertex_array_size);
                         float vc_x = shared_vertex_array[array_index + 0];
@@ -1838,6 +1989,8 @@ void rtx_cuda_ray_tracing_render(
     int*& gpu_object_vertex_offset_array, const int object_vertex_offset_array_size,
     int*& gpu_object_geometry_attributes_array, const int object_geometry_attributes_array_size,
     int*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    int*& gpu_threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
+    int*& gpu_threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
     float*& gpu_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
     float*& gpu_render_array, const int render_array_size,
     const int num_rays,
@@ -1853,6 +2006,8 @@ void rtx_cuda_ray_tracing_render(
     assert(gpu_object_vertex_offset_array != NULL);
     assert(gpu_object_geometry_attributes_array != NULL);
     assert(gpu_threaded_bvh_node_array != NULL);
+    assert(gpu_threaded_bvh_num_nodes_array != NULL);
+    assert(gpu_threaded_bvh_index_offset_array != NULL);
     assert(gpu_threaded_bvh_aabb_array != NULL);
     assert(gpu_render_array != NULL);
 
@@ -1862,10 +2017,10 @@ void rtx_cuda_ray_tracing_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int required_shared_memory_bytes = sizeof(float) * (vertex_array_size + threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_attributes_array_size + threaded_bvh_node_array_size);
+    int required_shared_memory_bytes = sizeof(float) * (vertex_array_size + threaded_bvh_aabb_array_size) + sizeof(int) * (face_vertex_index_array_size + object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_attributes_array_size + threaded_bvh_node_array_size + threaded_bvh_num_nodes_array_size + threaded_bvh_index_offset_array_size);
 
-    // num_blocks = 1;
-    // num_rays_per_thread = 1;
+    num_blocks = 1;
+    num_rays_per_thread = 1;
 
     cudaDeviceProp dev;
     cudaGetDeviceProperties(&dev, 0);
@@ -1874,7 +2029,7 @@ void rtx_cuda_ray_tracing_render(
     printf("available: %d bytes\n", dev.sharedMemPerBlock);
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
-        int required_shared_memory_bytes = sizeof(float) * (threaded_bvh_aabb_array_size) + sizeof(int) * (object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_attributes_array_size + threaded_bvh_node_array_size);
+        int required_shared_memory_bytes = sizeof(float) * (threaded_bvh_aabb_array_size) + sizeof(int) * (object_face_count_array_size + object_face_offset_array_size + object_vertex_count_array_size + object_vertex_offset_array_size + object_geometry_attributes_array_size + threaded_bvh_node_array_size + threaded_bvh_num_nodes_array_size + threaded_bvh_index_offset_array_size);
         assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
             gpu_ray_array, ray_array_size,
@@ -1886,6 +2041,8 @@ void rtx_cuda_ray_tracing_render(
             gpu_object_vertex_offset_array, object_vertex_offset_array_size,
             gpu_object_geometry_attributes_array, object_geometry_attributes_array_size,
             gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
+            gpu_threaded_bvh_num_nodes_array, threaded_bvh_num_nodes_array_size,
+            gpu_threaded_bvh_index_offset_array, threaded_bvh_index_offset_array_size,
             gpu_threaded_bvh_aabb_array, threaded_bvh_aabb_array_size,
             gpu_render_array, render_array_size,
             num_rays,
@@ -1902,6 +2059,8 @@ void rtx_cuda_ray_tracing_render(
             gpu_object_vertex_offset_array, object_vertex_offset_array_size,
             gpu_object_geometry_attributes_array, object_geometry_attributes_array_size,
             gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
+            gpu_threaded_bvh_num_nodes_array, threaded_bvh_num_nodes_array_size,
+            gpu_threaded_bvh_index_offset_array, threaded_bvh_index_offset_array_size,
             gpu_threaded_bvh_aabb_array, threaded_bvh_aabb_array_size,
             gpu_render_array, render_array_size,
             num_rays,
@@ -1929,4 +2088,60 @@ void rtx_cuda_ray_tracing_render(
     // printf(" total global memory : %d (MB)\n", dev.totalGlobalMem/1024/1024);
     // printf(" shared memory / block : %d (KB)\n", dev.sharedMemPerBlock/1024);
     // printf(" register / block : %d\n", dev.regsPerBlock);
+}
+
+__global__ void test_linear_kernel(
+    const int* node_array, const int num_nodes)
+{
+    int s = 0;
+    for (int j = 0; j < 1000; j++) {
+        for (int i = 0; i < num_nodes; i++) {
+            int hit = node_array[i * 4 + 0];
+            int miss = node_array[i * 4 + 1];
+            int start = node_array[i * 4 + 2];
+            int end = node_array[i * 4 + 3];
+            s += hit + miss + start + end;
+        }
+    }
+}
+
+__global__ void test_struct_kernel(
+    const CUDAThreadedBVHNode* node_array, const int num_nodes)
+{
+    int s = 0;
+    for (int j = 0; j < 1000; j++) {
+        for (int i = 0; i < num_nodes; i++) {
+            CUDAThreadedBVHNode node = node_array[i];
+            s += node.hit_link + node.miss_link + node.start + node.end;
+        }
+    }
+}
+
+void launch_test_linear_kernel(
+    int*& gpu_node_array, const int num_nodes)
+{
+    test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
+}
+
+void launch_test_struct_kernel(
+    CUDAThreadedBVHNode*& gpu_struct_array, const int num_nodes)
+{
+
+    test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
 }

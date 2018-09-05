@@ -71,9 +71,6 @@ Node::Node(std::vector<int> assigned_face_indices,
     _is_leaf = false;
     // std::cout << "id: " << _index << std::endl;
     current_index++;
-    if (current_index > 253) {
-        throw std::runtime_error("BVH Error: Too many objects.");
-    }
     _aabb_max = glm::vec3f(-FLT_MAX);
     _aabb_min = glm::vec3f(FLT_MAX);
 
@@ -295,16 +292,22 @@ int BVH::num_nodes()
 }
 void BVH::serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer, int offset)
 {
-    // std::cout << "serialize:" << std::endl;
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
+    int face_indices_start = 0;
+    int face_indices_end = 0;
     for (auto& node : children) {
-        int hit_bit = node->_hit ? node->_hit->_index : 255;
-        int miss_bit = node->_miss ? node->_miss->_index : 255;
-        int object_id_bit = node->_is_leaf ? node->_assigned_face_indices[0] : 255;
-        int binary_path = (hit_bit << 16) + (miss_bit << 8) + object_id_bit;
         int j = node->_index + offset;
-        node_buffer[j] = binary_path;
+
+        if(node->_is_leaf){
+            face_indices_end += node->_assigned_face_indices.size() - 1;
+        }
+
+        node_buffer[j * 4 + 0] = node->_hit ? node->_hit->_index : -1;
+        node_buffer[j * 4 + 1] = node->_miss ? node->_miss->_index : -1;
+        node_buffer[j * 4 + 2] = face_indices_start;
+        node_buffer[j * 4 + 3] = face_indices_end;
+
         aabb_buffer[j * 8 + 0] = node->_aabb_max.x;
         aabb_buffer[j * 8 + 1] = node->_aabb_max.y;
         aabb_buffer[j * 8 + 2] = node->_aabb_max.z;
@@ -314,31 +317,12 @@ void BVH::serialize(rtx::array<int>& node_buffer, rtx::array<float>& aabb_buffer
         aabb_buffer[j * 8 + 6] = node->_aabb_min.z;
         aabb_buffer[j * 8 + 7] = 1.0f;
 
-        // std::cout << "node: " << node->_index << " object: " << object_id_bit << " "
-        //           << "max: " << node->_aabb_max.x << ", " << node->_aabb_max.y << ", " << node->_aabb_max.z << " ";
-        // std::cout << "min: " << node->_aabb_min.x << ", " << node->_aabb_min.y << ", " << node->_aabb_min.z << std::endl;
+        printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, face_indices_start, face_indices_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
+        printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
 
-        // std::cout << " index: ";
-        // std::cout << node->_index;
-        // std::cout << " left: ";
-        // if (node->_left) {
-        //     std::cout << node->_left->_index;
-        // }
-        // std::cout << " right: ";
-        // if (node->_right) {
-        //     std::cout << node->_right->_index;
-        // }
-        // std::cout << " hit: ";
-        // if (node->_hit) {
-        //     std::cout << node->_hit->_index;
-        // }
-        // std::cout << " miss: ";
-        // if (node->_miss) {
-        //     std::cout << node->_miss->_index;
-        // }
-        // std::cout << " object: " << object_id_bit;
-        // std::cout << " binary: " << binary_path;
-        // std::cout << std::endl;
+        if(node->_is_leaf){
+            face_indices_start += node->_assigned_face_indices.size();
+        }
     }
 }
 }
