@@ -548,7 +548,6 @@ __global__ void bvh_kernel(
         // render_array[ray_index * 3 + 2] = (ray_direction_z + 1.0f) / 2.0f;
     }
 }
-
 __global__ void global_memory_kernel(
     RTXRay*& global_ray_array, const int ray_array_size,
     RTXGeometryFace*& global_face_vertex_index_array, const int face_vertex_index_array_size,
@@ -567,26 +566,38 @@ __global__ void global_memory_kernel(
 
     int offset = 0;
     RTXObject* shared_object_array = (RTXObject*)&shared_memory[offset];
-    offset += object_array_size;
+    offset += sizeof(RTXObject) / sizeof(int) * object_array_size;
 
     RTXThreadedBVH* shared_threaded_bvh_array = (RTXThreadedBVH*)&shared_memory[offset];
-    offset += threaded_bvh_array_size;
+    offset += sizeof(RTXThreadedBVH) / sizeof(int) * threaded_bvh_array_size;
 
     RTXThreadedBVHNode* shared_threaded_bvh_node_array = (RTXThreadedBVHNode*)&shared_memory[offset];
-    offset += threaded_bvh_node_array_size;
+    offset += sizeof(RTXThreadedBVHNode) / sizeof(int) * threaded_bvh_node_array_size;
 
     if (thread_id == 0) {
-        for (int i = 0; i < object_array_size; i++) {
-            shared_object_array[i] = global_object_array[i];
+        printf("%p\n", global_object_array);
+    }
+    return;
+
+    if (thread_id == 0) {
+        for (int k = 0; k < object_array_size; k++) {
+            // RTXObject obj = global_object_array[k];
+            // RTXObject _obj = shared_object_array[k];
+            // if (thread_id == 0) {
+            //     printf("global num_faces: %d face_index_offset: %d num_vertices:%d vertex_index_offset: %d bvh_enabled: %d bvh_index: %d \n", obj.num_faces, obj.face_index_offset, obj.num_vertices, obj.vertex_index_offset, obj.bvh_enabled, obj.bvh_index);
+            //     printf("shared num_faces: %d face_index_offset: %d num_vertices:%d vertex_index_offset: %d bvh_enabled: %d bvh_index: %d \n", _obj.num_faces, _obj.face_index_offset, _obj.num_vertices, _obj.vertex_index_offset, _obj.bvh_enabled, _obj.bvh_index);
+            // }
+            shared_object_array[k] = global_object_array[k];
         }
-        for (int i = 0; i < threaded_bvh_array_size; i++) {
-            shared_threaded_bvh_array[i] = global_threaded_bvh_array[i];
+        for (int k = 0; k < threaded_bvh_array_size; k++) {
+            shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
         }
-        for (int i = 0; i < threaded_bvh_node_array_size; i++) {
-            shared_threaded_bvh_node_array[i] = global_threaded_bvh_node_array[i];
+        for (int k = 0; k < threaded_bvh_node_array_size; k++) {
+            shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
         }
     }
     __syncthreads();
+    return;
 
     // if (thread_id == 0) {
     //     for (int i = 0; i < object_face_count_array_size; i++) {
@@ -643,8 +654,8 @@ __global__ void global_memory_kernel(
     RTXRay ray;
     RTXVector3f ray_direction_inv;
     RTXVector3f hit_point;
-    RTXPixel hit_color;
     RTXVector3f hit_face_normal;
+    RTXPixel hit_color;
     RTXPixel reflection_decay;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
@@ -1868,6 +1879,7 @@ __global__ void shared_memory_kernel(
 // }
 void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
+    assert(size > 0);
     cudaError_t error = cudaMalloc(gpu_array, size);
     // printf("malloc %p\n", *gpu_array);
     cudaError_t status = cudaGetLastError();
@@ -1931,7 +1943,7 @@ void rtx_cuda_ray_tracing_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int required_shared_memory_bytes = sizeof(RTXGeometryFace) * face_vertex_index_array_size + sizeof(RTXGeometryVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+    int required_shared_memory_bytes = sizeof(RTXGeometryFace) * face_vertex_index_array_size + sizeof(RTXGeometryVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
 
     num_blocks = 1;
     num_rays_per_thread = 1;
@@ -1943,7 +1955,12 @@ void rtx_cuda_ray_tracing_render(
     printf("available: %d bytes\n", dev.sharedMemPerBlock);
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
-        int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+        int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+        printf("shared memory: %d bytes\n", required_shared_memory_bytes);
+        printf("available: %d bytes\n", dev.sharedMemPerBlock);
+        printf("RTXObject: %d * %d = %d\n", sizeof(RTXObject), object_array_size, sizeof(RTXObject) * object_array_size);
+        printf("RTXThreadedBVH: %d * %d = %d\n", sizeof(RTXThreadedBVH), threaded_bvh_array_size, sizeof(RTXThreadedBVH) * threaded_bvh_array_size);
+        printf("RTXThreadedBVHNode: %d * %d = %d\n", sizeof(RTXThreadedBVHNode), threaded_bvh_node_array_size, sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
         assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
 
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
@@ -1998,58 +2015,58 @@ void rtx_cuda_ray_tracing_render(
     // printf(" register / block : %d\n", dev.regsPerBlock);
 }
 
-// __global__ void test_linear_kernel(
-//     const int* node_array, const int num_nodes)
-// {
-//     int s = 0;
-//     for (int j = 0; j < 1000; j++) {
-//         for (int i = 0; i < num_nodes; i++) {
-//             int hit = node_array[i * 4 + 0];
-//             int miss = node_array[i * 4 + 1];
-//             int start = node_array[i * 4 + 2];
-//             int end = node_array[i * 4 + 3];
-//             s += hit + miss + start + end;
-//         }
-//     }
-// }
+__global__ void test_linear_kernel(
+    const int* node_array, const int num_nodes)
+{
+    int s = 0;
+    for (int j = 0; j < 1000; j++) {
+        for (int i = 0; i < num_nodes; i++) {
+            int hit = node_array[i * 4 + 0];
+            int miss = node_array[i * 4 + 1];
+            int start = node_array[i * 4 + 2];
+            int end = node_array[i * 4 + 3];
+            s += hit + miss + start + end;
+        }
+    }
+}
 
-// __global__ void test_struct_kernel(
-//     const RTXThreadedBVHNode* node_array, const int num_nodes)
-// {
-//     int s = 0;
-//     for (int j = 0; j < 1000; j++) {
-//         for (int i = 0; i < num_nodes; i++) {
-//             RTXThreadedBVHNode node = node_array[i];
-//             s += node.hit_link + node.miss_link + node.start + node.end;
-//         }
-//     }
-// }
+__global__ void test_struct_kernel(
+    const RTXThreadedBVHNode* node_array, const int num_nodes)
+{
+    int s = 0;
+    for (int j = 0; j < 1000; j++) {
+        for (int i = 0; i < num_nodes; i++) {
+            RTXThreadedBVHNode node = node_array[i];
+            s += node.hit_node_index + node.miss_node_index + node.assigned_face_index_start + node.assigned_face_index_end;
+        }
+    }
+}
 
-// void launch_test_linear_kernel(
-//     int*& gpu_node_array, const int num_nodes)
-// {
-//     test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
-//     cudaError_t status = cudaGetLastError();
-//     if (status != 0) {
-//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-//     }
-//     cudaError_t error = cudaThreadSynchronize();
-//     if (error != cudaSuccess) {
-//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-//     }
-// }
+void launch_test_linear_kernel(
+    int*& gpu_node_array, const int num_nodes)
+{
+    test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
+}
 
-// void launch_test_struct_kernel(
-//     RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes)
-// {
+void launch_test_struct_kernel(
+    RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes)
+{
 
-//     test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
-//     cudaError_t status = cudaGetLastError();
-//     if (status != 0) {
-//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-//     }
-//     cudaError_t error = cudaThreadSynchronize();
-//     if (error != cudaSuccess) {
-//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-//     }
-// }
+    test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
+}

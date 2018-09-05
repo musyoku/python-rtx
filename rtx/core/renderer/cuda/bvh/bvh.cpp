@@ -62,15 +62,18 @@ bool compare_position(const std::pair<int, float>& a, const std::pair<int, float
 }
 Node::Node(std::vector<int> assigned_face_indices,
     std::shared_ptr<StandardGeometry>& geometry,
-    int& current_index)
+    int& current_node_index,
+    int& current_assigned_face_index_offset)
 {
     // std::cout << "===================================" << std::endl;
     assert(assigned_face_indices.size() > 0);
     _assigned_face_indices = assigned_face_indices;
-    _index = current_index;
+    _index = current_node_index;
+    _assigned_face_index_start = -1;
+    _assigned_face_index_end = -1;
     _is_leaf = false;
     // std::cout << "id: " << _index << std::endl;
-    current_index++;
+    current_node_index++;
     _aabb_max = glm::vec3f(-FLT_MAX);
     _aabb_min = glm::vec3f(FLT_MAX);
 
@@ -91,6 +94,9 @@ Node::Node(std::vector<int> assigned_face_indices,
 
     if (assigned_face_indices.size() <= geometry->bvh_max_triangles_per_node()) {
         _is_leaf = true;
+        _assigned_face_index_start = current_assigned_face_index_offset;
+        _assigned_face_index_end = current_assigned_face_index_offset + assigned_face_indices.size() - 1;
+        current_assigned_face_index_offset += assigned_face_indices.size();
         return;
     }
     const glm::vec3f axis_length = _aabb_max - _aabb_min;
@@ -233,8 +239,8 @@ Node::Node(std::vector<int> assigned_face_indices,
     // for (auto index : right_assigned_indices) {
     //     std::cout << index << std::endl;
     // }
-    _left = std::make_shared<Node>(left_assigned_indices, geometry, current_index);
-    _right = std::make_shared<Node>(right_assigned_indices, geometry, current_index);
+    _left = std::make_shared<Node>(left_assigned_indices, geometry, current_node_index, current_assigned_face_index_offset);
+    _right = std::make_shared<Node>(right_assigned_indices, geometry, current_node_index, current_assigned_face_index_offset);
 }
 void Node::set_hit_and_miss_links()
 {
@@ -274,14 +280,31 @@ void Node::collect_children(std::vector<std::shared_ptr<Node>>& children)
         _right->collect_children(children);
     }
 }
+void Node::collect_leaves(std::vector<std::shared_ptr<Node>>& leaves)
+{
+    if (_left) {
+        if (_left->_is_leaf) {
+            leaves.push_back(_left);
+        } else {
+            _left->collect_leaves(leaves);
+        }
+    }
+    if (_right) {
+        if (_right->_is_leaf) {
+            leaves.push_back(_right);
+        } else {
+            _right->collect_leaves(leaves);
+        }
+    }
+}
 BVH::BVH(std::shared_ptr<StandardGeometry>& geometry)
 {
     std::vector<int> assigned_face_indices;
     for (int face_index = 0; face_index < (int)geometry->_face_vertex_indices_array.size(); face_index++) {
         assigned_face_indices.push_back(face_index);
     }
-    _node_current_index = 0;
-    _root = std::make_shared<Node>(assigned_face_indices, geometry, _node_current_index);
+    _current_node_index = 0;
+    _root = std::make_shared<Node>(assigned_face_indices, geometry, _current_node_index, _current_assigned_face_index_offset);
     _root->set_hit_and_miss_links();
 
     _num_nodes = _root->num_children() + 1;
@@ -294,16 +317,14 @@ void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
-    int face_indices_start = 0;
-    int face_indices_end = 0;
     for (auto& node : children) {
         int j = node->_index + offset;
 
         RTXThreadedBVHNode cuda_node;
         cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
         cuda_node.miss_node_index = node->_miss ? node->_miss->_index : -1;
-        cuda_node.assigned_face_index_start = face_indices_start;
-        cuda_node.assigned_face_index_end = face_indices_end;
+        cuda_node.assigned_face_index_start = node->_assigned_face_index_start;
+        cuda_node.assigned_face_index_end = node->_assigned_face_index_end;
         cuda_node.aabb_max.x = node->_aabb_max.x;
         cuda_node.aabb_max.y = node->_aabb_max.y;
         cuda_node.aabb_max.z = node->_aabb_max.z;
@@ -313,16 +334,12 @@ void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
 
         node_array[j] = cuda_node;
 
-        if (node->_is_leaf) {
-            face_indices_end += node->_assigned_face_indices.size() - 1;
-        }
-
-        printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, face_indices_start, face_indices_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
+        printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, node->_assigned_face_index_start, node->_assigned_face_index_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
         printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
-
-        if (node->_is_leaf) {
-            face_indices_start += node->_assigned_face_indices.size();
-        }
     }
+}
+void BVH::collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves)
+{
+    _root->collect_leaves(leaves);
 }
 }

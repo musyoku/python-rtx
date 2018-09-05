@@ -43,7 +43,7 @@ void run()
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
     options->set_num_rays_per_pixel(64);
-    options->set_path_depth(5);
+    options->set_max_bounce(5);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
     int width = 64;

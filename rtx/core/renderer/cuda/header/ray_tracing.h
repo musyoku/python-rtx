@@ -17,3 +17,8 @@ void rtx_cuda_ray_tracing_render(
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_rays_per_pixel,
     const int max_bounce);
+
+void launch_test_linear_kernel(
+    int*& gpu_node_array, const int num_nodes);
+void launch_test_struct_kernel(
+    RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes);

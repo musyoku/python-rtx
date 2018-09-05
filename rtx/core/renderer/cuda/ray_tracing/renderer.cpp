@@ -65,34 +65,51 @@ void RayTracingCUDARenderer::serialize_objects()
     _cpu_vertex_array = rtx::array<RTXGeometryVertex>(num_vertices);
     _cpu_object_array = rtx::array<RTXObject>(num_objects);
 
-    int array_offset = 0;
+    int serialized_array_offset = 0;
     int vertex_offset = 0;
     std::vector<int> vertex_index_offset_array;
     std::vector<int> vertex_count_array;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& geometry = _transformed_geometry_array.at(object_index);
-        geometry->serialize_vertices(_cpu_vertex_array, array_offset);
-        vertex_index_offset_array.push_back(array_offset);
+        geometry->serialize_vertices(_cpu_vertex_array, serialized_array_offset);
+        vertex_index_offset_array.push_back(serialized_array_offset);
         vertex_count_array.push_back(geometry->num_vertices());
-        array_offset += geometry->num_vertices();
+        serialized_array_offset += geometry->num_vertices();
     }
 
-    array_offset = 0;
+    serialized_array_offset = 0;
     std::vector<int> face_index_offset_array;
     std::vector<int> face_count_array;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         // std::cout << "object: " << object_index << std::endl;
         auto& geometry = _transformed_geometry_array.at(object_index);
         int vertex_offset = vertex_index_offset_array[object_index];
-        geometry->serialize_faces(_cpu_face_vertex_indices_array, array_offset, vertex_offset);
-        // std::cout << "face: ";array_offset
+        if (geometry->bvh_enabled()) {
+            int bvh_index = _map_object_bvh.at(object_index);
+            auto& bvh = _bvh_array.at(bvh_index);
+            std::vector<std::shared_ptr<bvh::Node>> nodes;
+            bvh->_root->collect_leaves(nodes);
+            std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
+            auto& face_vertex_indices_array = standard->_face_vertex_indices_array;
+            for (auto& node : nodes) {
+                int serialized_array_index = node->_assigned_face_index_start + serialized_array_offset;
+                for (int face_index : node->_assigned_face_indices) {
+                    glm::vec3i face = face_vertex_indices_array[face_index];
+                    _cpu_face_vertex_indices_array[serialized_array_index] = { face[0] + serialized_array_offset, face[1] + serialized_array_offset, face[2] + serialized_array_offset };
+                    serialized_array_index++;
+                }
+            }
+        } else {
+            geometry->serialize_faces(_cpu_face_vertex_indices_array, serialized_array_offset, vertex_offset);
+        }
+        // std::cout << "face: ";serialized_array_offset
         // for(int i = array_index;i < next_array_index;i++){
         //     std::cout << _cpu_face_vertex_indices_array[i] << " ";
         // }
         // std::cout << std::endl;
-        face_index_offset_array.push_back(array_offset);
+        face_index_offset_array.push_back(serialized_array_offset);
         face_count_array.push_back(geometry->num_faces());
-        array_offset += geometry->num_faces();
+        serialized_array_offset += geometry->num_faces();
     }
 
     assert(vertex_index_offset_array.size() == vertex_count_array.size());
@@ -223,14 +240,10 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
     // Construct BVH in current camera coordinate system
     if (should_serialize_bvh) {
         construct_bvh();
-    }
-    if (should_reallocate_gpu_memory) {
         rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
         rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
         rtx_cuda_malloc((void**)&_gpu_threaded_bvh_array, sizeof(RTXThreadedBVH) * _cpu_threaded_bvh_array.size());
         rtx_cuda_malloc((void**)&_gpu_threaded_bvh_node_array, sizeof(RTXThreadedBVHNode) * _cpu_threaded_bvh_node_array.size());
-    }
-    if (should_transfer_to_gpu) {
         rtx_cuda_memcpy_host_to_device((void*)_gpu_threaded_bvh_array, (void*)_cpu_threaded_bvh_array.data(), sizeof(RTXThreadedBVH) * _cpu_threaded_bvh_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_threaded_bvh_node_array, (void*)_cpu_threaded_bvh_node_array.data(), sizeof(RTXThreadedBVHNode) * _cpu_threaded_bvh_node_array.size());
     }

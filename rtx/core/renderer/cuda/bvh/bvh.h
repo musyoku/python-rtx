@@ -15,9 +15,12 @@ namespace bvh {
         std::vector<int> _assigned_face_indices;
         glm::vec3f _aabb_min;
         glm::vec3f _aabb_max;
+        int _assigned_face_index_start;
+        int _assigned_face_index_end;
         Node(std::vector<int> assigned_face_indices,
             std::shared_ptr<StandardGeometry>& geometry,
-            int& current_index);
+            int& current_node_index,
+            int& current_assigned_face_index_offset);
         std::shared_ptr<Node> _left;
         std::shared_ptr<Node> _right;
         std::shared_ptr<Node> _miss;
@@ -25,11 +28,13 @@ namespace bvh {
         int num_children();
         void set_hit_and_miss_links();
         void collect_children(std::vector<std::shared_ptr<Node>>& children);
+        void collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves);
     };
 }
 class BVH {
 private:
-    int _node_current_index;
+    int _current_node_index;
+    int _current_assigned_face_index_offset;
     int _num_nodes;
 
 public:
@@ -37,5 +42,6 @@ public:
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
     void serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset);
+    void collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves);
 };
 }

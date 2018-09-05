@@ -9,11 +9,11 @@ SOURCES = $(wildcard ../rtx/external/gl3w/*.c) \
 		  $(wildcard ../rtx/core/geometry/*.cpp) \
 		  $(wildcard ../rtx/core/material/mesh/*.cpp) \
 		  $(wildcard ../rtx/core/camera/*.cpp) \
-		  $(wildcard ../rtx/core/bvh/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/cpu/ray_tracing/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/cpu/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/cuda/ray_tracing/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/cuda/kernel/*.cu) \
+		  $(wildcard ../rtx/core/renderer/cuda/bvh/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/options/*.cpp) \
 		  main.cpp
 OBJS = $(patsubst %.cu,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES))))
