@@ -1,6 +1,7 @@
+# :construction: Work in Progress :construction:
 # Python RTX
 
-C++ & Python Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
+Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
 **todo**
 
@@ -14,6 +15,7 @@ C++ & Python Ray Tracing library inspired by [three.js](https://github.com/mrdoo
 - pybind11
 - Python 3
 - OpenMP
+- Intel CPU
 - Ubuntu
 - CUDA
 - NVIDIA GPU
