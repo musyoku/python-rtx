@@ -91,13 +91,20 @@ void RayTracingCUDARenderer::serialize_objects()
             bvh->_root->collect_leaves(nodes);
             std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
             auto& face_vertex_indices_array = standard->_face_vertex_indices_array;
+            // printf("============================================================\n");
+            for (int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {
+                auto& face = face_vertex_indices_array[face_index];
+                // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
+            }
+            // printf("============================================================\n");
             for (auto& node : nodes) {
                 int serialized_array_index = node->_assigned_face_index_start + serialized_array_offset;
                 assert(serialized_array_index < total_faces);
                 for (int face_index : node->_assigned_face_indices) {
                     glm::vec3i face = face_vertex_indices_array[face_index];
-                    _cpu_face_vertex_indices_array[serialized_array_index] = { face[0] + serialized_array_offset, face[1] + serialized_array_offset, face[2] + serialized_array_offset };
+                    _cpu_face_vertex_indices_array[serialized_array_index] = { face[0] + vertex_offset, face[1] + vertex_offset, face[2] + vertex_offset };
                     serialized_array_index++;
+                    // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
                 }
             }
         } else {

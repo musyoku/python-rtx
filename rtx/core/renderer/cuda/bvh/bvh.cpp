@@ -318,25 +318,25 @@ void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
-    for (auto& node : children) {
-        int j = node->_index + offset;
+    for (auto& node_obj : children) {
+        int j = node_obj->_index + offset;
 
-        RTXThreadedBVHNode cuda_node;
-        cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
-        cuda_node.miss_node_index = node->_miss ? node->_miss->_index : -1;
-        cuda_node.assigned_face_index_start = node->_assigned_face_index_start;
-        cuda_node.assigned_face_index_end = node->_assigned_face_index_end;
-        cuda_node.aabb_max.x = node->_aabb_max.x;
-        cuda_node.aabb_max.y = node->_aabb_max.y;
-        cuda_node.aabb_max.z = node->_aabb_max.z;
-        cuda_node.aabb_min.x = node->_aabb_min.x;
-        cuda_node.aabb_min.y = node->_aabb_min.y;
-        cuda_node.aabb_min.z = node->_aabb_min.z;
+        RTXThreadedBVHNode node;
+        node.hit_node_index = node_obj->_hit ? node_obj->_hit->_index : -1;
+        node.miss_node_index = node_obj->_miss ? node_obj->_miss->_index : -1;
+        node.assigned_face_index_start = node_obj->_assigned_face_index_start;
+        node.assigned_face_index_end = node_obj->_assigned_face_index_end;
+        node.aabb_max.x = node_obj->_aabb_max.x;
+        node.aabb_max.y = node_obj->_aabb_max.y;
+        node.aabb_max.z = node_obj->_aabb_max.z;
+        node.aabb_min.x = node_obj->_aabb_min.x;
+        node.aabb_min.y = node_obj->_aabb_min.y;
+        node.aabb_min.z = node_obj->_aabb_min.z;
 
-        node_array[j] = cuda_node;
+        node_array[j] = node;
 
-        printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, node->_assigned_face_index_start, node->_assigned_face_index_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
-        printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
+        // printf("node_obj: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node_obj->_index, node_obj->_assigned_face_index_start, node_obj->_assigned_face_index_end, node_obj->_aabb_max.x, node_obj->_aabb_max.y, node_obj->_aabb_max.z, node_obj->_aabb_min.x, node_obj->_aabb_min.y, node_obj->_aabb_min.z);
+        // printf("    hit: %d miss: %d left: %d right: %d\n", (node_obj->_hit ? node_obj->_hit->_index : -1), (node_obj->_miss ? node_obj->_miss->_index : -1), (node_obj->_left ? node_obj->_left->_index : -1), (node_obj->_right ? node_obj->_right->_index : -1));
     }
 }
 void BVH::collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves)

@@ -226,11 +226,18 @@ __global__ void global_memory_kernel(
                                 continue;
                             }
 
-                            reflection_decay.r = 1.0f;
-                            reflection_decay.g = 0.0f;
-                            reflection_decay.b = 0.0f;
-
+                            // reflection_decay.r = 1.0f;
+                            // reflection_decay.g = 0.0f;
+                            // reflection_decay.b = 0.0f;
+                        } else {
                             int num_assigned_faces = node.assigned_face_index_end - node.assigned_face_index_start + 1;
+                            // if (ray_index == 4986257) {
+                            //     printf("node: %d hit: %d miss: %d start: %d end: %d \n", bvh_current_node_index,
+                            //         node.hit_node_index,
+                            //         node.miss_node_index,
+                            //         node.assigned_face_index_start,
+                            //         node.assigned_face_index_end);
+                            // }
                             for (int m = 0; m < num_assigned_faces; m++) {
                                 RTXGeometryFace face = global_face_vertex_index_array[node.assigned_face_index_start + m + object.face_index_offset];
                                 RTXVector3f va = global_vertex_array[face.a];
@@ -317,14 +324,12 @@ __global__ void global_memory_kernel(
                                 reflection_decay.g = (hit_face_normal.y + 1.0f) / 2.0f;
                                 reflection_decay.b = (hit_face_normal.z + 1.0f) / 2.0f;
                             }
+                        }
 
-                            bvh_current_node_index = node.hit_node_index;
+                        if (node.hit_node_index == THREADED_BVH_TERMINAL_NODE) {
+                            bvh_current_node_index = node.miss_node_index;
                         } else {
-                            if (node.hit_node_index == THREADED_BVH_TERMINAL_NODE) {
-                                bvh_current_node_index = node.miss_node_index;
-                            } else {
-                                bvh_current_node_index = node.hit_node_index;
-                            }
+                            bvh_current_node_index = node.hit_node_index;
                         }
                     }
                 } else {

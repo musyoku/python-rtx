@@ -27,7 +27,7 @@ scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices, 500)
+geometry = rtx.StandardGeometry(faces, vertices, 4000)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
@@ -38,8 +38,8 @@ screen_width = 512
 screen_height = 512
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 32
-render_options.max_bounce = 5
+render_options.num_rays_per_pixel = 1
+render_options.max_bounce = 1
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(
