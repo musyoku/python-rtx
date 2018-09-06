@@ -27,12 +27,25 @@ scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices, 4000)
+geometry = rtx.StandardGeometry(faces, vertices, 1000)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
 bunny.set_scale((3, 3, 3))
+bunny.set_position((0, -1, -1))
+bunny.set_rotation((-math.pi / 6, 0, 0))
 scene.add(bunny)
+
+# place teapot
+faces, vertices = gm.load("teapot")
+geometry = rtx.StandardGeometry(faces, vertices, 1000)
+material = rtx.MeshLambertMaterial(
+    color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+teapot = rtx.Mesh(geometry, material)
+teapot.set_scale((2, 2, 2))
+teapot.set_position((0, 1, 1))
+teapot.set_rotation((math.pi / 6, 0, 0))
+scene.add(teapot)
 
 screen_width = 512
 screen_height = 512

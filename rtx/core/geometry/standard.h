@@ -28,6 +28,9 @@ public:
     StandardGeometry(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces,
         pybind11::array_t<float, pybind11::array::c_style> vertices,
         int bvh_max_triangles_per_node);
+    void add_face(glm::vec3i face);
+    void add_vertex(glm::vec3f vertex);
+    void set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node);
     int type() const override;
     int num_faces() const override;
     int num_vertices() const override;

@@ -323,6 +323,10 @@ __global__ void global_memory_kernel(
                                 reflection_decay.r = (hit_face_normal.x + 1.0f) / 2.0f;
                                 reflection_decay.g = (hit_face_normal.y + 1.0f) / 2.0f;
                                 reflection_decay.b = (hit_face_normal.z + 1.0f) / 2.0f;
+
+                                reflection_decay.r = (float)((bvh_current_node_index * 5) % bvh.num_nodes) / (float)bvh.num_nodes;
+                                reflection_decay.g = (float)((bvh_current_node_index * 2) % bvh.num_nodes) / (float)bvh.num_nodes;
+                                reflection_decay.b = (float)((bvh_current_node_index * 3) % bvh.num_nodes) / (float)bvh.num_nodes;
                             }
                         }
 

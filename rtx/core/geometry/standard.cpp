@@ -55,6 +55,18 @@ void StandardGeometry::init(
         }
     }
 }
+void StandardGeometry::add_face(glm::vec3i face)
+{
+    _face_vertex_indices_array.emplace_back(face);
+}
+void StandardGeometry::add_vertex(glm::vec3f vertex)
+{
+    _vertex_array.emplace_back(glm::vec4f(vertex.x, vertex.y, vertex.z, 1.0f));
+}
+void StandardGeometry::set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node)
+{
+    _bvh_max_triangles_per_node = bvh_max_triangles_per_node;
+}
 int StandardGeometry::type() const
 {
     return RTX_GEOMETRY_TYPE_STANDARD;
