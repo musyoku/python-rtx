@@ -7,6 +7,7 @@
 #include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
 #include "../rtx/core/renderer/options/ray_tracing.h"
 #include <chrono>
+#include <string>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -16,7 +17,7 @@
 using namespace rtx;
 namespace py = pybind11;
 
-void run()
+void run(int num_blocks, int num_threads)
 {
 
     std::shared_ptr<Scene> scene = std::make_shared<Scene>();
@@ -7507,7 +7508,7 @@ void run()
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
-    options->set_num_rays_per_pixel(1);
+    options->set_num_rays_per_pixel(32);
     options->set_max_bounce(4);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
@@ -7515,11 +7516,11 @@ void run()
     int height = 512;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    render->render(scene, camera, options, pixels, height, width, channels);
+    render->render(scene, camera, options, pixels, height, width, channels, num_blocks, num_threads);
     auto start = std::chrono::system_clock::now();
     int repeat = 1;
     for (int i = 0; i < repeat; i++) {
-        render->render(scene, camera, options, pixels, height, width, channels);
+        render->render(scene, camera, options, pixels, height, width, channels, num_blocks, num_threads);
     }
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -7564,9 +7565,13 @@ void test_structure()
     std::cout << "done" << std::endl;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    run();
+    if(argc == 3){
+        int num_threads = std::stoi(argv[1]);
+        int num_blocks = std::stoi(argv[2]);
+        run(num_blocks, num_threads);
+    }
     // test_structure();
     cuda_device_reset();
     return 0;

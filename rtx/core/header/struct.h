@@ -1,18 +1,19 @@
 #pragma once
 
-typedef struct RTXVector3f {
+typedef struct RTXVector4f {
     float x;
     float y;
     float z;
-} RTXVector3f;
+    float w;
+} RTXVector4f;
 
 typedef struct RTXThreadedBVHNode {
     int hit_node_index;
     int miss_node_index;
     int assigned_face_index_start;
     int assigned_face_index_end;
-    RTXVector3f aabb_max;
-    RTXVector3f aabb_min;
+    RTXVector4f aabb_max;
+    RTXVector4f aabb_min;
 } RTXThreadedBVHNode;
 
 typedef struct RTXThreadedBVH {
@@ -20,17 +21,18 @@ typedef struct RTXThreadedBVH {
     int node_index_offset; // offset of the node from the start of the serialzied node array
 } RTXThreadedBVH;
 
-typedef RTXVector3f RTXGeometryVertex;
+typedef RTXVector4f RTXGeometryVertex;
 
 typedef struct RTXGeometryFace {
     int a;  // vertex index
     int b;  // vertex index
     int c;  // vertex index
+    int dummy_axis;
 } RTXGeometryFace;
 
 typedef struct RTXRay {
-    RTXVector3f direction;
-    RTXVector3f origin;
+    RTXVector4f direction;
+    RTXVector4f origin;
 } RTXRay;
 
 typedef struct RTXPixel {

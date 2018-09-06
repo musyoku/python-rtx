@@ -10,25 +10,25 @@
 #define THREADED_BVH_TERMINAL_NODE -1
 #define THREADED_BVH_INNER_NODE -1
 
-__global__ void bvh_kernel(
-    const float* ray_array, const int ray_array_size,
-    const int* face_vertex_index_array, const int face_vertex_index_array_size,
-    const float* vertex_array, const int vertex_array_size,
-    const int* object_face_count_array, const int object_face_count_array_size,
-    const int* object_face_offset_array, const int object_face_offset_array_size,
-    const int* object_vertex_count_array, const int object_vertex_count_array_size,
-    const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
-    const int* object_geometry_type_array, const int object_geometry_attributes_array_size,
-    const int* threaded_bvh_node_array, const int threaded_bvh_node_array_size,
-    const int* threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
-    const int* threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
-    const float* scene_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
-    float* render_array, const int render_array_size,
-    const int num_rays,
-    const int num_rays_per_thread,
-    const int max_bounce)
-{
-}
+typedef struct CUDARay {
+    float4 direction;
+    float4 origin;
+} CUDARay;
+
+typedef struct CUDAThreadedBVHNode {
+    int hit_node_index;
+    int miss_node_index;
+    int assigned_face_index_start;
+    int assigned_face_index_end;
+    float4 aabb_max;
+    float4 aabb_min;
+} CUDAThreadedBVHNode;
+
+texture<float4, cudaTextureType1D, cudaReadModeElementType> ray_texture;
+texture<int4, cudaTextureType1D, cudaReadModeElementType> face_vertex_index_texture;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
+
 __global__ void global_memory_kernel(
     const RTXRay* global_ray_array, const int ray_array_size,
     const RTXGeometryFace* global_face_vertex_index_array, const int face_vertex_index_array_size,
@@ -52,8 +52,8 @@ __global__ void global_memory_kernel(
     RTXThreadedBVH* shared_threaded_bvh_array = (RTXThreadedBVH*)&shared_memory[offset];
     offset += sizeof(RTXThreadedBVH) / sizeof(int) * threaded_bvh_array_size;
 
-    RTXThreadedBVHNode* shared_threaded_bvh_node_array = (RTXThreadedBVHNode*)&shared_memory[offset];
-    offset += sizeof(RTXThreadedBVHNode) / sizeof(int) * threaded_bvh_node_array_size;
+    // RTXThreadedBVHNode* shared_threaded_bvh_node_array = (RTXThreadedBVHNode*)&shared_memory[offset];
+    // offset += sizeof(RTXThreadedBVHNode) / sizeof(int) * threaded_bvh_node_array_size;
 
     if (thread_id == 0) {
         for (int k = 0; k < object_array_size; k++) {
@@ -62,9 +62,9 @@ __global__ void global_memory_kernel(
         for (int k = 0; k < threaded_bvh_array_size; k++) {
             shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
         }
-        for (int k = 0; k < threaded_bvh_node_array_size; k++) {
-            shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
-        }
+        // for (int k = 0; k < threaded_bvh_node_array_size; k++) {
+        //     shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
+        // }
     }
     __syncthreads();
 
@@ -120,10 +120,10 @@ __global__ void global_memory_kernel(
     // }
 
     const float eps = 0.0000001;
-    RTXRay ray;
-    RTXVector3f ray_direction_inv;
-    RTXVector3f hit_point;
-    RTXVector3f hit_face_normal;
+    CUDARay ray;
+    RTXVector4f ray_direction_inv;
+    RTXVector4f hit_point;
+    RTXVector4f hit_face_normal;
     RTXPixel hit_color;
     RTXPixel reflection_decay;
 
@@ -133,7 +133,28 @@ __global__ void global_memory_kernel(
             return;
         }
 
-        ray = global_ray_array[ray_index];
+        // ray = global_ray_array[ray_index];
+        ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
+        ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
+
+    
+        // RTXRay ray = global_ray_array[ray_index];
+        // if(ray_index < 5){
+        //     printf("ray: %d\n", ray_index);
+        //     printf("%f == %f\n", ray.direction.x, direction.x);
+        //     printf("%f == %f\n", ray.direction.y, direction.y);
+        //     printf("%f == %f\n", ray.direction.z, direction.z);
+        //     printf("%f == %f\n", ray.origin.x, origin.x);
+        //     printf("%f == %f\n", ray.origin.y, origin.y);
+        //     printf("%f == %f\n", ray.origin.z, origin.z);
+        // }
+        // assert(ray.direction.x == _ray.direction.x);
+        // assert(ray.direction.y == _ray.direction.y);
+        // assert(ray.direction.z == _ray.direction.z);
+        // assert(ray.origin.x == _ray.origin.x);
+        // assert(ray.origin.y == _ray.origin.y);
+        // assert(ray.origin.z == _ray.origin.z);
+
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
         ray_direction_inv.z = 1.0f / ray.direction.z;
@@ -188,7 +209,37 @@ __global__ void global_memory_kernel(
                         if (bvh_current_node_index == THREADED_BVH_TERMINAL_NODE) {
                             break;
                         }
-                        RTXThreadedBVHNode node = shared_threaded_bvh_node_array[bvh.node_index_offset + bvh_current_node_index];
+
+                        int index = bvh.node_index_offset + bvh_current_node_index;
+
+                        // RTXThreadedBVHNode node = global_threaded_bvh_node_array[index];
+
+                        CUDAThreadedBVHNode node;
+                        float4 attributes_float = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 0);
+                        int4* attributes_integer_ptr = reinterpret_cast<int4*>(&attributes_float);
+                        node.hit_node_index = attributes_integer_ptr->x;
+                        node.miss_node_index = attributes_integer_ptr->y;
+                        node.assigned_face_index_start = attributes_integer_ptr->z;
+                        node.assigned_face_index_end = attributes_integer_ptr->w;
+                        node.aabb_max = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 1);
+                        node.aabb_min = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 2);
+
+                        // if(thread_id == 0){
+                        //     printf("attribute: %d %d ", node.hit_node_index, a->x);
+                        //     printf("%d %d ", node.miss_node_index, a->y);
+                        //     printf("%d %d ", node.assigned_face_index_start, a->z);
+                        //     printf("%d %d ", node.assigned_face_index_end, a->w);
+    
+                        //     printf("aabb_max: %f %f ", node.aabb_max.x, aabb_max.x);
+                        //     printf("%f %f ", node.aabb_max.y, aabb_max.y);
+                        //     printf("%f %f ", node.aabb_max.z, aabb_max.z);
+    
+                        //     printf("aabb_min: %f %f ", node.aabb_min.x, aabb_min.x);
+                        //     printf("%f %f ", node.aabb_min.y, aabb_min.y);
+                        //     printf("%f %f ", node.aabb_min.z, aabb_min.z);
+    
+                        //     printf("\n");
+                        // }
 
                         bool is_inner_node = node.assigned_face_index_start == -1;
                         if (is_inner_node) {
@@ -239,22 +290,29 @@ __global__ void global_memory_kernel(
                             //         node.assigned_face_index_end);
                             // }
                             for (int m = 0; m < num_assigned_faces; m++) {
-                                RTXGeometryFace face = global_face_vertex_index_array[node.assigned_face_index_start + m + object.face_index_offset];
-                                RTXVector3f va = global_vertex_array[face.a];
-                                RTXVector3f vb = global_vertex_array[face.b];
-                                RTXVector3f vc = global_vertex_array[face.c];
+                                int index = node.assigned_face_index_start + m + object.face_index_offset;
 
-                                RTXVector3f edge_ba;
+                                int4 face = tex1Dfetch(face_vertex_index_texture, index);
+                                // RTXGeometryFace face = global_face_vertex_index_array[index];
+
+                                float4 va = tex1Dfetch(vertex_texture, face.x);
+                                float4 vb = tex1Dfetch(vertex_texture, face.y);
+                                float4 vc = tex1Dfetch(vertex_texture, face.z);
+                                // RTXVector4f va = global_vertex_array[face.x];
+                                // RTXVector4f vb = global_vertex_array[face.y];
+                                // RTXVector4f vc = global_vertex_array[face.z];
+
+                                float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;
                                 edge_ba.y = vb.y - va.y;
                                 edge_ba.z = vb.z - va.z;
 
-                                RTXVector3f edge_ca;
+                                float3 edge_ca;
                                 edge_ca.x = vc.x - va.x;
                                 edge_ca.y = vc.y - va.y;
                                 edge_ca.z = vc.z - va.z;
 
-                                RTXVector3f h;
+                                float3 h;
                                 h.x = ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y;
                                 h.y = ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z;
                                 h.z = ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x;
@@ -265,7 +323,7 @@ __global__ void global_memory_kernel(
 
                                 f = 1.0f / f;
 
-                                RTXVector3f s;
+                                float3 s;
                                 s.x = ray.origin.x - va.x;
                                 s.y = ray.origin.y - va.y;
                                 s.z = ray.origin.z - va.z;
@@ -324,9 +382,9 @@ __global__ void global_memory_kernel(
                                 reflection_decay.g = (hit_face_normal.y + 1.0f) / 2.0f;
                                 reflection_decay.b = (hit_face_normal.z + 1.0f) / 2.0f;
 
-                                reflection_decay.r = (float)((bvh_current_node_index * 5) % bvh.num_nodes) / (float)bvh.num_nodes;
-                                reflection_decay.g = (float)((bvh_current_node_index * 2) % bvh.num_nodes) / (float)bvh.num_nodes;
-                                reflection_decay.b = (float)((bvh_current_node_index * 3) % bvh.num_nodes) / (float)bvh.num_nodes;
+                                reflection_decay.r = (float)((bvh_current_node_index * 5 + 1) % bvh.num_nodes) / (float)bvh.num_nodes;
+                                reflection_decay.g = (float)((bvh_current_node_index * 2 + 2) % bvh.num_nodes) / (float)bvh.num_nodes;
+                                reflection_decay.b = (float)((bvh_current_node_index * 3 + 3) % bvh.num_nodes) / (float)bvh.num_nodes;
                             }
                         }
 
@@ -1031,9 +1089,9 @@ void rtx_cuda_ray_tracing_render(
 
     int num_rays = ray_array_size;
 
-    int num_threads = 32;
+    int num_threads = 256;
     // int num_blocks = (num_rays - 1) / num_threads + 1;
-    int num_blocks = 256;
+    int num_blocks = 1024;
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
@@ -1050,9 +1108,16 @@ void rtx_cuda_ray_tracing_render(
     printf("rays: %d\n", ray_array_size);
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
-        int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+        // int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+        int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size;
         printf("shared memory: %d bytes\n", required_shared_memory_bytes);
         printf("available: %d bytes\n", dev.sharedMemPerBlock);
+
+
+        cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXGeometryFace) * face_vertex_index_array_size);
+        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXGeometryVertex) * vertex_array_size);
+        cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
 
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
             gpu_ray_array, ray_array_size,

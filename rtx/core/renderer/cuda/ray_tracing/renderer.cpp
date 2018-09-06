@@ -345,7 +345,9 @@ void RayTracingCUDARenderer::render(
     unsigned char* array,
     int height,
     int width,
-    int channels)
+    int channels,
+    int num_blocks,
+    int num_threads)
 {
     _scene = scene;
     _camera = camera;

@@ -5,8 +5,8 @@
 #include "../../../header/glm.h"
 #include "../../../header/struct.h"
 #include "../../options/ray_tracing.h"
-#include "../header/ray_tracing.h"
 #include "../bvh/bvh.h"
+#include "../header/ray_tracing.h"
 #include <array>
 #include <map>
 #include <memory>
@@ -63,6 +63,8 @@ public:
         unsigned char* array,
         int height,
         int width,
-        int channels);
+        int channels,
+        int num_blocks, 
+        int num_threads);
 };
 }

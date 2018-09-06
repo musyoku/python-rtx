@@ -47,11 +47,11 @@ teapot.set_position((0, 1, 1))
 teapot.set_rotation((math.pi / 6, 0, 0))
 scene.add(teapot)
 
-screen_width = 512
-screen_height = 512
+screen_width = 1024
+screen_height = 1024
 
 render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 1
+render_options.num_rays_per_pixel = 32
 render_options.max_bounce = 5
 
 renderer = rtx.RayTracingCUDARenderer()
@@ -79,8 +79,8 @@ for n in range(total_iterations):
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
-    # plt.imshow(pixels, interpolation="none")
-    # plt.pause(1e-8)
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1e-8)
 
     camera_rad += math.pi / 10
 
