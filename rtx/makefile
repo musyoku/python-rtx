@@ -17,7 +17,7 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  pybind/rtx.cpp
 OBJS = $(patsubst %.cu,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES))))
 EXTENSION = $(shell python3-config --extension-suffix)
-OUTPUT = ../run
+OUTPUT = ../examples/python
 TARGET = $(OUTPUT)/rtx$(EXTENSION)
 
 UNAME := $(shell uname -s)
