@@ -27,32 +27,52 @@ scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices, 50)
+geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
 bunny.set_scale((3, 3, 3))
-bunny.set_position((0, -1, -1))
+bunny.set_position((-1, -1, -1))
 bunny.set_rotation((-math.pi / 6, 0, 0))
+scene.add(bunny)
+
+faces, vertices = gm.load("bunny")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.MeshLambertMaterial(
+    color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+bunny = rtx.Mesh(geometry, material)
+bunny.set_scale((2.4, 2.4, 2.4))
+bunny.set_position((1, -1, 1))
+bunny.set_rotation((math.pi / 6, 0, 0))
 scene.add(bunny)
 
 # place teapot
 faces, vertices = gm.load("teapot")
-geometry = rtx.StandardGeometry(faces, vertices, 50)
+geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 teapot = rtx.Mesh(geometry, material)
 teapot.set_scale((2, 2, 2))
-teapot.set_position((0, 1, 1))
+teapot.set_position((1, 1, -1))
 teapot.set_rotation((math.pi / 6, 0, 0))
 scene.add(teapot)
 
-screen_width = 1024
-screen_height = 1024
+faces, vertices = gm.load("teapot")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.MeshLambertMaterial(
+    color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+teapot = rtx.Mesh(geometry, material)
+teapot.set_scale((1.6, 1.6, 1.6))
+teapot.set_position((-1, 1, 1))
+teapot.set_rotation((-math.pi / 6, 0, 0))
+scene.add(teapot)
+
+screen_width = 512
+screen_height = 512
 
 render_options = rtx.RayTracingOptions()
 render_options.num_rays_per_pixel = 32
-render_options.max_bounce = 5
+render_options.max_bounce = 4
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(

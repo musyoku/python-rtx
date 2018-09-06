@@ -1,4 +1,4 @@
-#include "../../../header/enum.h"
+#include "../../header/enum.h"
 #include "../header/ray_tracing.h"
 #include <assert.h>
 #include <cuda_runtime.h>
@@ -121,6 +121,7 @@ __global__ void global_memory_kernel(
 
     const float eps = 0.0000001;
     CUDARay ray;
+    // RTXRay ray;
     RTXVector4f ray_direction_inv;
     RTXVector4f hit_point;
     RTXVector4f hit_face_normal;
@@ -298,9 +299,9 @@ __global__ void global_memory_kernel(
                                 float4 va = tex1Dfetch(vertex_texture, face.x);
                                 float4 vb = tex1Dfetch(vertex_texture, face.y);
                                 float4 vc = tex1Dfetch(vertex_texture, face.z);
-                                // RTXVector4f va = global_vertex_array[face.x];
-                                // RTXVector4f vb = global_vertex_array[face.y];
-                                // RTXVector4f vc = global_vertex_array[face.z];
+                                // RTXVector4f va = global_vertex_array[face.a];
+                                // RTXVector4f vb = global_vertex_array[face.b];
+                                // RTXVector4f vc = global_vertex_array[face.c];
 
                                 float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;

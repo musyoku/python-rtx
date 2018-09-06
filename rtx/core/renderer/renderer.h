@@ -1,12 +1,14 @@
 #pragma once
-#include "../../../class/ray.h"
-#include "../../../class/renderer.h"
-#include "../../../header/array.h"
-#include "../../../header/glm.h"
-#include "../../../header/struct.h"
-#include "../../options/ray_tracing.h"
-#include "../bvh/bvh.h"
-#include "../header/ray_tracing.h"
+#include "../class/ray.h"
+#include "../class/scene.h"
+#include "../class/camera.h"
+#include "../header/array.h"
+#include "../header/glm.h"
+#include "../header/struct.h"
+#include "arguments/ray_tracing.h"
+#include "arguments/cuda_kernel.h"
+#include "bvh/bvh.h"
+#include "header/ray_tracing.h"
 #include <array>
 #include <map>
 #include <memory>
@@ -14,7 +16,7 @@
 #include <random>
 
 namespace rtx {
-class RayTracingCUDARenderer : public Renderer {
+class Renderer {
 private:
     // host
     rtx::array<RTXRay> _cpu_ray_array;
@@ -36,7 +38,8 @@ private:
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
-    std::shared_ptr<RayTracingOptions> _options;
+    std::shared_ptr<RayTracingArguments> _rt_args;
+    std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
     std::vector<std::shared_ptr<Geometry>> _transformed_geometry_array;
     std::vector<std::shared_ptr<BVH>> _bvh_array;
     std::unordered_map<int, int> _map_object_bvh;
@@ -51,15 +54,17 @@ private:
     void render_objects(int height, int width);
 
 public:
-    RayTracingCUDARenderer();
-    ~RayTracingCUDARenderer();
+    Renderer();
+    ~Renderer();
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
-        std::shared_ptr<RayTracingOptions> options,
+        std::shared_ptr<RayTracingArguments> rt_args,
+        std::shared_ptr<CUDAKernelLaunchArguments> cuda_args,
         pybind11::array_t<float, pybind11::array::c_style> array);
     void render(std::shared_ptr<Scene> scene,
         std::shared_ptr<Camera> camera,
-        std::shared_ptr<RayTracingOptions> options,
+        std::shared_ptr<RayTracingArguments> rt_args,
+        std::shared_ptr<CUDAKernelLaunchArguments> cuda_args,
         unsigned char* array,
         int height,
         int width,

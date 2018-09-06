@@ -1,9 +1,9 @@
 #include "renderer.h"
-#include "../../../camera/perspective.h"
-#include "../../../geometry/box.h"
-#include "../../../geometry/sphere.h"
-#include "../../../geometry/standard.h"
-#include "../../../header/enum.h"
+#include "../camera/perspective.h"
+#include "../geometry/box.h"
+#include "../geometry/sphere.h"
+#include "../geometry/standard.h"
+#include "../header/enum.h"
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -12,7 +12,7 @@ namespace rtx {
 
 namespace py = pybind11;
 
-RayTracingCUDARenderer::RayTracingCUDARenderer()
+Renderer::Renderer()
 {
     _gpu_ray_array = NULL;
     _gpu_face_vertex_indices_array = NULL;
@@ -22,7 +22,7 @@ RayTracingCUDARenderer::RayTracingCUDARenderer()
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_render_array = NULL;
 }
-RayTracingCUDARenderer::~RayTracingCUDARenderer()
+Renderer::~Renderer()
 {
     rtx_cuda_free((void**)&_gpu_ray_array);
     rtx_cuda_free((void**)&_gpu_face_vertex_indices_array);
@@ -32,7 +32,7 @@ RayTracingCUDARenderer::~RayTracingCUDARenderer()
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
     rtx_cuda_free((void**)&_gpu_render_array);
 }
-void RayTracingCUDARenderer::transform_geometries_to_view_space()
+void Renderer::transform_geometries_to_view_space()
 {
     int num_objects = _scene->_mesh_array.size();
     std::vector<std::shared_ptr<Geometry>> transformed_geometry_array;
@@ -51,7 +51,7 @@ void RayTracingCUDARenderer::transform_geometries_to_view_space()
     }
     _transformed_geometry_array = transformed_geometry_array;
 }
-void RayTracingCUDARenderer::serialize_objects()
+void Renderer::serialize_objects()
 {
     assert(_transformed_geometry_array.size() > 0);
     int total_faces = 0;
@@ -143,7 +143,7 @@ void RayTracingCUDARenderer::serialize_objects()
     //     std::cout << "vertex_offset: " << _object_vertex_offset_array[object_index] << " face_offset: " << _face_offset_array[object_index] << std::endl;
     // }
 }
-void RayTracingCUDARenderer::construct_bvh()
+void Renderer::construct_bvh()
 {
     assert(_transformed_geometry_array.size() > 0);
     _map_object_bvh = std::unordered_map<int, int>();
@@ -180,9 +180,9 @@ void RayTracingCUDARenderer::construct_bvh()
         node_index_offset += bvh->num_nodes();
     }
 }
-void RayTracingCUDARenderer::serialize_rays(int height, int width)
+void Renderer::serialize_rays(int height, int width)
 {
-    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     int num_rays = height * width * num_rays_per_pixel;
     _cpu_ray_array = rtx::array<RTXRay>(num_rays);
     std::default_random_engine generator;
@@ -211,7 +211,7 @@ void RayTracingCUDARenderer::serialize_rays(int height, int width)
         }
     }
 }
-void RayTracingCUDARenderer::render_objects(int height, int width)
+void Renderer::render_objects(int height, int width)
 {
     bool should_transform_geometry = false;
     bool should_serialize_bvh = false;
@@ -272,7 +272,7 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), sizeof(RTXObject) * _cpu_object_array.size());
     }
 
-    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     int num_rays = height * width * num_rays_per_pixel;
 
     // レイ
@@ -297,31 +297,33 @@ void RayTracingCUDARenderer::render_objects(int height, int width)
         _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
         _gpu_render_array, _cpu_render_array.size(),
-        _options->num_rays_per_pixel(),
-        _options->max_bounce());
+        _rt_args->num_rays_per_pixel(),
+        _rt_args->max_bounce());
 
     rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, sizeof(RTXPixel) * num_rays);
 
     _scene->set_updated(true);
     _camera->set_updated(true);
 }
-void RayTracingCUDARenderer::render(
+void Renderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
-    std::shared_ptr<RayTracingOptions> options,
-    py::array_t<float, py::array::c_style> array)
+    std::shared_ptr<RayTracingArguments> rt_args,
+    std::shared_ptr<CUDAKernelLaunchArguments> cuda_args,
+    py::array_t<float, py::array::c_style> render_buffer)
 {
     _scene = scene;
     _camera = camera;
-    _options = options;
+    _rt_args = rt_args;
+    _cuda_args = cuda_args;
 
-    int height = array.shape(0);
-    int width = array.shape(1);
-    auto pixel = array.mutable_unchecked<3>();
+    int height = render_buffer.shape(0);
+    int width = render_buffer.shape(1);
+    auto pixel = render_buffer.mutable_unchecked<3>();
 
     render_objects(height, width);
 
-    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             RTXPixel sum = { 0.0f, 0.0f, 0.0f };
@@ -338,11 +340,12 @@ void RayTracingCUDARenderer::render(
         }
     }
 }
-void RayTracingCUDARenderer::render(
+void Renderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
-    std::shared_ptr<RayTracingOptions> options,
-    unsigned char* array,
+    std::shared_ptr<RayTracingArguments> rt_args,
+    std::shared_ptr<CUDAKernelLaunchArguments> cuda_args,
+    unsigned char* render_buffer,
     int height,
     int width,
     int channels,
@@ -351,7 +354,7 @@ void RayTracingCUDARenderer::render(
 {
     _scene = scene;
     _camera = camera;
-    _options = options;
+    _rt_args = rt_args;
 
     if (channels != 3) {
         throw std::runtime_error("channels != 3");
@@ -359,7 +362,7 @@ void RayTracingCUDARenderer::render(
 
     render_objects(height, width);
 
-    int num_rays_per_pixel = _options->num_rays_per_pixel();
+    int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             RTXPixel sum = { 0.0f, 0.0f, 0.0f };
@@ -371,9 +374,9 @@ void RayTracingCUDARenderer::render(
                 sum.b += pixel.b;
             }
             int index = y * width * channels + x * channels;
-            array[index + 0] = std::min(std::max((int)(sum.r / float(num_rays_per_pixel) * 255.0f), 0), 255);
-            array[index + 1] = std::min(std::max((int)(sum.g / float(num_rays_per_pixel) * 255.0f), 0), 255);
-            array[index + 2] = std::min(std::max((int)(sum.b / float(num_rays_per_pixel) * 255.0f), 0), 255);
+            render_buffer[index + 0] = std::min(std::max((int)(sum.r / float(num_rays_per_pixel) * 255.0f), 0), 255);
+            render_buffer[index + 1] = std::min(std::max((int)(sum.g / float(num_rays_per_pixel) * 255.0f), 0), 255);
+            render_buffer[index + 2] = std::min(std::max((int)(sum.b / float(num_rays_per_pixel) * 255.0f), 0), 255);
         }
     }
 }

@@ -9,12 +9,11 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/geometry/*.cpp) \
 		  $(wildcard ./core/material/mesh/*.cpp) \
 		  $(wildcard ./core/camera/*.cpp) \
-		  $(wildcard ./core/renderer/cpu/ray_tracing/*.cpp) \
-		  $(wildcard ./core/renderer/cpu/*.cpp) \
-		  $(wildcard ./core/renderer/cuda/ray_tracing/*.cpp) \
-		  $(wildcard ./core/renderer/cuda/bvh/*.cpp) \
-		  $(wildcard ./core/renderer/cuda/kernel/*.cu) \
-		  $(wildcard ./core/renderer/options/*.cpp) \
+		  $(wildcard ./core/renderer/ray_tracing/*.cpp) \
+		  $(wildcard ./core/renderer/bvh/*.cpp) \
+		  $(wildcard ./core/renderer/kernel/*.cu) \
+		  $(wildcard ./core/renderer/*.cpp) \
+		  $(wildcard ./core/renderer/arguments/*.cpp) \
 		  pybind/rtx.cpp
 OBJS = $(patsubst %.cu,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCES))))
 EXTENSION = $(shell python3-config --extension-suffix)
@@ -38,7 +37,7 @@ $(TARGET): $(OBJS)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
-./core/renderer/cuda/kernel/%.o: ./core/renderer/cuda/kernel/%.cu
+./core/renderer/kernel/%.o: ./core/renderer/kernel/%.cu
 	nvcc $(NVCCFLAGS) -c $< -o $@
 
 .PHONY: clean

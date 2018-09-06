@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../header/struct.h"
+#include "../../header/struct.h"
 
 void rtx_cuda_malloc(void** gpu_array, size_t size);
 void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size);

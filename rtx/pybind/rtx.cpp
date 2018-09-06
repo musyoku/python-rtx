@@ -3,7 +3,6 @@
 #include "../core/class/geometry.h"
 #include "../core/class/material.h"
 #include "../core/class/mesh.h"
-#include "../core/class/renderer.h"
 #include "../core/class/scene.h"
 #include "../core/geometry/box.h"
 #include "../core/geometry/plain.h"
@@ -12,9 +11,9 @@
 #include "../core/material/mesh/emissive.h"
 #include "../core/material/mesh/lambert.h"
 #include "../core/material/mesh/metal.h"
-#include "../core/renderer/cpu/ray_tracing/renderer.h"
-#include "../core/renderer/cuda/ray_tracing/renderer.h"
-#include "../core/renderer/options/ray_tracing.h"
+#include "../core/renderer/arguments/cuda_kernel.h"
+#include "../core/renderer/arguments/ray_tracing.h"
+#include "../core/renderer/renderer.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -24,7 +23,6 @@ PYBIND11_MODULE(rtx, module)
 {
     py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
     py::class_<Material, std::shared_ptr<Material>>(module, "Material");
-    py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer");
     py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
     py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
@@ -54,17 +52,18 @@ PYBIND11_MODULE(rtx, module)
     py::class_<MeshEmissiveMaterial, Material, std::shared_ptr<MeshEmissiveMaterial>>(module, "MeshEmissiveMaterial")
         .def(py::init<py::tuple>(), py::arg("color"));
 
-    py::class_<RayTracingCPURenderer, Renderer, std::shared_ptr<RayTracingCPURenderer>>(module, "RayTracingCPURenderer")
+    py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())
-        .def("render", (void (RayTracingCPURenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCPURenderer::render);
-    py::class_<RayTracingCUDARenderer, Renderer, std::shared_ptr<RayTracingCUDARenderer>>(module, "RayTracingCUDARenderer")
-        .def(py::init<>())
-        .def("render", (void (RayTracingCUDARenderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingOptions>, py::array_t<float, py::array::c_style>)) & RayTracingCUDARenderer::render);
+        .def("render", (void (Renderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingArguments>, std::shared_ptr<CUDAKernelLaunchArguments>, py::array_t<float, py::array::c_style>)) & Renderer::render, py::arg("scene"), py::arg("camera"), py::arg("rt_args"), py::arg("cuda_args"), py::arg("render_buffer"));
 
-    py::class_<RayTracingOptions, std::shared_ptr<RayTracingOptions>>(module, "RayTracingOptions")
+    py::class_<RayTracingArguments, std::shared_ptr<RayTracingArguments>>(module, "RayTracingArguments")
         .def(py::init<>())
-        .def_property("num_rays_per_pixel", &RayTracingOptions::num_rays_per_pixel, &RayTracingOptions::set_num_rays_per_pixel)
-        .def_property("max_bounce", &RayTracingOptions::max_bounce, &RayTracingOptions::set_max_bounce);
+        .def_property("num_rays_per_pixel", &RayTracingArguments::num_rays_per_pixel, &RayTracingArguments::set_num_rays_per_pixel)
+        .def_property("max_bounce", &RayTracingArguments::max_bounce, &RayTracingArguments::set_max_bounce);
+    py::class_<CUDAKernelLaunchArguments, std::shared_ptr<CUDAKernelLaunchArguments>>(module, "CUDAKernelLaunchArguments")
+        .def(py::init<>())
+        .def_property("num_threads", &CUDAKernelLaunchArguments::num_threads, &CUDAKernelLaunchArguments::set_num_threads)
+        .def_property("num_blocks", &CUDAKernelLaunchArguments::num_blocks, &CUDAKernelLaunchArguments::set_num_blocks);
 
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
         .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),
