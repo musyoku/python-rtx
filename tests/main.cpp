@@ -7493,7 +7493,7 @@ void run()
     geometry->add_vertex(glm::vec3f(0.09200721234083176, 0.47926387190818787, -0.20136353373527527));
     geometry->add_vertex(glm::vec3f(-0.2692323625087738, 0.3709052801132202, -0.34868529438972473));
     geometry->add_vertex(glm::vec3f(-0.1757092922925949, -0.24013739824295044, 0.05167252942919731));
-    geometry->set_bvh_max_triangles_per_node(1000);
+    geometry->set_bvh_max_triangles_per_node(50);
     float color[3] = { 1, 1, 1 };
     std::shared_ptr<MeshLambertMaterial> material = std::make_shared<MeshLambertMaterial>(color, 0.8f);
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(geometry, material);
@@ -7508,7 +7508,7 @@ void run()
 
     std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
     options->set_num_rays_per_pixel(1);
-    options->set_max_bounce(1);
+    options->set_max_bounce(4);
     std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
 
     int width = 512;

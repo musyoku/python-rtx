@@ -27,7 +27,7 @@ scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("bunny")
-geometry = rtx.StandardGeometry(faces, vertices, 1000)
+geometry = rtx.StandardGeometry(faces, vertices, 50)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
@@ -38,7 +38,7 @@ scene.add(bunny)
 
 # place teapot
 faces, vertices = gm.load("teapot")
-geometry = rtx.StandardGeometry(faces, vertices, 1000)
+geometry = rtx.StandardGeometry(faces, vertices, 50)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 teapot = rtx.Mesh(geometry, material)
@@ -52,7 +52,7 @@ screen_height = 512
 
 render_options = rtx.RayTracingOptions()
 render_options.num_rays_per_pixel = 1
-render_options.max_bounce = 1
+render_options.max_bounce = 5
 
 renderer = rtx.RayTracingCUDARenderer()
 camera = rtx.PerspectiveCamera(
@@ -79,8 +79,8 @@ for n in range(total_iterations):
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
-    plt.imshow(pixels, interpolation="none")
-    plt.pause(1e-8)
+    # plt.imshow(pixels, interpolation="none")
+    # plt.pause(1e-8)
 
     camera_rad += math.pi / 10
 

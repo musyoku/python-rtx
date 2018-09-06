@@ -139,85 +139,77 @@ Node::Node(std::vector<int> assigned_face_indices,
 
     float min_cost = FLT_MAX;
     int min_cost_split_index = 0;
-    for (int split_index = 1; split_index <= object_center_array.size() - 1; split_index++) {
-        int volume_a_num_faces = 0;
-        int volume_b_num_faces = 0;
-        for (int position = 0; position < split_index; position++) {
-            int face_index = object_center_array[position].first;
-            auto& face = geometry->_face_vertex_indices_array.at(face_index);
+    if (true) {
+        min_cost_split_index = object_center_array.size() / 2;
+    } else {
+        for (int split_index = 1; split_index <= object_center_array.size() - 1; split_index++) {
+            int volume_a_num_faces = 0;
+            int volume_b_num_faces = 0;
+            for (int position = 0; position < split_index; position++) {
+                int face_index = object_center_array[position].first;
+                auto& face = geometry->_face_vertex_indices_array.at(face_index);
 
-            glm::vec3f max = glm::vec3f(-FLT_MAX);
-            glm::vec3f min = glm::vec3f(FLT_MAX);
+                glm::vec3f max = glm::vec3f(-FLT_MAX);
+                glm::vec3f min = glm::vec3f(FLT_MAX);
 
-            auto& va = geometry->_vertex_array[face[0]];
-            max = merge_aabb_max(max, va);
-            min = merge_aabb_min(min, va);
+                auto& va = geometry->_vertex_array[face[0]];
+                max = merge_aabb_max(max, va);
+                min = merge_aabb_min(min, va);
 
-            auto& vb = geometry->_vertex_array[face[1]];
-            max = merge_aabb_max(max, vb);
-            min = merge_aabb_min(min, vb);
+                auto& vb = geometry->_vertex_array[face[1]];
+                max = merge_aabb_max(max, vb);
+                min = merge_aabb_min(min, vb);
 
-            auto& vc = geometry->_vertex_array[face[2]];
-            max = merge_aabb_max(max, vc);
-            min = merge_aabb_min(min, vc);
+                auto& vc = geometry->_vertex_array[face[2]];
+                max = merge_aabb_max(max, vc);
+                min = merge_aabb_min(min, vc);
 
-            // std::cout << "(left) object: " << object_index << ", max: " << max.x << ", " << max.y << ", " << max.z << " min: " << min.x << ", " << min.y << ", " << min.z << std::endl;
-            // std::cout << "      volume max: " << volume_a_max.x << ", " << volume_a_max.y << ", " << volume_a_max.z << ", min: " << volume_b_min.x << ", " << volume_b_min.y << ", " << volume_b_min.z << std::endl;
-            if (position == 0) {
-                volume_a_max = max;
-                volume_a_min = min;
-            } else {
-                volume_a_max = merge_aabb_max(volume_a_max, max);
-                volume_a_min = merge_aabb_min(volume_a_min, min);
-                // std::cout << "      merge: " << volume_a_max.x << ", " << volume_a_max.y << ", " << volume_a_max.z << ", min: " << volume_b_min.x << ", " << volume_b_min.y << ", " << volume_b_min.z << std::endl;
+                if (position == 0) {
+                    volume_a_max = max;
+                    volume_a_min = min;
+                } else {
+                    volume_a_max = merge_aabb_max(volume_a_max, max);
+                    volume_a_min = merge_aabb_min(volume_a_min, min);
+                }
+                volume_a_num_faces += 1;
             }
-            volume_a_num_faces += 1;
-        }
-        for (int position = split_index; position < object_center_array.size(); position++) {
-            int face_index = object_center_array[position].first;
-            auto& face = geometry->_face_vertex_indices_array.at(face_index);
+            for (int position = split_index; position < object_center_array.size(); position++) {
+                int face_index = object_center_array[position].first;
+                auto& face = geometry->_face_vertex_indices_array.at(face_index);
 
-            glm::vec3f max = glm::vec3f(-FLT_MAX);
-            glm::vec3f min = glm::vec3f(FLT_MAX);
+                glm::vec3f max = glm::vec3f(-FLT_MAX);
+                glm::vec3f min = glm::vec3f(FLT_MAX);
 
-            auto& va = geometry->_vertex_array[face[0]];
-            max = merge_aabb_max(max, va);
-            min = merge_aabb_min(min, va);
+                auto& va = geometry->_vertex_array[face[0]];
+                max = merge_aabb_max(max, va);
+                min = merge_aabb_min(min, va);
 
-            auto& vb = geometry->_vertex_array[face[1]];
-            max = merge_aabb_max(max, vb);
-            min = merge_aabb_min(min, vb);
+                auto& vb = geometry->_vertex_array[face[1]];
+                max = merge_aabb_max(max, vb);
+                min = merge_aabb_min(min, vb);
 
-            auto& vc = geometry->_vertex_array[face[2]];
-            max = merge_aabb_max(max, vc);
-            min = merge_aabb_min(min, vc);
+                auto& vc = geometry->_vertex_array[face[2]];
+                max = merge_aabb_max(max, vc);
+                min = merge_aabb_min(min, vc);
 
-            // std::cout << "(right) object: " << object_index << ", max: " << max.x << ", " << max.y << ", " << max.z << " min: " << min.x << ", " << min.y << ", " << min.z << std::endl;
-            // std::cout << "      volume max: " << volume_a_max.x << ", " << volume_a_max.y << ", " << volume_a_max.z << ", min: " << volume_b_min.x << ", " << volume_b_min.y << ", " << volume_b_min.z << std::endl;
-            if (position == split_index) {
-                volume_b_max = max;
-                volume_b_min = min;
-            } else {
-                volume_b_max = merge_aabb_max(volume_b_max, max);
-                volume_b_min = merge_aabb_min(volume_b_min, min);
-                // std::cout << "      merge: " << volume_b_max.x << ", " << volume_b_max.y << ", " << volume_b_max.z << ", min: " << volume_b_min.x << ", " << volume_b_min.y << ", " << volume_b_min.z << std::endl;
+                if (position == split_index) {
+                    volume_b_max = max;
+                    volume_b_min = min;
+                } else {
+                    volume_b_max = merge_aabb_max(volume_b_max, max);
+                    volume_b_min = merge_aabb_min(volume_b_min, min);
+                }
+                volume_b_num_faces += 1;
             }
-            volume_b_num_faces += 1;
-        }
-        float surface_a = compute_surface_area(volume_a_max, volume_a_min);
-        float surface_b = compute_surface_area(volume_b_max, volume_b_min);
-        // std::cout << "split: " << split_index << ", surface_a: " << surface_a << ", surface_b: " << surface_b << std::endl;
-        // std::cout << "split: " << split_index << ", faces_a: " << volume_a_num_faces << ", faces_b: " << volume_b_num_faces << std::endl;
-        // std::cout << "split: " << split_index << ", a: " << (surface_a * volume_a_num_faces) << ", b: " << (surface_b * volume_b_num_faces) << std::endl;
-        float cost = surface_a * volume_a_num_faces + surface_b * volume_b_num_faces;
-        if (cost < min_cost) {
-            min_cost = cost;
-            min_cost_split_index = split_index;
+            float surface_a = compute_surface_area(volume_a_max, volume_a_min);
+            float surface_b = compute_surface_area(volume_b_max, volume_b_min);
+            float cost = surface_a * volume_a_num_faces + surface_b * volume_b_num_faces;
+            if (cost < min_cost) {
+                min_cost = cost;
+                min_cost_split_index = split_index;
+            }
         }
     }
-    // std::cout << "min_cost: " << min_cost << std::endl;
-    // std::cout << "min_cost_split_index: " << min_cost_split_index << std::endl;
-    // throw std::runtime_error("");
 
     int split_index = min_cost_split_index;
     // std::cout << "split: " << split_index << std::endl;
