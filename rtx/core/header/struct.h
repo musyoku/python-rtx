@@ -21,14 +21,14 @@ typedef struct RTXThreadedBVH {
     int node_index_offset; // offset of the node from the start of the serialzied node array
 } RTXThreadedBVH;
 
-typedef RTXVector4f RTXGeometryVertex;
+typedef RTXVector4f RTXVertex;
 
-typedef struct RTXGeometryFace {
+typedef struct RTXFace {
     int a;  // vertex index
     int b;  // vertex index
     int c;  // vertex index
     int dummy_axis;
-} RTXGeometryFace;
+} RTXFace;
 
 typedef struct RTXRay {
     RTXVector4f direction;

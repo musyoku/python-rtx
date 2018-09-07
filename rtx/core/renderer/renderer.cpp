@@ -36,10 +36,10 @@ Renderer::~Renderer()
 }
 void Renderer::transform_geometries_to_view_space()
 {
-    int num_objects = _scene->_mesh_array.size();
-    std::vector<std::shared_ptr<Geometry>> transformed_geometry_array;
-    for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& mesh = _scene->_mesh_array[object_index];
+    int num_objects = _scene->_mesh_array.size() + _scene->_light_array.size();
+    std::vector<std::shared_ptr<Object>> transformed_object_array;
+    transformed_object_array.reserve(num_objects);
+    for (auto& mesh : _scene->_mesh_array) {
         auto& geometry = mesh->_geometry;
         glm::mat4 transformation_matrix = _camera->_view_matrix * mesh->_model_matrix;
         // std::cout << "transform: " << std::endl;
@@ -49,22 +49,33 @@ void Renderer::transform_geometries_to_view_space()
         // std::cout << transformation_matrix[3][0] << ", " << transformation_matrix[3][1] << ", " << transformation_matrix[0][2] << ", " << transformation_matrix[3][3] << std::endl;
         // Transform vertices from model space to view space
         auto transformed_geometry = geometry->transoform(transformation_matrix);
-        transformed_geometry_array.push_back(transformed_geometry);
+        transformed_object_array.push_back(transformed_geometry);
     }
-    _transformed_geometry_array = transformed_geometry_array;
+    for (auto& light : _scene->_light_array) {
+        glm::mat4 transformation_matrix = _camera->_view_matrix * light->_model_matrix;
+        // std::cout << "transform: " << std::endl;
+        // std::cout << transformation_matrix[0][0] << ", " << transformation_matrix[0][1] << ", " << transformation_matrix[0][2] << ", " << transformation_matrix[0][3] << std::endl;
+        // std::cout << transformation_matrix[1][0] << ", " << transformation_matrix[1][1] << ", " << transformation_matrix[1][2] << ", " << transformation_matrix[1][3] << std::endl;
+        // std::cout << transformation_matrix[2][0] << ", " << transformation_matrix[2][1] << ", " << transformation_matrix[0][2] << ", " << transformation_matrix[2][3] << std::endl;
+        // std::cout << transformation_matrix[3][0] << ", " << transformation_matrix[3][1] << ", " << transformation_matrix[0][2] << ", " << transformation_matrix[3][3] << std::endl;
+        // Transform vertices from model space to view space
+        auto transformed_geometry = light->transoform(transformation_matrix);
+        transformed_object_array.push_back(transformed_geometry);
+    }
+    _transformed_object_array = transformed_object_array;
 }
 void Renderer::serialize_objects()
 {
-    assert(_transformed_geometry_array.size() > 0);
+    assert(_transformed_object_array.size() > 0);
     int total_faces = 0;
     int total_vertices = 0;
-    for (auto& geometry : _transformed_geometry_array) {
+    for (auto& geometry : _transformed_object_array) {
         total_faces += geometry->num_faces();
         total_vertices += geometry->num_vertices();
     }
-    int num_objects = _transformed_geometry_array.size();
-    _cpu_face_vertex_indices_array = rtx::array<RTXGeometryFace>(total_faces);
-    _cpu_vertex_array = rtx::array<RTXGeometryVertex>(total_vertices);
+    int num_objects = _transformed_object_array.size();
+    _cpu_face_vertex_indices_array = rtx::array<RTXFace>(total_faces);
+    _cpu_vertex_array = rtx::array<RTXVertex>(total_vertices);
     _cpu_object_array = rtx::array<RTXObject>(num_objects);
 
     int serialized_array_offset = 0;
@@ -72,7 +83,7 @@ void Renderer::serialize_objects()
     std::vector<int> vertex_index_offset_array;
     std::vector<int> vertex_count_array;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& geometry = _transformed_geometry_array.at(object_index);
+        auto& geometry = _transformed_object_array.at(object_index);
         geometry->serialize_vertices(_cpu_vertex_array, serialized_array_offset);
         vertex_index_offset_array.push_back(serialized_array_offset);
         vertex_count_array.push_back(geometry->num_vertices());
@@ -84,7 +95,7 @@ void Renderer::serialize_objects()
     std::vector<int> face_count_array;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         // std::cout << "object: " << object_index << std::endl;
-        auto& geometry = _transformed_geometry_array.at(object_index);
+        auto& geometry = _transformed_object_array.at(object_index);
         int vertex_offset = vertex_index_offset_array[object_index];
         if (geometry->bvh_enabled()) {
             int bvh_index = _map_object_bvh.at(object_index);
@@ -127,7 +138,7 @@ void Renderer::serialize_objects()
     assert(vertex_index_offset_array.size() == face_index_offset_array.size());
 
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& geometry = _transformed_geometry_array.at(object_index);
+        auto& geometry = _transformed_object_array.at(object_index);
         RTXObject object;
         object.bvh_enabled = geometry->bvh_enabled();
         object.bvh_index = -1;
@@ -147,13 +158,13 @@ void Renderer::serialize_objects()
 }
 void Renderer::construct_bvh()
 {
-    assert(_transformed_geometry_array.size() > 0);
+    assert(_transformed_object_array.size() > 0);
     _map_object_bvh = std::unordered_map<int, int>();
 
     int bvh_index = 0;
     int num_bvh_enabled_objects = 0;
-    for (int object_index = 0; object_index < (int)_transformed_geometry_array.size(); object_index++) {
-        auto& geometry = _transformed_geometry_array[object_index];
+    for (int object_index = 0; object_index < (int)_transformed_object_array.size(); object_index++) {
+        auto& geometry = _transformed_object_array[object_index];
         if (geometry->bvh_enabled() == false) {
             continue;
         }
@@ -166,13 +177,13 @@ void Renderer::construct_bvh()
     int total_nodes = 0;
 
 #pragma omp parallel for
-    for (int object_index = 0; object_index < (int)_transformed_geometry_array.size(); object_index++) {
-        auto& geometry = _transformed_geometry_array[object_index];
+    for (int object_index = 0; object_index < (int)_transformed_object_array.size(); object_index++) {
+        auto& geometry = _transformed_object_array[object_index];
         if (geometry->bvh_enabled() == false) {
             continue;
         }
         assert(geometry->bvh_max_triangles_per_node() > 0);
-        assert(geometry->type() == RTX_GEOMETRY_TYPE_STANDARD);
+        assert(geometry->type() == RTXObjectTypeStandardGeometry);
         std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
         std::shared_ptr<BVH> bvh = std::make_shared<BVH>(standard);
         int bvh_index = _map_object_bvh[object_index];
@@ -207,7 +218,7 @@ void Renderer::serialize_rays(int height, int width)
     std::default_random_engine generator;
     std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
-    if (_camera->type() == RTX_CAMERA_TYPE_PERSPECTIVE) {
+    if (_camera->type() == RTXCameraTypePerspective) {
         PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(_camera.get());
         origin.z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
     }
@@ -282,13 +293,13 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_free((void**)&_gpu_face_vertex_indices_array);
         rtx_cuda_free((void**)&_gpu_vertex_array);
         rtx_cuda_free((void**)&_gpu_object_array);
-        rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, sizeof(RTXGeometryFace) * _cpu_face_vertex_indices_array.size());
-        rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(RTXGeometryVertex) * _cpu_vertex_array.size());
+        rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
+        rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_malloc((void**)&_gpu_object_array, sizeof(RTXObject) * _cpu_object_array.size());
     }
     if (should_transfer_to_gpu) {
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), sizeof(RTXGeometryFace) * _cpu_face_vertex_indices_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), sizeof(RTXGeometryVertex) * _cpu_vertex_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), sizeof(RTXObject) * _cpu_object_array.size());
     }
 

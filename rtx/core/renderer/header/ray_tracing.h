@@ -9,8 +9,8 @@ void cuda_device_reset();
 
 void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
-    RTXGeometryFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
-    RTXGeometryVertex*& gpu_vertex_array, const int vertex_array_size,
+    RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
+    RTXVertex*& gpu_vertex_array, const int vertex_array_size,
     RTXObject*& gpu_object_array, const int object_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,

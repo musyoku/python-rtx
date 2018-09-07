@@ -1,4 +1,5 @@
 #include "bvh.h"
+#include "../../header/enum.h"
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -34,23 +35,23 @@ int detect_longest_axis(const glm::vec3f& axis_length)
 {
     if (axis_length.x > axis_length.y) {
         if (axis_length.x > axis_length.z) {
-            return RTX_AXIS_X;
+            return RTXAxisX;
         }
-        return RTX_AXIS_Z;
+        return RTXAxisZ;
     }
     if (axis_length.y > axis_length.x) {
         if (axis_length.y > axis_length.z) {
-            return RTX_AXIS_Y;
+            return RTXAxisY;
         }
-        return RTX_AXIS_Z;
+        return RTXAxisZ;
     }
     if (axis_length.x > axis_length.z) {
         if (axis_length.y > axis_length.x) {
-            return RTX_AXIS_Y;
+            return RTXAxisY;
         }
-        return RTX_AXIS_X;
+        return RTXAxisX;
     }
-    return RTX_AXIS_Z;
+    return RTXAxisZ;
 }
 bool compare_position(const std::pair<int, float>& a, const std::pair<int, float>& b)
 {
@@ -98,7 +99,7 @@ Node::Node(std::vector<int> assigned_face_indices,
     const glm::vec3f axis_length = _aabb_max - _aabb_min;
     int longest_axis = detect_longest_axis(axis_length);
     // if (_index == 0) {
-    //     longest_axis = RTX_AXIS_X;
+    //     longest_axis = RTXAxisX;
     // }
 
     // std::cout << "longest: " << longest_axis << std::endl;
@@ -110,9 +111,9 @@ Node::Node(std::vector<int> assigned_face_indices,
         auto& vb = geometry->_vertex_array[face[1]];
         auto& vc = geometry->_vertex_array[face[2]];
         auto center = (va + vb + vc) / 3.0f;
-        if (longest_axis == RTX_AXIS_X) {
+        if (longest_axis == RTXAxisX) {
             object_center_array.emplace_back(face_index, center.x);
-        } else if (longest_axis == RTX_AXIS_Y) {
+        } else if (longest_axis == RTXAxisY) {
             object_center_array.emplace_back(face_index, center.y);
         } else {
             object_center_array.emplace_back(face_index, center.z);

@@ -7573,8 +7573,8 @@ void test_structure()
 int main(int argc, char *argv[])
 {
     if(argc == 3){
-        int num_threads = std::stoi(argv[1]);
-        int num_blocks = std::stoi(argv[2]);
+        int num_blocks = std::stoi(argv[1]);
+        int num_threads = std::stoi(argv[2]);
         run(num_blocks, num_threads);
     }
     // test_structure();

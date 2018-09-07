@@ -1,4 +1,6 @@
 #include "standard.h"
+#include "../header/glm.h"
+#include "../header/enum.h"
 #include <cassert>
 #include <cfloat>
 #include <iostream>
@@ -70,7 +72,7 @@ void StandardGeometry::set_bvh_max_triangles_per_node(int bvh_max_triangles_per_
 }
 int StandardGeometry::type() const
 {
-    return RTX_GEOMETRY_TYPE_STANDARD;
+    return RTXObjectTypeStandardGeometry;
 }
 int StandardGeometry::num_faces() const
 {
@@ -80,7 +82,7 @@ int StandardGeometry::num_vertices() const
 {
     return _vertex_array.size();
 }
-void StandardGeometry::serialize_vertices(rtx::array<RTXGeometryVertex>& buffer, int array_offset) const
+void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int array_offset) const
 {
     for (int j = 0; j < _vertex_array.size(); j++) {
         auto& vertex = _vertex_array[j];
@@ -88,14 +90,14 @@ void StandardGeometry::serialize_vertices(rtx::array<RTXGeometryVertex>& buffer,
     }
 }
 
-void StandardGeometry::serialize_faces(rtx::array<RTXGeometryFace>& buffer, int array_offset, int vertex_index_offset) const
+void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset, int vertex_index_offset) const
 {
     for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
         auto& face = _face_vertex_indices_array[j];
         buffer[j + array_offset] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
     }
 }
-std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
+std::shared_ptr<Object> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto geometry = std::make_shared<StandardGeometry>();
     geometry->_bvh_max_triangles_per_node = _bvh_max_triangles_per_node;

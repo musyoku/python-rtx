@@ -28,15 +28,15 @@ public:
     StandardGeometry(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces,
         pybind11::array_t<float, pybind11::array::c_style> vertices,
         int bvh_max_triangles_per_node);
-    void add_face(glm::vec3i face);
-    void add_vertex(glm::vec3f vertex);
-    void set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node);
     int type() const override;
     int num_faces() const override;
     int num_vertices() const override;
-    void serialize_vertices(rtx::array<RTXGeometryVertex>& array, int offset) const override;
-    void serialize_faces(rtx::array<RTXGeometryFace>& array, int array_offset, int vertex_index_offset) const override;
-    std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const override;
+    void add_face(glm::vec3i face);
+    void add_vertex(glm::vec3f vertex);
+    void set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node);
+    void serialize_vertices(rtx::array<RTXVertex>& array, int offset) const override;
+    void serialize_faces(rtx::array<RTXFace>& array, int array_offset, int vertex_index_offset) const override;
+    std::shared_ptr<Object> transoform(glm::mat4& transformation_matrix) const override;
     bool bvh_enabled() const override;
     int bvh_max_triangles_per_node() const override;
 };

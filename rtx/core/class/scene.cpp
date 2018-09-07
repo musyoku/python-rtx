@@ -6,6 +6,11 @@ void Scene::add(std::shared_ptr<Mesh> mesh)
     _mesh_array.emplace_back(mesh);
     _updated = true;
 }
+void Scene::add(std::shared_ptr<Light> light)
+{
+    _light_array.emplace_back(light);
+    _updated = true;
+}
 bool Scene::updated()
 {
     return _updated;

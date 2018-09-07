@@ -35,6 +35,6 @@ glm::vec3f LambertMaterial::emit_color() const
 };
 int LambertMaterial::type() const
 {
-    return RTX_MATERIAL_TYPE_LAMBERT;
+    return RTXMaterialTypeLambert;
 }
 }

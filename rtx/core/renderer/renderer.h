@@ -20,8 +20,8 @@ class Renderer {
 private:
     // host
     rtx::array<RTXRay> _cpu_ray_array;
-    rtx::array<RTXGeometryFace> _cpu_face_vertex_indices_array;
-    rtx::array<RTXGeometryVertex> _cpu_vertex_array;
+    rtx::array<RTXFace> _cpu_face_vertex_indices_array;
+    rtx::array<RTXVertex> _cpu_vertex_array;
     rtx::array<RTXObject> _cpu_object_array;
     rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
@@ -29,8 +29,8 @@ private:
 
     // device
     RTXRay* _gpu_ray_array;
-    RTXGeometryFace* _gpu_face_vertex_indices_array;
-    RTXGeometryVertex* _gpu_vertex_array;
+    RTXFace* _gpu_face_vertex_indices_array;
+    RTXVertex* _gpu_vertex_array;
     RTXObject* _gpu_object_array;
     RTXThreadedBVH* _gpu_threaded_bvh_array;
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
@@ -40,7 +40,7 @@ private:
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<RayTracingArguments> _rt_args;
     std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
-    std::vector<std::shared_ptr<Geometry>> _transformed_geometry_array;
+    std::vector<std::shared_ptr<Object>> _transformed_object_array;
     std::vector<std::shared_ptr<BVH>> _bvh_array;
     std::unordered_map<int, int> _map_object_bvh;
 

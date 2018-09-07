@@ -1,12 +1,14 @@
 #pragma once
+#include "object.h"
+#include <memory>
+#include <pybind11/pybind11.h>
 
 namespace rtx {
-class Light {
+class Light : public Object {
 protected:
     float _brightness;
 
 public:
-    virtual float brightness() const;
-    virtual int type() const = 0;
+    float brightness() const;
 };
 }

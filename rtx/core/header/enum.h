@@ -1,27 +1,24 @@
 #pragma once
 
-enum RTX_AXIS {
-    RTX_AXIS_X = 1,
-    RTX_AXIS_Y,
-    RTX_AXIS_Z,
+enum RTXAxis {
+    RTXAxisX = 1,
+    RTXAxisY,
+    RTXAxisZ,
 };
 
-enum RTX_MATERIAL_TYPE {
-    RTX_MATERIAL_TYPE_LAMBERT = 1,
+enum RTXMaterialType {
+    RTXMaterialTypeLambert = 1,
 };
 
-enum RTX_LIGHT_TYPE {
-    RTX_LIGHT_TYPE_RECT = 1,
+enum RTXObjectType {
+    RTXObjectTypeStandardGeometry = 1,
+    RTXObjectTypeSphereGeometry,
+    RTXObjectTypeRectAreaLight,
 };
 
-enum RTX_GEOMETRY_TYPE {
-    RTX_GEOMETRY_TYPE_STANDARD = 1,
-    RTX_GEOMETRY_TYPE_SPHERE,
-};
-
-enum RTX_CAMERA_TYPE {
-    RTX_CAMERA_TYPE_PERSPECTIVE = 1,
-    RTX_CAMERA_TYPE_ORTHOGONAL,
+enum RTXCameraType {
+    RTXCameraTypePerspective = 1,
+    RTXCameraTypeOrthogonal,
 };
 
 #define SCENE_BVH_TERMINAL_NODE 255

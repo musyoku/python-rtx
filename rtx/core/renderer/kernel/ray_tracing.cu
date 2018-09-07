@@ -122,9 +122,9 @@ __global__ void global_memory_kernel(
     const float eps = 0.0000001;
     CUDARay ray;
     // RTXRay ray;
-    RTXVector4f ray_direction_inv;
-    RTXVector4f hit_point;
-    RTXVector4f hit_face_normal;
+    float3 ray_direction_inv;
+    float3 hit_point;
+    float3 hit_face_normal;
     RTXPixel hit_color;
     RTXPixel reflection_decay;
 
@@ -294,7 +294,7 @@ __global__ void global_memory_kernel(
                                 int index = node.assigned_face_index_start + m + object.face_index_offset;
 
                                 int4 face = tex1Dfetch(face_vertex_index_texture, index);
-                                // RTXGeometryFace face = global_face_vertex_index_array[index];
+                                // RTXFace face = global_face_vertex_index_array[index];
 
                                 float4 va = tex1Dfetch(vertex_texture, face.x);
                                 float4 vb = tex1Dfetch(vertex_texture, face.y);
@@ -396,7 +396,7 @@ __global__ void global_memory_kernel(
                         }
                     }
                 } else {
-                    // if (geometry_type == RTX_GEOMETRY_TYPE_STANDARD) {
+                    // if (geometry_type == RTXObjectTypeStandardGeometry) {
                     //     for (int j = 0; j < faces_count; j++) {
                     //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 0];
                     //         if (array_index < 0) {
@@ -528,7 +528,7 @@ __global__ void global_memory_kernel(
                     //         did_hit_object = true;
                     //         did_hit_light = false;
                     //     }
-                    // } else if (geometry_type == RTX_GEOMETRY_TYPE_SPHERE) {
+                    // } else if (geometry_type == RTXObjectTypeSphereGeometry) {
                     //     array_index = 4 * face_vertex_index_array[face_index_offset * 4 + 0];
                     //     assert(array_index + 0 < vertex_array_size);
 
@@ -772,7 +772,7 @@ __global__ void shared_memory_kernel(
 //                 object_type = shared_object_types[face_index];
 //                 const int index = face_index * faces_stride;
 
-//                 if (object_type == RTX_GEOMETRY_TYPE_STANDARD) {
+//                 if (object_type == RTXObjectTypeStandardGeometry) {
 //                     const float va_x = shared_face_vertices[index + 0];
 //                     const float va_y = shared_face_vertices[index + 1];
 //                     const float va_z = shared_face_vertices[index + 2];
@@ -861,7 +861,7 @@ __global__ void shared_memory_kernel(
 //                     did_hit_object = true;
 //                     continue;
 //                 }
-//                 if (object_type == RTX_GEOMETRY_TYPE_SPHERE) {
+//                 if (object_type == RTXObjectTypeSphereGeometry) {
 //                     const float center_x = shared_face_vertices[index + 0];
 //                     const float center_y = shared_face_vertices[index + 1];
 //                     const float center_z = shared_face_vertices[index + 2];
@@ -959,7 +959,7 @@ __global__ void shared_memory_kernel(
 //                     if (tzmax < tmax) {
 //                         tmax = tzmax;
 //                     }
-//                     material_type = RTX_MATERIAL_TYPE_EMISSIVE;
+//                     material_type = RTXMaterialType_EMISSIVE;
 
 //                     hit_color_r = 1.0f;
 //                     hit_color_g = 1.0f;
@@ -975,7 +975,7 @@ __global__ void shared_memory_kernel(
 //                 ray.origin.y = hit_point.y;
 //                 ray.origin.z = hit_point.z;
 
-//                 if (material_type == RTX_MATERIAL_TYPE_EMISSIVE) {
+//                 if (material_type == RTXMaterialType_EMISSIVE) {
 //                     color_r = reflection_decay_r * hit_color_r;
 //                     color_g = reflection_decay_g * hit_color_g;
 //                     color_b = reflection_decay_b * hit_color_b;
@@ -1071,8 +1071,8 @@ void cuda_device_reset()
 }
 void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
-    RTXGeometryFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
-    RTXGeometryVertex*& gpu_vertex_array, const int vertex_array_size,
+    RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
+    RTXVertex*& gpu_vertex_array, const int vertex_array_size,
     RTXObject*& gpu_object_array, const int object_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
@@ -1096,7 +1096,7 @@ void rtx_cuda_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int required_shared_memory_bytes = sizeof(RTXGeometryFace) * face_vertex_index_array_size + sizeof(RTXGeometryVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+    int required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
@@ -1116,8 +1116,8 @@ void rtx_cuda_render(
         printf("num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
 
         cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
-        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXGeometryFace) * face_vertex_index_array_size);
-        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXGeometryVertex) * vertex_array_size);
+        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
+        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
         cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
 
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
