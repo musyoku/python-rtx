@@ -14,4 +14,13 @@ void Scene::set_updated(bool updated)
 {
     _updated = updated;
 }
+
+int Scene::num_triangles()
+{
+    int num_triangles = 0;
+    for (auto& mesh : _mesh_array) {
+        num_triangles += mesh->_geometry->num_faces();
+    }
+    return num_triangles;
+}
 }

@@ -1,7 +1,7 @@
 #include "../rtx/core/camera/perspective.h"
 #include "../rtx/core/class/scene.h"
 #include "../rtx/core/geometry/sphere.h"
-#include "../rtx/core/material/mesh/lambert.h"
+#include "../rtx/core/material/lambert.h"
 #include "../rtx/core/renderer/header/ray_tracing.h"
 #include "../rtx/core/renderer/renderer.h"
 #include "../rtx/core/renderer/arguments/ray_tracing.h"
@@ -7496,7 +7496,7 @@ void run(int num_blocks, int num_threads)
     geometry->add_vertex(glm::vec3f(-0.1757092922925949, -0.24013739824295044, 0.05167252942919731));
     geometry->set_bvh_max_triangles_per_node(50);
     float color[3] = { 1, 1, 1 };
-    std::shared_ptr<MeshLambertMaterial> material = std::make_shared<MeshLambertMaterial>(color, 0.8f);
+    std::shared_ptr<LambertMaterial> material = std::make_shared<LambertMaterial>(color, 0.8f);
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(geometry, material);
     float position[3] = { 0, -1, -1 };
     mesh->set_position(position);
@@ -7507,6 +7507,10 @@ void run(int num_blocks, int num_threads)
     float up[] = { 0.0f, 1.0f, 0.0f };
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
+    std::shared_ptr<CUDAKernelLaunchArguments> cuda_args = std::make_shared<CUDAKernelLaunchArguments>();
+    cuda_args->set_num_threads(num_threads);
+    cuda_args->set_num_blocks(num_blocks);
+
     std::shared_ptr<RayTracingArguments> rt_args = std::make_shared<RayTracingArguments>();
     rt_args->set_num_rays_per_pixel(32);
     rt_args->set_max_bounce(4);
@@ -7516,12 +7520,12 @@ void run(int num_blocks, int num_threads)
     int height = 512;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    render->render(scene, camera, rt_args, pixels, height, width, channels, num_blocks, num_threads);
+    render->render(scene, camera, rt_args, cuda_args, pixels, height, width, channels, num_blocks, num_threads);
     auto start = std::chrono::system_clock::now();
     int repeat = 10;
     for (int i = 0; i < repeat; i++) {
         float eye[] = { 0.0f, 0.0f, 2.0f };
-        render->render(scene, camera, rt_args, pixels, height, width, channels, num_blocks, num_threads);
+        render->render(scene, camera, rt_args, cuda_args, pixels, height, width, channels, num_blocks, num_threads);
     }
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -7533,37 +7537,37 @@ void run(int num_blocks, int num_threads)
 
 void test_structure()
 {
-    int num_nodes = 1000;
-    rtx::array<int> node_array(num_nodes * 4);
-    int* gpu_node_array;
-    rtx_cuda_malloc((void**)&gpu_node_array, sizeof(int) * num_nodes * 4);
-    for (int i = 0; i < 10; i++) {
-        auto start = std::chrono::system_clock::now();
-        for (int n = 0; n < 100; n++) {
-            launch_test_linear_kernel(gpu_node_array, num_nodes);
-        }
-        auto end = std::chrono::system_clock::now();
-        double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
-    }
-    rtx_cuda_free((void**)&gpu_node_array);
+//     int num_nodes = 1000;
+//     rtx::array<int> node_array(num_nodes * 4);
+//     int* gpu_node_array;
+//     rtx_cuda_malloc((void**)&gpu_node_array, sizeof(int) * num_nodes * 4);
+//     for (int i = 0; i < 10; i++) {
+//         auto start = std::chrono::system_clock::now();
+//         for (int n = 0; n < 100; n++) {
+//             launch_test_linear_kernel(gpu_node_array, num_nodes);
+//         }
+//         auto end = std::chrono::system_clock::now();
+//         double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//         std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
+//     }
+//     rtx_cuda_free((void**)&gpu_node_array);
 
-    std::cout << "done" << std::endl;
+//     std::cout << "done" << std::endl;
 
-    rtx::array<RTXThreadedBVHNode> struct_array(num_nodes);
-    RTXThreadedBVHNode* gpu_struct_array;
-    rtx_cuda_malloc((void**)&gpu_struct_array, sizeof(RTXThreadedBVHNode) * num_nodes);
-    for (int i = 0; i < 10; i++) {
-        auto start = std::chrono::system_clock::now();
-        for (int n = 0; n < 100; n++) {
-            launch_test_struct_kernel(gpu_struct_array, num_nodes);
-        }
-        auto end = std::chrono::system_clock::now();
-        double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
-    }
-    rtx_cuda_free((void**)&gpu_struct_array);
-    std::cout << "done" << std::endl;
+//     rtx::array<RTXThreadedBVHNode> struct_array(num_nodes);
+//     RTXThreadedBVHNode* gpu_struct_array;
+//     rtx_cuda_malloc((void**)&gpu_struct_array, sizeof(RTXThreadedBVHNode) * num_nodes);
+//     for (int i = 0; i < 10; i++) {
+//         auto start = std::chrono::system_clock::now();
+//         for (int n = 0; n < 100; n++) {
+//             launch_test_struct_kernel(gpu_struct_array, num_nodes);
+//         }
+//         auto end = std::chrono::system_clock::now();
+//         double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//         std::cout << "fps: " << (double(100) / elapsed * 1000) << std::endl;
+//     }
+//     rtx_cuda_free((void**)&gpu_struct_array);
+//     std::cout << "done" << std::endl;
 }
 
 int main(int argc, char *argv[])

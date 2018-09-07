@@ -1,7 +1,7 @@
 #include "lambert.h"
 
 namespace rtx {
-MeshLambertMaterial::MeshLambertMaterial(pybind11::tuple color,
+LambertMaterial::LambertMaterial(pybind11::tuple color,
     float diffuse_reflectance)
 {
     _color.r = color[0].cast<float>();
@@ -10,30 +10,30 @@ MeshLambertMaterial::MeshLambertMaterial(pybind11::tuple color,
     _diffuse_reflectance = diffuse_reflectance;
 }
 
-MeshLambertMaterial::MeshLambertMaterial(float (&color)[3], float diffuse_reflectance)
+LambertMaterial::LambertMaterial(float (&color)[3], float diffuse_reflectance)
 {
     _color.r = color[0];
     _color.g = color[1];
     _color.b = color[2];
     _diffuse_reflectance = diffuse_reflectance;
 }
-glm::vec3f MeshLambertMaterial::reflect_color(glm::vec3f& input_color) const
+glm::vec3f LambertMaterial::reflect_color(glm::vec3f& input_color) const
 {
     return _diffuse_reflectance * _color * input_color;
 }
-glm::vec3f MeshLambertMaterial::color() const
+glm::vec3f LambertMaterial::color() const
 {
     return _color;
 }
-glm::vec3f MeshLambertMaterial::reflect_ray(glm::vec3f& diffuse_vec, glm::vec3f& specular_vec) const
+glm::vec3f LambertMaterial::reflect_ray(glm::vec3f& diffuse_vec, glm::vec3f& specular_vec) const
 {
     return diffuse_vec;
 }
-glm::vec3f MeshLambertMaterial::emit_color() const
+glm::vec3f LambertMaterial::emit_color() const
 {
     throw std::runtime_error("Not implemented");
 };
-int MeshLambertMaterial::type() const
+int LambertMaterial::type() const
 {
     return RTX_MATERIAL_TYPE_LAMBERT;
 }

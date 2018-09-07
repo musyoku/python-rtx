@@ -13,5 +13,6 @@ public:
     void add(std::shared_ptr<Mesh> mesh);
     bool updated();
     void set_updated(bool updated);
+    int num_triangles();
 };
 }

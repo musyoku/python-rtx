@@ -7,7 +7,7 @@ void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t siz
 void rtx_cuda_free(void** array);
 void cuda_device_reset();
 
-void rtx_cuda_ray_tracing_render(
+void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXGeometryFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
     RTXGeometryVertex*& gpu_vertex_array, const int vertex_array_size,
@@ -15,10 +15,12 @@ void rtx_cuda_ray_tracing_render(
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     RTXPixel*& gpu_render_array, const int render_array_size,
+    const int num_threads,
+    const int num_blocks,
     const int num_rays_per_pixel,
     const int max_bounce);
 
-void launch_test_linear_kernel(
-    int*& gpu_node_array, const int num_nodes);
-void launch_test_struct_kernel(
-    RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes);
+// void launch_test_linear_kernel(
+//     int*& gpu_node_array, const int num_nodes);
+// void launch_test_struct_kernel(
+//     RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes);

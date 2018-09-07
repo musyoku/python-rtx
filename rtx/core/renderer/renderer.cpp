@@ -314,7 +314,7 @@ void Renderer::render_objects(int height, int width)
     printf("preprocessing: %lf msec\n", elapsed);
 
     start = std::chrono::system_clock::now();
-    rtx_cuda_ray_tracing_render(
+    rtx_cuda_render(
         _gpu_ray_array, _cpu_ray_array.size(),
         _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
         _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -322,6 +322,8 @@ void Renderer::render_objects(int height, int width)
         _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
         _gpu_render_array, _cpu_render_array.size(),
+        _cuda_args->num_threads(),
+        _cuda_args->num_blocks(),
         _rt_args->num_rays_per_pixel(),
         _rt_args->max_bounce());
     end = std::chrono::system_clock::now();
@@ -383,6 +385,7 @@ void Renderer::render(
     _scene = scene;
     _camera = camera;
     _rt_args = rt_args;
+    _cuda_args = cuda_args;
 
     if (channels != 3) {
         throw std::runtime_error("channels != 3");

@@ -7,9 +7,9 @@ NVCCFLAGS = -ccbin=$(CXX) -Xcompiler "-fPIC" --ptxas-options=-v
 SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/class/*.cpp) \
 		  $(wildcard ./core/geometry/*.cpp) \
-		  $(wildcard ./core/material/mesh/*.cpp) \
+		  $(wildcard ./core/material/*.cpp) \
+		  $(wildcard ./core/light/*.cpp) \
 		  $(wildcard ./core/camera/*.cpp) \
-		  $(wildcard ./core/renderer/ray_tracing/*.cpp) \
 		  $(wildcard ./core/renderer/bvh/*.cpp) \
 		  $(wildcard ./core/renderer/kernel/*.cu) \
 		  $(wildcard ./core/renderer/*.cpp) \

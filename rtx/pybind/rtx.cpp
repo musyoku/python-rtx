@@ -8,9 +8,7 @@
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
-#include "../core/material/mesh/emissive.h"
-#include "../core/material/mesh/lambert.h"
-#include "../core/material/mesh/metal.h"
+#include "../core/material/lambert.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
 #include "../core/renderer/renderer.h"
@@ -33,7 +31,8 @@ PYBIND11_MODULE(rtx, module)
 
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())
-        .def("add", (void (Scene::*)(std::shared_ptr<Mesh>)) & Scene::add);
+        .def("add", (void (Scene::*)(std::shared_ptr<Mesh>)) & Scene::add)
+        .def("num_triangles", &Scene::num_triangles);
 
     py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
         .def(py::init<float>(), py::arg("radius"));
@@ -45,12 +44,8 @@ PYBIND11_MODULE(rtx, module)
     py::class_<BoxGeometry, Geometry, std::shared_ptr<BoxGeometry>>(module, "BoxGeometry")
         .def(py::init<float, float, float>(), py::arg("width"), py::arg("height"), py::arg("depth"));
 
-    py::class_<MeshLambertMaterial, Material, std::shared_ptr<MeshLambertMaterial>>(module, "MeshLambertMaterial")
+    py::class_<LambertMaterial, Material, std::shared_ptr<LambertMaterial>>(module, "LambertMaterial")
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
-    py::class_<MeshMetalMaterial, Material, std::shared_ptr<MeshMetalMaterial>>(module, "MeshMetalMaterial")
-        .def(py::init<float, float>(), py::arg("roughness"), py::arg("specular_reflectance"));
-    py::class_<MeshEmissiveMaterial, Material, std::shared_ptr<MeshEmissiveMaterial>>(module, "MeshEmissiveMaterial")
-        .def(py::init<py::tuple>(), py::arg("color"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

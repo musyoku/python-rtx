@@ -30,12 +30,12 @@ texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
 
 __global__ void global_memory_kernel(
-    const RTXRay* global_ray_array, const int ray_array_size,
-    const RTXGeometryFace* global_face_vertex_index_array, const int face_vertex_index_array_size,
-    const RTXGeometryVertex* global_vertex_array, const int vertex_array_size,
+    const int ray_array_size,
+    const int face_vertex_index_array_size,
+    const int vertex_array_size,
     const RTXObject* global_object_array, const int object_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
-    const RTXThreadedBVHNode* global_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const int threaded_bvh_node_array_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce)
@@ -1069,7 +1069,7 @@ void cuda_device_reset()
 {
     cudaDeviceReset();
 }
-void rtx_cuda_ray_tracing_render(
+void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXGeometryFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
     RTXGeometryVertex*& gpu_vertex_array, const int vertex_array_size,
@@ -1077,6 +1077,8 @@ void rtx_cuda_ray_tracing_render(
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     RTXPixel*& gpu_render_array, const int render_array_size,
+    const int num_threads,
+    const int num_blocks,
     const int num_rays_per_pixel,
     const int max_bounce)
 {
@@ -1090,9 +1092,7 @@ void rtx_cuda_ray_tracing_render(
 
     int num_rays = ray_array_size;
 
-    int num_threads = 256;
     // int num_blocks = (num_rays - 1) / num_threads + 1;
-    int num_blocks = 1024;
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
@@ -1113,7 +1113,7 @@ void rtx_cuda_ray_tracing_render(
         int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size;
         printf("shared memory: %d bytes\n", required_shared_memory_bytes);
         printf("available: %d bytes\n", dev.sharedMemPerBlock);
-
+        printf("num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
 
         cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
         cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXGeometryFace) * face_vertex_index_array_size);
@@ -1121,15 +1121,20 @@ void rtx_cuda_ray_tracing_render(
         cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
 
         global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
-            gpu_ray_array, ray_array_size,
-            gpu_face_vertex_index_array, face_vertex_index_array_size,
-            gpu_vertex_array, vertex_array_size,
+            ray_array_size,
+            face_vertex_index_array_size,
+            vertex_array_size,
             gpu_object_array, object_array_size,
             gpu_threaded_bvh_array, threaded_bvh_array_size,
-            gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
+            threaded_bvh_node_array_size,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce);
+
+        cudaUnbindTexture(ray_texture);
+        cudaUnbindTexture(face_vertex_index_texture);
+        cudaUnbindTexture(vertex_texture);
+        cudaUnbindTexture(threaded_bvh_node_texture);
     } else {
         // shared_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
         //     gpu_ray_array, ray_array_size,
@@ -1172,58 +1177,58 @@ void rtx_cuda_ray_tracing_render(
     // printf(" register / block : %d\n", dev.regsPerBlock);
 }
 
-__global__ void test_linear_kernel(
-    const int* node_array, const int num_nodes)
-{
-    int s = 0;
-    for (int j = 0; j < 1000; j++) {
-        for (int i = 0; i < num_nodes; i++) {
-            int hit = node_array[i * 4 + 0];
-            int miss = node_array[i * 4 + 1];
-            int start = node_array[i * 4 + 2];
-            int end = node_array[i * 4 + 3];
-            s += hit + miss + start + end;
-        }
-    }
-}
+// __global__ void test_linear_kernel(
+//     const int* node_array, const int num_nodes)
+// {
+//     int s = 0;
+//     for (int j = 0; j < 1000; j++) {
+//         for (int i = 0; i < num_nodes; i++) {
+//             int hit = node_array[i * 4 + 0];
+//             int miss = node_array[i * 4 + 1];
+//             int start = node_array[i * 4 + 2];
+//             int end = node_array[i * 4 + 3];
+//             s += hit + miss + start + end;
+//         }
+//     }
+// }
 
-__global__ void test_struct_kernel(
-    const RTXThreadedBVHNode* node_array, const int num_nodes)
-{
-    int s = 0;
-    for (int j = 0; j < 1000; j++) {
-        for (int i = 0; i < num_nodes; i++) {
-            RTXThreadedBVHNode node = node_array[i];
-            s += node.hit_node_index + node.miss_node_index + node.assigned_face_index_start + node.assigned_face_index_end;
-        }
-    }
-}
+// __global__ void test_struct_kernel(
+//     const RTXThreadedBVHNode* node_array, const int num_nodes)
+// {
+//     int s = 0;
+//     for (int j = 0; j < 1000; j++) {
+//         for (int i = 0; i < num_nodes; i++) {
+//             RTXThreadedBVHNode node = node_array[i];
+//             s += node.hit_node_index + node.miss_node_index + node.assigned_face_index_start + node.assigned_face_index_end;
+//         }
+//     }
+// }
 
-void launch_test_linear_kernel(
-    int*& gpu_node_array, const int num_nodes)
-{
-    test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-    }
-    cudaError_t error = cudaThreadSynchronize();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-    }
-}
+// void launch_test_linear_kernel(
+//     int*& gpu_node_array, const int num_nodes)
+// {
+//     test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
+//     cudaError_t status = cudaGetLastError();
+//     if (status != 0) {
+//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+//     }
+//     cudaError_t error = cudaThreadSynchronize();
+//     if (error != cudaSuccess) {
+//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+//     }
+// }
 
-void launch_test_struct_kernel(
-    RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes)
-{
+// void launch_test_struct_kernel(
+//     RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes)
+// {
 
-    test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-    }
-    cudaError_t error = cudaThreadSynchronize();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-    }
-}
+//     test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
+//     cudaError_t status = cudaGetLastError();
+//     if (status != 0) {
+//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+//     }
+//     cudaError_t error = cudaThreadSynchronize();
+//     if (error != cudaSuccess) {
+//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+//     }
+// }
