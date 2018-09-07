@@ -9,22 +9,18 @@
 namespace rtx {
 using namespace bvh;
 template <int L, typename T>
-glm::vec3f merge_aabb_max(const glm::vec3f& a, const glm::vec<L, T>& b)
+void merge_aabb_max(const glm::vec3f& a, const glm::vec<L, T>& b, glm::vec3f& dest)
 {
-    glm::vec3f max;
-    max.x = a.x > b.x ? a.x : b.x;
-    max.y = a.y > b.y ? a.y : b.y;
-    max.z = a.z > b.z ? a.z : b.z;
-    return max;
+    dest.x = a.x > b.x ? a.x : b.x;
+    dest.y = a.y > b.y ? a.y : b.y;
+    dest.z = a.z > b.z ? a.z : b.z;
 }
 template <int L, typename T>
-glm::vec3f merge_aabb_min(const glm::vec3f& a, const glm::vec<L, T>& b)
+void merge_aabb_min(const glm::vec3f& a, const glm::vec<L, T>& b, glm::vec3f& dest)
 {
-    glm::vec3f min;
-    min.x = a.x < b.x ? a.x : b.x;
-    min.y = a.y < b.y ? a.y : b.y;
-    min.z = a.z < b.z ? a.z : b.z;
-    return min;
+    dest.x = a.x < b.x ? a.x : b.x;
+    dest.y = a.y < b.y ? a.y : b.y;
+    dest.z = a.z < b.z ? a.z : b.z;
 }
 float compute_surface_area(const glm::vec3f max, const glm::vec3f min)
 {
@@ -80,16 +76,16 @@ Node::Node(std::vector<int> assigned_face_indices,
     for (int face_index : assigned_face_indices) {
         auto& face = geometry->_face_vertex_indices_array.at(face_index);
         auto& va = geometry->_vertex_array[face[0]];
-        _aabb_max = merge_aabb_max(_aabb_max, va);
-        _aabb_min = merge_aabb_min(_aabb_min, va);
+        merge_aabb_max(_aabb_max, va, _aabb_max);
+        merge_aabb_min(_aabb_min, va, _aabb_min);
 
         auto& vb = geometry->_vertex_array[face[1]];
-        _aabb_max = merge_aabb_max(_aabb_max, vb);
-        _aabb_min = merge_aabb_min(_aabb_min, vb);
+        merge_aabb_max(_aabb_max, vb, _aabb_max);
+        merge_aabb_min(_aabb_min, vb, _aabb_min);
 
         auto& vc = geometry->_vertex_array[face[2]];
-        _aabb_max = merge_aabb_max(_aabb_max, vc);
-        _aabb_min = merge_aabb_min(_aabb_min, vc);
+        merge_aabb_max(_aabb_max, vc, _aabb_max);
+        merge_aabb_min(_aabb_min, vc, _aabb_min);
     }
 
     if (assigned_face_indices.size() <= geometry->bvh_max_triangles_per_node()) {
@@ -131,10 +127,10 @@ Node::Node(std::vector<int> assigned_face_indices,
     float whole_surface_area = compute_surface_area(_aabb_max, _aabb_min);
     // std::cout << "whole_surface_area: " << whole_surface_area << std::endl;
 
-    glm::vec3f volume_a_max(FLT_MAX);
-    glm::vec3f volume_a_min(FLT_MAX);
-    glm::vec3f volume_b_max(FLT_MAX);
-    glm::vec3f volume_b_min(FLT_MAX);
+    glm::vec3f volume_a_max(0);
+    glm::vec3f volume_a_min(0);
+    glm::vec3f volume_b_max(0);
+    glm::vec3f volume_b_min(0);
     // std::cout << "==============================================================" << std::endl;
 
     float min_cost = FLT_MAX;
@@ -153,23 +149,23 @@ Node::Node(std::vector<int> assigned_face_indices,
                 glm::vec3f min = glm::vec3f(FLT_MAX);
 
                 auto& va = geometry->_vertex_array[face[0]];
-                max = merge_aabb_max(max, va);
-                min = merge_aabb_min(min, va);
+                merge_aabb_max(max, va, max);
+                merge_aabb_min(min, va, min);
 
                 auto& vb = geometry->_vertex_array[face[1]];
-                max = merge_aabb_max(max, vb);
-                min = merge_aabb_min(min, vb);
+                merge_aabb_max(max, vb, max);
+                merge_aabb_min(min, vb, min);
 
                 auto& vc = geometry->_vertex_array[face[2]];
-                max = merge_aabb_max(max, vc);
-                min = merge_aabb_min(min, vc);
+                merge_aabb_max(max, vc, max);
+                merge_aabb_min(min, vc, min);
 
                 if (position == 0) {
                     volume_a_max = max;
                     volume_a_min = min;
                 } else {
-                    volume_a_max = merge_aabb_max(volume_a_max, max);
-                    volume_a_min = merge_aabb_min(volume_a_min, min);
+                    merge_aabb_max(volume_a_max, max, volume_a_max);
+                    merge_aabb_min(volume_a_min, min, volume_a_min);
                 }
                 volume_a_num_faces += 1;
             }
@@ -181,23 +177,23 @@ Node::Node(std::vector<int> assigned_face_indices,
                 glm::vec3f min = glm::vec3f(FLT_MAX);
 
                 auto& va = geometry->_vertex_array[face[0]];
-                max = merge_aabb_max(max, va);
-                min = merge_aabb_min(min, va);
+                merge_aabb_max(max, va, max);
+                merge_aabb_min(min, va, min);
 
                 auto& vb = geometry->_vertex_array[face[1]];
-                max = merge_aabb_max(max, vb);
-                min = merge_aabb_min(min, vb);
+                merge_aabb_max(max, vb, max);
+                merge_aabb_min(min, vb, min);
 
                 auto& vc = geometry->_vertex_array[face[2]];
-                max = merge_aabb_max(max, vc);
-                min = merge_aabb_min(min, vc);
+                merge_aabb_max(max, vc, max);
+                merge_aabb_min(min, vc, min);
 
                 if (position == split_index) {
                     volume_b_max = max;
                     volume_b_min = min;
                 } else {
-                    volume_b_max = merge_aabb_max(volume_b_max, max);
-                    volume_b_min = merge_aabb_min(volume_b_min, min);
+                    merge_aabb_max(volume_b_max, max, volume_b_max);
+                    merge_aabb_min(volume_b_min, min, volume_b_min);
                 }
                 volume_b_num_faces += 1;
             }

@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cfloat>
 #include <iostream>
+#include <omp.h>
 
 namespace rtx {
 namespace py = pybind11;
@@ -99,9 +100,13 @@ std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation
     auto geometry = std::make_shared<StandardGeometry>();
     geometry->_bvh_max_triangles_per_node = _bvh_max_triangles_per_node;
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
-    for (auto vertex : _vertex_array) {
+    geometry->_vertex_array.resize(_vertex_array.size());
+
+#pragma omp parallel for
+    for (int index = 0; index < _vertex_array.size(); index++) {
+        auto& vertex = _vertex_array[index];
         glm::vec4f v = transformation_matrix * vertex;
-        geometry->_vertex_array.emplace_back(v);
+        geometry->_vertex_array[index] = v;
     }
     return geometry;
 }

@@ -4,8 +4,10 @@
 #include "../geometry/sphere.h"
 #include "../geometry/standard.h"
 #include "../header/enum.h"
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <omp.h>
 #include <vector>
 
 namespace rtx {
@@ -147,9 +149,23 @@ void Renderer::construct_bvh()
 {
     assert(_transformed_geometry_array.size() > 0);
     _map_object_bvh = std::unordered_map<int, int>();
-    _bvh_array = std::vector<std::shared_ptr<BVH>>();
+
     int bvh_index = 0;
+    int num_bvh_enabled_objects = 0;
+    for (int object_index = 0; object_index < (int)_transformed_geometry_array.size(); object_index++) {
+        auto& geometry = _transformed_geometry_array[object_index];
+        if (geometry->bvh_enabled() == false) {
+            continue;
+        }
+        num_bvh_enabled_objects += 1;
+        _map_object_bvh[object_index] = bvh_index;
+        bvh_index++;
+    }
+    _bvh_array = std::vector<std::shared_ptr<BVH>>(num_bvh_enabled_objects);
+
     int total_nodes = 0;
+
+#pragma omp parallel for
     for (int object_index = 0; object_index < (int)_transformed_geometry_array.size(); object_index++) {
         auto& geometry = _transformed_geometry_array[object_index];
         if (geometry->bvh_enabled() == false) {
@@ -159,11 +175,14 @@ void Renderer::construct_bvh()
         assert(geometry->type() == RTX_GEOMETRY_TYPE_STANDARD);
         std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
         std::shared_ptr<BVH> bvh = std::make_shared<BVH>(standard);
-        _bvh_array.emplace_back(bvh);
-        total_nodes += bvh->num_nodes();
-        _map_object_bvh[object_index] = bvh_index;
-        bvh_index++;
+        int bvh_index = _map_object_bvh[object_index];
+        _bvh_array[bvh_index] = bvh;
     }
+
+    for (auto& bvh : _bvh_array) {
+        total_nodes += bvh->num_nodes();
+    }
+
     _cpu_threaded_bvh_array = rtx::array<RTXThreadedBVH>(total_nodes);
     _cpu_threaded_bvh_node_array = rtx::array<RTXThreadedBVHNode>(total_nodes);
 
@@ -213,6 +232,7 @@ void Renderer::serialize_rays(int height, int width)
 }
 void Renderer::render_objects(int height, int width)
 {
+    auto start = std::chrono::system_clock::now();
     bool should_transform_geometry = false;
     bool should_serialize_bvh = false;
     bool should_serialize_geometry = false;
@@ -289,6 +309,11 @@ void Renderer::render_objects(int height, int width)
         _prev_width = width;
     }
 
+    auto end = std::chrono::system_clock::now();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    printf("preprocessing: %lf msec\n", elapsed);
+
+    start = std::chrono::system_clock::now();
     rtx_cuda_ray_tracing_render(
         _gpu_ray_array, _cpu_ray_array.size(),
         _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
@@ -299,6 +324,9 @@ void Renderer::render_objects(int height, int width)
         _gpu_render_array, _cpu_render_array.size(),
         _rt_args->num_rays_per_pixel(),
         _rt_args->max_bounce());
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    printf("kernel: %lf msec\n", elapsed);
 
     rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, sizeof(RTXPixel) * num_rays);
 

@@ -26,7 +26,7 @@ floor.set_position((0, -box_size / 2, 0))
 scene.add(floor)
 
 # place bunny
-faces, vertices = gm.load("bunny")
+faces, vertices = gm.load("../geometries/bunny")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
@@ -36,7 +36,7 @@ bunny.set_position((-1, -1, -1))
 bunny.set_rotation((-math.pi / 6, 0, 0))
 scene.add(bunny)
 
-faces, vertices = gm.load("bunny")
+faces, vertices = gm.load("../geometries/bunny")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
@@ -47,7 +47,7 @@ bunny.set_rotation((math.pi / 6, 0, 0))
 scene.add(bunny)
 
 # place teapot
-faces, vertices = gm.load("teapot")
+faces, vertices = gm.load("../geometries/teapot")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
@@ -57,7 +57,7 @@ teapot.set_position((1, 1, -1))
 teapot.set_rotation((math.pi / 6, 0, 0))
 scene.add(teapot)
 
-faces, vertices = gm.load("teapot")
+faces, vertices = gm.load("../geometries/teapot")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.MeshLambertMaterial(
     color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)

@@ -2,11 +2,11 @@
 #include "../rtx/core/class/scene.h"
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/mesh/lambert.h"
-#include "../rtx/core/renderer/cpu/ray_tracing/renderer.h"
-#include "../rtx/core/renderer/cuda/header/ray_tracing.h"
-#include "../rtx/core/renderer/cuda/ray_tracing/renderer.h"
-#include "../rtx/core/renderer/options/ray_tracing.h"
+#include "../rtx/core/renderer/header/ray_tracing.h"
+#include "../rtx/core/renderer/renderer.h"
+#include "../rtx/core/renderer/arguments/ray_tracing.h"
 #include <chrono>
+#include <cmath>
 #include <string>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
@@ -7507,20 +7507,21 @@ void run(int num_blocks, int num_threads)
     float up[] = { 0.0f, 1.0f, 0.0f };
     std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
-    std::shared_ptr<RayTracingOptions> options = std::make_shared<RayTracingOptions>();
-    options->set_num_rays_per_pixel(32);
-    options->set_max_bounce(4);
-    std::shared_ptr<RayTracingCUDARenderer> render = std::make_shared<RayTracingCUDARenderer>();
+    std::shared_ptr<RayTracingArguments> rt_args = std::make_shared<RayTracingArguments>();
+    rt_args->set_num_rays_per_pixel(32);
+    rt_args->set_max_bounce(4);
+    std::shared_ptr<Renderer> render = std::make_shared<Renderer>();
 
     int width = 512;
     int height = 512;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
-    render->render(scene, camera, options, pixels, height, width, channels, num_blocks, num_threads);
+    render->render(scene, camera, rt_args, pixels, height, width, channels, num_blocks, num_threads);
     auto start = std::chrono::system_clock::now();
     int repeat = 10;
     for (int i = 0; i < repeat; i++) {
-        render->render(scene, camera, options, pixels, height, width, channels, num_blocks, num_threads);
+        float eye[] = { 0.0f, 0.0f, 2.0f };
+        render->render(scene, camera, rt_args, pixels, height, width, channels, num_blocks, num_threads);
     }
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
