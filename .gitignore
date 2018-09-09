@@ -19,3 +19,4 @@
 # ignore
 .vscode
 build
+/examples/geometries/dragon
