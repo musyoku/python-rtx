@@ -15,7 +15,6 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
  ![https://thumbs.gfycat.com/LinearDishonestBlackrussianterrier-size_restricted.gif](https://thumbs.gfycat.com/LinearDishonestBlackrussianterrier-size_restricted.gif)
 
  1,752,768 triangles
- 
  8,388,608 rays/sec
 
 # Requirements
