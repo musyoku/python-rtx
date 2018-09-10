@@ -24,6 +24,9 @@ Renderer::Renderer()
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_light_index_array = NULL;
     _gpu_render_array = NULL;
+    _gpu_curand_states = NULL;
+    _total_frames = 0;
+    _prev_num_threads = -1;
 }
 Renderer::~Renderer()
 {
@@ -39,7 +42,7 @@ Renderer::~Renderer()
 void Renderer::transform_geometries_to_view_space()
 {
     int num_objects = _scene->_mesh_array.size();
-    if(num_objects == 0){
+    if (num_objects == 0) {
         return;
     }
     _transformed_geometry_array = std::vector<std::shared_ptr<Object>>();
@@ -60,7 +63,7 @@ void Renderer::transform_geometries_to_view_space()
 void Renderer::transform_lights_to_view_space()
 {
     int num_objects = _scene->_light_array.size();
-    if(num_objects == 0){
+    if (num_objects == 0) {
         return;
     }
     _transformed_light_array = std::vector<std::shared_ptr<Object>>();
@@ -98,7 +101,7 @@ void Renderer::serialize_objects()
 
     // concat
     std::vector<std::shared_ptr<Object>> transformed_object_array = _transformed_geometry_array;
-    if(_transformed_light_array.size() > 0){
+    if (_transformed_light_array.size() > 0) {
         transformed_object_array.insert(transformed_object_array.end(), _transformed_light_array.begin(), _transformed_light_array.end());
     }
 
@@ -291,18 +294,21 @@ void Renderer::render_objects(int height, int width)
     bool should_reallocate_gpu_memory = false;
     bool should_transfer_to_gpu = false;
     bool should_update_ray = false;
+    bool should_reset_total_frames = false;
     if (_scene->updated()) {
         should_transform_geometry = true;
         should_serialize_geometry = true;
         should_serialize_bvh = true;
         should_reallocate_gpu_memory = true;
         should_transfer_to_gpu = true;
+        should_reset_total_frames = true;
     } else {
         if (_camera->updated()) {
             should_transform_geometry = true;
             should_serialize_geometry = true;
             should_serialize_bvh = true;
             should_transfer_to_gpu = true;
+            should_reset_total_frames = true;
         }
     }
     if (_prev_height != height || _prev_width != width) {
@@ -338,7 +344,7 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
         rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_malloc((void**)&_gpu_object_array, sizeof(RTXObject) * _cpu_object_array.size());
-        if(_cpu_light_index_array.size() > 0){
+        if (_cpu_light_index_array.size() > 0) {
             rtx_cuda_malloc((void**)&_gpu_light_index_array, sizeof(int) * _cpu_light_index_array.size());
         }
     }
@@ -346,7 +352,7 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), sizeof(RTXObject) * _cpu_object_array.size());
-        if(_cpu_light_index_array.size() > 0){
+        if (_cpu_light_index_array.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_light_index_array, (void*)_cpu_light_index_array.data(), sizeof(int) * _cpu_light_index_array.size());
         }
     }
@@ -364,8 +370,15 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_malloc((void**)&_gpu_render_array, sizeof(RTXPixel) * num_rays);
         rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_array, (void*)_cpu_ray_array.data(), sizeof(RTXRay) * _cpu_ray_array.size());
         _cpu_render_array = rtx::array<RTXPixel>(num_rays);
+        _cpu_render_buffer_array = rtx::array<RTXPixel>(height * width * 3);
         _prev_height = height;
         _prev_width = width;
+    }
+
+    // cuRAND
+    if (_prev_num_threads != _cuda_args->num_threads()) {
+        rtx_cuda_free((void**)&_gpu_curand_states);
+        rtx_cuda_malloc((void**)&_gpu_curand_states, rtx_curand_state_bytes() * _cuda_args->num_threads());
     }
 
     auto end = std::chrono::system_clock::now();
@@ -381,19 +394,48 @@ void Renderer::render_objects(int height, int width)
         _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
         _gpu_light_index_array, _cpu_light_index_array.size(),
+        _gpu_curand_states,
         _gpu_render_array, _cpu_render_array.size(),
         _cuda_args->num_threads(),
         _cuda_args->num_blocks(),
         _rt_args->num_rays_per_pixel(),
-        _rt_args->max_bounce());
+        _rt_args->max_bounce(),
+        _total_frames);
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("kernel: %lf msec\n", elapsed);
 
     rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, sizeof(RTXPixel) * num_rays);
 
-    _scene->set_updated(true);
-    _camera->set_updated(true);
+    _scene->set_updated(false);
+    _camera->set_updated(false);
+
+    if (should_reset_total_frames) {
+        _total_frames = 0;
+    }
+    _total_frames++;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            RTXPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
+            if (_total_frames == 1) {
+                pixel_buffer.r = 0.0;
+                pixel_buffer.g = 0.0;
+                pixel_buffer.b = 0.0;
+            }
+            for (int m = 0; m < num_rays_per_pixel; m++) {
+                int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
+                RTXPixel pixel = _cpu_render_array[index];
+                if (pixel.r < 0.0f) {
+                    continue;
+                }
+                pixel_buffer.r += pixel.r / float(num_rays_per_pixel);
+                pixel_buffer.g += pixel.g / float(num_rays_per_pixel);
+                pixel_buffer.b += pixel.b / float(num_rays_per_pixel);
+            }
+            _cpu_render_buffer_array[y * width * 3 + x * 3] = pixel_buffer;
+        }
+    }
 }
 void Renderer::render(
     std::shared_ptr<Scene> scene,
@@ -413,20 +455,12 @@ void Renderer::render(
 
     render_objects(height, width);
 
-    int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            RTXPixel sum = { 0.0f, 0.0f, 0.0f };
-            for (int m = 0; m < num_rays_per_pixel; m++) {
-                int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
-                RTXPixel pixel = _cpu_render_array[index];
-                sum.r += pixel.r;
-                sum.g += pixel.g;
-                sum.b += pixel.b;
-            }
-            pixel(y, x, 0) = sum.r / float(num_rays_per_pixel);
-            pixel(y, x, 1) = sum.g / float(num_rays_per_pixel);
-            pixel(y, x, 2) = sum.b / float(num_rays_per_pixel);
+            RTXPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
+            pixel(y, x, 0) = pixel_buffer.r / _total_frames;
+            pixel(y, x, 1) = pixel_buffer.g / _total_frames;
+            pixel(y, x, 2) = pixel_buffer.b / _total_frames;
         }
     }
 }

@@ -26,7 +26,9 @@ private:
     rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<RTXPixel> _cpu_render_array;
+    rtx::array<RTXPixel> _cpu_render_buffer_array;
     std::vector<int> _cpu_light_index_array;
+    int _prev_num_threads;
 
     // device
     RTXRay* _gpu_ray_array;
@@ -37,6 +39,7 @@ private:
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
     RTXPixel* _gpu_render_array;
     int* _gpu_light_index_array;
+    void* _gpu_curand_states;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
@@ -49,6 +52,7 @@ private:
 
     int _prev_height;
     int _prev_width;
+    int _total_frames;
 
     void construct_bvh();
     void transform_objects_to_view_space();

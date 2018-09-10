@@ -30,6 +30,12 @@ texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_texture;
 
+__global__ void kernel_curand_init_state(void* states)
+{
+    int thread_id = threadIdx.x;
+    curandStateXORWOW_t* state = &((curandStateXORWOW_t*)states)[thread_id];
+    curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, state);
+}
 __global__ void global_memory_kernel(
     const int ray_array_size,
     const int face_vertex_index_array_size,
@@ -38,14 +44,16 @@ __global__ void global_memory_kernel(
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const int threaded_bvh_node_array_size,
     const int* global_light_index_array, const int light_index_array_size,
+    void*& global_curand_states,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
-    const int max_bounce)
+    const int max_bounce,
+    const int curand_seed)
 {
     extern __shared__ int shared_memory[];
     int thread_id = threadIdx.x;
-    curandStateXORWOW_t state;
-    curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
+    curandStateXORWOW_t state;;
+    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
     int offset = 0;
     RTXObject* shared_object_array = (RTXObject*)&shared_memory[offset];
@@ -709,9 +717,9 @@ __global__ void global_memory_kernel(
         }
 
         if (did_hit_light == false) {
-            reflection_decay.r = 0.0f;
-            reflection_decay.g = 0.0f;
-            reflection_decay.b = 0.0f;
+            reflection_decay.r = -1.0f;
+            reflection_decay.g = -1.0f;
+            reflection_decay.b = -1.0f;
         }
 
         global_render_array[ray_index] = reflection_decay;
@@ -1149,6 +1157,22 @@ void cuda_device_reset()
 {
     cudaDeviceReset();
 }
+size_t rtx_curand_state_bytes()
+{
+    return sizeof(curandStateXORWOW_t);
+}
+void rtx_cuda_init_curand_state(void*& states, int num_threads)
+{
+    kernel_curand_init_state<<<1, num_threads>>>(states);
+    cudaError_t status = cudaGetLastError();
+    if (status != 0) {
+        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
+    }
+    cudaError_t error = cudaThreadSynchronize();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
+    }
+}
 void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
@@ -1157,11 +1181,13 @@ void rtx_cuda_render(
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     int*& gpu_light_index_array, const int light_index_array_size,
+    void*& gpu_curand_states,
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_threads,
     const int num_blocks,
     const int num_rays_per_pixel,
-    const int max_bounce)
+    const int max_bounce,
+    const int curand_seed)
 {
     assert(gpu_ray_array != NULL);
     assert(gpu_face_vertex_index_array != NULL);
@@ -1184,6 +1210,8 @@ void rtx_cuda_render(
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
+
+    printf("bytes: %u\n", sizeof(curandStateXORWOW_t));
 
     cudaDeviceProp dev;
     cudaGetDeviceProperties(&dev, 0);
@@ -1219,9 +1247,11 @@ void rtx_cuda_render(
                 gpu_threaded_bvh_array, threaded_bvh_array_size,
                 threaded_bvh_node_array_size,
                 gpu_light_index_array, light_index_array_size,
+                gpu_curand_states,
                 gpu_render_array,
                 num_rays_per_thread,
-                max_bounce);
+                max_bounce,
+                curand_seed);
 
             cudaUnbindTexture(ray_texture);
             cudaUnbindTexture(face_vertex_index_texture);

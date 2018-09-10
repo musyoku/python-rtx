@@ -50,4 +50,5 @@ typedef struct RTXObject {
     int bvh_index;
     bool is_light;
     int type;
+    RTXVector4f color;
 } RTXObject;

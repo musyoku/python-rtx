@@ -26,7 +26,7 @@ floor.set_position((0, -box_size / 2, 0))
 scene.add(floor)
 
 # place bunny
-faces, vertices = gm.load("../geometries/dragon")
+faces, vertices = gm.load("../geometries/teapot")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 bunny = rtx.Mesh(geometry, material)
@@ -45,7 +45,7 @@ bunny.set_rotation((math.pi / 6, 0, 0))
 scene.add(bunny)
 
 # place teapot
-faces, vertices = gm.load("../geometries/dragon")
+faces, vertices = gm.load("../geometries/teapot")
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
 teapot = rtx.Mesh(geometry, material)
@@ -98,6 +98,10 @@ camera_rad = 0
 # camera_rad = math.pi / 10 * 2
 radius = 5.5
 start = time.time()
+
+eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
+camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
+
 total_iterations = 100
 for n in range(total_iterations):
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
