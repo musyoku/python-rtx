@@ -28,6 +28,7 @@ texture<float4, cudaTextureType1D, cudaReadModeElementType> ray_texture;
 texture<int4, cudaTextureType1D, cudaReadModeElementType> face_vertex_index_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_texture;
 
 __global__ void global_memory_kernel(
     const int ray_array_size,
@@ -138,7 +139,6 @@ __global__ void global_memory_kernel(
         ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
 
-    
         // RTXRay ray = global_ray_array[ray_index];
         // if(ray_index < 5){
         //     printf("ray: %d\n", ray_index);
@@ -230,15 +230,15 @@ __global__ void global_memory_kernel(
                         //     printf("%d %d ", node.miss_node_index, a->y);
                         //     printf("%d %d ", node.assigned_face_index_start, a->z);
                         //     printf("%d %d ", node.assigned_face_index_end, a->w);
-    
+
                         //     printf("aabb_max: %f %f ", node.aabb_max.x, aabb_max.x);
                         //     printf("%f %f ", node.aabb_max.y, aabb_max.y);
                         //     printf("%f %f ", node.aabb_max.z, aabb_max.z);
-    
+
                         //     printf("aabb_min: %f %f ", node.aabb_min.x, aabb_min.x);
                         //     printf("%f %f ", node.aabb_min.y, aabb_min.y);
                         //     printf("%f %f ", node.aabb_min.z, aabb_min.z);
-    
+
                         //     printf("\n");
                         // }
 
@@ -1096,7 +1096,7 @@ void rtx_cuda_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    int required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
+    long required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
@@ -1104,37 +1104,50 @@ void rtx_cuda_render(
     cudaDeviceProp dev;
     cudaGetDeviceProperties(&dev, 0);
 
-    printf("shared memory: %d bytes\n", required_shared_memory_bytes);
+    printf("shared memory: %ld bytes\n", required_shared_memory_bytes);
     printf("available: %d bytes\n", dev.sharedMemPerBlock);
     printf("rays: %d\n", ray_array_size);
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
         // int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
-        int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size;
-        printf("shared memory: %d bytes\n", required_shared_memory_bytes);
-        printf("available: %d bytes\n", dev.sharedMemPerBlock);
-        printf("num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
+        long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size;
+        printf("    shared memory: %ld bytes\n", required_shared_memory_bytes);
+        printf("    available: %d bytes\n", dev.sharedMemPerBlock);
+        printf("    num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
+        printf("    object_array_size: %d\n", object_array_size);
+        printf("    threaded_bvh_array_size: %d\n", threaded_bvh_array_size);
 
-        cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
-        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
-        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
-        cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+        if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
+            long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size;
+            printf("        shared memory: %ld bytes\n", required_shared_memory_bytes);
+            printf("        available: %d bytes\n", dev.sharedMemPerBlock);
+            printf("        num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
+            assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
 
-        global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
-            ray_array_size,
-            face_vertex_index_array_size,
-            vertex_array_size,
-            gpu_object_array, object_array_size,
-            gpu_threaded_bvh_array, threaded_bvh_array_size,
-            threaded_bvh_node_array_size,
-            gpu_render_array,
-            num_rays_per_thread,
-            max_bounce);
 
-        cudaUnbindTexture(ray_texture);
-        cudaUnbindTexture(face_vertex_index_texture);
-        cudaUnbindTexture(vertex_texture);
-        cudaUnbindTexture(threaded_bvh_node_texture);
+        } else {
+            cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+            cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
+            cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
+            cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+
+            global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
+                ray_array_size,
+                face_vertex_index_array_size,
+                vertex_array_size,
+                gpu_object_array, object_array_size,
+                gpu_threaded_bvh_array, threaded_bvh_array_size,
+                threaded_bvh_node_array_size,
+                gpu_render_array,
+                num_rays_per_thread,
+                max_bounce);
+
+            cudaUnbindTexture(ray_texture);
+            cudaUnbindTexture(face_vertex_index_texture);
+            cudaUnbindTexture(vertex_texture);
+            cudaUnbindTexture(threaded_bvh_node_texture);
+        }
+
     } else {
         // shared_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
         //     gpu_ray_array, ray_array_size,

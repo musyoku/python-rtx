@@ -194,7 +194,7 @@ void Renderer::construct_bvh()
         total_nodes += bvh->num_nodes();
     }
 
-    _cpu_threaded_bvh_array = rtx::array<RTXThreadedBVH>(total_nodes);
+    _cpu_threaded_bvh_array = rtx::array<RTXThreadedBVH>(_bvh_array.size());
     _cpu_threaded_bvh_node_array = rtx::array<RTXThreadedBVHNode>(total_nodes);
 
     int node_index_offset = 0;
