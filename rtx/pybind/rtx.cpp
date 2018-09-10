@@ -8,6 +8,7 @@
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
+#include "../core/light/rect_area_light.h"
 #include "../core/material/lambert.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
@@ -21,6 +22,9 @@ PYBIND11_MODULE(rtx, module)
 {
     py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
     py::class_<Material, std::shared_ptr<Material>>(module, "Material");
+    py::class_<Light, std::shared_ptr<Light>>(module, "Light")
+        .def("set_position", (void (Light::*)(py::tuple)) & Light ::set_position)
+        .def("set_rotation", (void (Light::*)(py::tuple)) & Light ::set_rotation);
     py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
     py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
@@ -32,6 +36,7 @@ PYBIND11_MODULE(rtx, module)
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())
         .def("add", (void (Scene::*)(std::shared_ptr<Mesh>)) & Scene::add)
+        .def("add", (void (Scene::*)(std::shared_ptr<Light>)) & Scene::add)
         .def("num_triangles", &Scene::num_triangles);
 
     py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
@@ -46,6 +51,9 @@ PYBIND11_MODULE(rtx, module)
 
     py::class_<LambertMaterial, Material, std::shared_ptr<LambertMaterial>>(module, "LambertMaterial")
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
+
+    py::class_<RectAreaLight, Light, std::shared_ptr<RectAreaLight>>(module, "RectAreaLight")
+        .def(py::init<float, float, float>(), py::arg("brightness"), py::arg("width"), py::arg("height"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

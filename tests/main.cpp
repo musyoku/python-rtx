@@ -2,6 +2,7 @@
 #include "../rtx/core/class/scene.h"
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/lambert.h"
+#include "../rtx/core/light/rect_area_light.h"
 #include "../rtx/core/renderer/header/ray_tracing.h"
 #include "../rtx/core/renderer/renderer.h"
 #include "../rtx/core/renderer/arguments/ray_tracing.h"
@@ -7496,25 +7497,28 @@ void run(int num_blocks, int num_threads)
     geometry->add_vertex(glm::vec3f(-0.1757092922925949, -0.24013739824295044, 0.05167252942919731));
     geometry->set_bvh_max_triangles_per_node(50);
     float color[3] = { 1, 1, 1 };
-    std::shared_ptr<LambertMaterial> material = std::make_shared<LambertMaterial>(color, 0.8f);
-    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(geometry, material);
+    auto material = std::make_shared<LambertMaterial>(color, 0.8f);
+    auto mesh = std::make_shared<Mesh>(geometry, material);
     float position[3] = { 0, -1, -1 };
     mesh->set_position(position);
     scene->add(mesh);
 
+    auto light = std::make_shared<RectAreaLight>(1.0, 1.0, 1.0);
+    scene->add(light);
+
     float eye[] = { 0.0f, 0.0f, 2.0f };
     float center[] = { 0.0f, 0.0f, 0.0f };
     float up[] = { 0.0f, 1.0f, 0.0f };
-    std::shared_ptr<PerspectiveCamera> camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
+    auto camera = std::make_shared<PerspectiveCamera>(eye, center, up, 1.0f, 1.0f, 1.0f, 1.0f);
 
-    std::shared_ptr<CUDAKernelLaunchArguments> cuda_args = std::make_shared<CUDAKernelLaunchArguments>();
+    auto cuda_args = std::make_shared<CUDAKernelLaunchArguments>();
     cuda_args->set_num_threads(num_threads);
     cuda_args->set_num_blocks(num_blocks);
 
-    std::shared_ptr<RayTracingArguments> rt_args = std::make_shared<RayTracingArguments>();
+    auto rt_args = std::make_shared<RayTracingArguments>();
     rt_args->set_num_rays_per_pixel(32);
     rt_args->set_max_bounce(4);
-    std::shared_ptr<Renderer> render = std::make_shared<Renderer>();
+    auto render = std::make_shared<Renderer>();
 
     int width = 512;
     int height = 512;

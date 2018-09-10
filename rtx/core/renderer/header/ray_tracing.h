@@ -14,6 +14,7 @@ void rtx_cuda_render(
     RTXObject*& gpu_object_array, const int object_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    int*& gpu_light_index_array, const int light_index_array_size,
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_threads,
     const int num_blocks,

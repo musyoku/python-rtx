@@ -1,12 +1,12 @@
 #pragma once
+#include "../class/camera.h"
 #include "../class/ray.h"
 #include "../class/scene.h"
-#include "../class/camera.h"
 #include "../header/array.h"
 #include "../header/glm.h"
 #include "../header/struct.h"
-#include "arguments/ray_tracing.h"
 #include "arguments/cuda_kernel.h"
+#include "arguments/ray_tracing.h"
 #include "bvh/bvh.h"
 #include "header/ray_tracing.h"
 #include <array>
@@ -26,6 +26,7 @@ private:
     rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<RTXPixel> _cpu_render_array;
+    std::vector<int> _cpu_light_index_array;
 
     // device
     RTXRay* _gpu_ray_array;
@@ -35,20 +36,24 @@ private:
     RTXThreadedBVH* _gpu_threaded_bvh_array;
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
     RTXPixel* _gpu_render_array;
+    int* _gpu_light_index_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<RayTracingArguments> _rt_args;
     std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
-    std::vector<std::shared_ptr<Object>> _transformed_object_array;
-    std::vector<std::shared_ptr<BVH>> _bvh_array;
+    std::vector<std::shared_ptr<Object>> _transformed_geometry_array;
+    std::vector<std::shared_ptr<Object>> _transformed_light_array;
+    std::vector<std::shared_ptr<BVH>> _geometry_bvh_array;
     std::unordered_map<int, int> _map_object_bvh;
 
     int _prev_height;
     int _prev_width;
 
     void construct_bvh();
+    void transform_objects_to_view_space();
     void transform_geometries_to_view_space();
+    void transform_lights_to_view_space();
     void serialize_objects();
     void serialize_rays(int height, int width);
     void render_objects(int height, int width);
@@ -69,7 +74,7 @@ public:
         int height,
         int width,
         int channels,
-        int num_blocks, 
+        int num_blocks,
         int num_threads);
 };
 }

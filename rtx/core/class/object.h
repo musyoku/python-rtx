@@ -7,18 +7,13 @@
 
 namespace rtx {
 class Object {
-protected:
-    void update_model_matrix();
-    glm::vec3f _position;
-    glm::vec3f _rotation_rad;
-
 public:
-    glm::mat4 _model_matrix;
     void set_position(pybind11::tuple position);
     void set_position(float (&position)[3]);
     void set_rotation(pybind11::tuple rotation_rad);
     virtual int bvh_max_triangles_per_node() const;
     virtual bool bvh_enabled() const;
+    virtual bool is_light() const = 0;
     virtual int type() const = 0;
     virtual int num_faces() const = 0;
     virtual int num_vertices() const = 0;

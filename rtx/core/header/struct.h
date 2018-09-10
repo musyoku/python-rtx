@@ -48,4 +48,6 @@ typedef struct RTXObject {
     int vertex_index_offset;    // offset of the vertex from the start of the serialzied face array
     bool bvh_enabled;
     int bvh_index;
+    bool is_light;
+    int type;
 } RTXObject;

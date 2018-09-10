@@ -1,59 +1,114 @@
 import math
+import time
 import numpy as np
 import rtx
+import geometry as gm
 import matplotlib.pyplot as plt
 
 scene = rtx.Scene()
 
+box_size = 6
+
+# ceil
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.LambertMaterial((1.0, 1.0, 1.0), 1.0)
+ceil = rtx.Mesh(geometry, material)
+ceil.set_rotation((math.pi / 2, 0, 0))
+ceil.set_position((0, box_size / 2, 0))
+scene.add(ceil)
+
 # floor
-geometry = rtx.PlainGeometry(20, 20)
-material = rtx.MeshLambertMaterial((1.0, 1.0, 1.0), 0.8)
+geometry = rtx.PlainGeometry(box_size, box_size)
+material = rtx.LambertMaterial((1.0, 1.0, 1.0), 1.0)
 floor = rtx.Mesh(geometry, material)
-floor.set_rotation((math.pi / 2, 0, 0))
-floor.set_position((0, 0, 0))
+floor.set_rotation((-math.pi / 2, 0, 0))
+floor.set_position((0, -box_size / 2, 0))
 scene.add(floor)
 
-# ball
-geometry = rtx.SphereGeometry(1.0)
-material = rtx.MeshLambertMaterial(
-    color=(1.0, 1.0, 1.0), diffuse_reflectance=0.8)
-sphere = rtx.Mesh(geometry, material)
-sphere.set_position((2, 1, 0))
-scene.add(sphere)
+# place bunny
+faces, vertices = gm.load("../geometries/bunny")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+bunny = rtx.Mesh(geometry, material)
+bunny.set_scale((3, 3, 3))
+bunny.set_position((-1, -1, -1))
+bunny.set_rotation((-math.pi / 6, 0, 0))
+scene.add(bunny)
 
-# light
-geometry = rtx.SphereGeometry(1.0)
-material = rtx.MeshEmissiveMaterial(color=(1.0, 1.0, 1.0))
-light = rtx.Mesh(geometry, material)
-light.set_position((-1, 3, -1))
+faces, vertices = gm.load("../geometries/bunny")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+bunny = rtx.Mesh(geometry, material)
+bunny.set_scale((2.4, 2.4, 2.4))
+bunny.set_position((1, -1, 1))
+bunny.set_rotation((math.pi / 6, 0, 0))
+scene.add(bunny)
+
+# place teapot
+faces, vertices = gm.load("../geometries/teapot")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+teapot = rtx.Mesh(geometry, material)
+teapot.set_scale((2, 2, 2))
+teapot.set_position((1, 1, -1))
+teapot.set_rotation((math.pi / 6, 0, 0))
+scene.add(teapot)
+
+faces, vertices = gm.load("../geometries/bunny")
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+material = rtx.LambertMaterial(color=(1.0, 1.0, 1.0), diffuse_reflectance=1.0)
+teapot = rtx.Mesh(geometry, material)
+teapot.set_scale((1.6, 1.6, 1.6))
+teapot.set_position((-1, 1, 1))
+teapot.set_rotation((-math.pi / 6, 0, 0))
+scene.add(teapot)
+
+# place light
+light = rtx.RectAreaLight(1.0, 1.0, 1.0)
 scene.add(light)
 
-screen_width = 128
-screen_height = 128
+print("#triangles", scene.num_triangles())
 
-render_options = rtx.RayTracingOptions()
-render_options.num_rays_per_pixel = 512
-render_options.path_depth = 6
+screen_width = 512
+screen_height = 512
 
-renderer = rtx.RayTracingCPURenderer()
+rt_args = rtx.RayTracingArguments()
+rt_args.num_rays_per_pixel = 32
+rt_args.max_bounce = 4
+
+cuda_args = rtx.CUDAKernelLaunchArguments()
+cuda_args.num_threads = 256
+cuda_args.num_blocks = 1024
+
+renderer = rtx.Renderer()
 camera = rtx.PerspectiveCamera(
-    eye=(0, 0, 0),
+    eye=(0, 0, -1),
     center=(0, 0, 0),
     up=(0, 1, 0),
-    fov_rad=math.pi / 4,
+    fov_rad=math.pi / 3,
     aspect_ratio=screen_width / screen_height,
     z_near=0.01,
     z_far=100)
 
-buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-
+render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
+# renderer.render(scene, camera, rt_args, render_buffer)
 camera_rad = 0
-while True:
-    camera.look_at(eye=(3, 3, 3), center=(0, 0, 0), up=(0, 1, 0))
+# camera_rad = math.pi / 10 * 2
+radius = 5.5
+start = time.time()
+total_iterations = 100
+for n in range(total_iterations):
+    eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
+    camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 
-    renderer.render(scene, camera, render_options, buffer)
+    renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
-    pixels = np.power(buffer, 1.0 / 2.2)
+    pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
     plt.imshow(pixels, interpolation="none")
-    plt.pause(1.0 / 60.0)
+    plt.pause(1e-8)
+
+    camera_rad += math.pi / 10
+
+end = time.time()
+print(total_iterations / (end - start))
