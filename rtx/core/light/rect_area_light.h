@@ -1,6 +1,7 @@
 #pragma once
 #include "../class/light.h"
 #include "../header/glm.h"
+#include <pybind11/pybind11.h>
 #include <vector>
 
 namespace rtx {
@@ -12,7 +13,8 @@ private:
     std::vector<glm::vec4f> _vertex_array;
 
 public:
-    RectAreaLight(float brightness, float width, float height);
+    RectAreaLight(float width, float height, float brightness, pybind11::tuple color);
+    RectAreaLight(float width, float height, float brightness, glm::vec3f color);
     int type() const override;
     int num_faces() const override;
     int num_vertices() const override;

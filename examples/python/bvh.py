@@ -64,7 +64,7 @@ teapot.set_rotation((-math.pi / 6, 0, 0))
 scene.add(teapot)
 
 # place light
-light = rtx.RectAreaLight(10.0, 5.0, 5.0)
+light = rtx.RectAreaLight(5.0, 5.0, brightness=10, color=(1, 0, 0))
 light.set_rotation((math.pi / 2, 0, 0))
 light.set_position((0, box_size / 2 - 0.1, 0))
 scene.add(light)

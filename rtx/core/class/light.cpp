@@ -26,7 +26,12 @@ void Light::update_model_matrix()
     _model_matrix = glm::rotate(_model_matrix, _rotation_rad[1], glm::vec3(0.0f, 1.0f, 0.0f));
     _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
 }
-
+void Light::set_color(pybind11::tuple color)
+{
+    _color[0] = color[0].cast<float>();
+    _color[1] = color[1].cast<float>();
+    _color[2] = color[2].cast<float>();
+}
 void Light::set_brightness(float brightness)
 {
     _brightness = brightness;

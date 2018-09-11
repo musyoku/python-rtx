@@ -53,7 +53,7 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
 
     py::class_<RectAreaLight, Light, std::shared_ptr<RectAreaLight>>(module, "RectAreaLight")
-        .def(py::init<float, float, float>(), py::arg("brightness"), py::arg("width"), py::arg("height"));
+        .def(py::init<float, float, float, py::tuple>(), py::arg("width"), py::arg("height"), py::arg("brightness"), py::arg("color"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())
