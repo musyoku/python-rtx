@@ -5,7 +5,7 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
 **todo**
 
-- [ ] Monte Carlo Ray Tracing
+- [x] Monte Carlo Ray Tracing
 - [ ] Area Lights
 - [ ] Next Event Estimation
 - [ ] Subsurface Scattering

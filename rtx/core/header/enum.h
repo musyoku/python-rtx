@@ -8,12 +8,22 @@ enum RTXAxis {
 
 enum RTXMaterialType {
     RTXMaterialTypeLambert = 1,
+    RTXMaterialTypeOrenNayar,
+    RTXMaterialTypeSpecular,
+    RTXMaterialTypeRefractive,
+    RTXMaterialTypeEmissive,
 };
 
-enum RTXObjectType {
-    RTXObjectTypeStandardGeometry = 0b0010,
-    RTXObjectTypeSphereGeometry = 0b0100,
-    RTXObjectTypeRectAreaLight = 0b0001,
+enum RTXGeometryType {
+    RTXGeometryTypeStandard = 1,
+    RTXGeometryTypeSphere,
+    RTXGeometryTypeCone,
+    RTXGeometryTypeCylinder,
+};
+
+enum RTXMappingType {
+    RTXMappingTypeSolidColor = 1,
+    RTXMappingTypeTexture,
 };
 
 enum RTXCameraType {

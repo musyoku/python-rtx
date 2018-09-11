@@ -5,15 +5,16 @@
 
 namespace rtx {
 class Camera {
-private:
+protected:
     bool _updated;
+    glm::mat4 _view_matrix;
 
 public:
-    glm::mat4 _view_matrix;
+    glm::mat4 view_matrix();
     void look_at(pybind11::tuple eye, pybind11::tuple center, pybind11::tuple up);
     void look_at(float (&eye)[3], float (&center)[3], float (&up)[3]);
-    virtual int type() const = 0;
     bool updated();
     void set_updated(bool updated);
+    virtual int type() const = 0;
 };
 }

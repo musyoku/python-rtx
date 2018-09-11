@@ -16,6 +16,7 @@ public:
     glm::mat4 _model_matrix;
     bool is_light() const override;
     float brightness() const;
+    glm::vec3f color() const;
     void set_brightness(float brightness);
     void set_color(pybind11::tuple color);
     void set_position(pybind11::tuple position);

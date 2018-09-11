@@ -208,6 +208,11 @@ void Renderer::serialize_objects()
             attr.brightness = light->brightness();
             _cpu_light_attribute_array[current_light_attribute_index] = attr;
 
+            glm::vec3f color = light->color();
+            obj.color.x = color.r;
+            obj.color.y = color.g;
+            obj.color.z = color.b;
+            obj.color.w = 1.0f;
             obj.attribute_index = current_light_attribute_index;
             current_light_attribute_index++;
         } else {
@@ -220,6 +225,11 @@ void Renderer::serialize_objects()
             }
             _cpu_geometry_attribute_array[current_geometry_attribute_index] = attr;
 
+            glm::vec3f color = light->color();
+            obj.color.x = color.r;
+            obj.color.y = color.g;
+            obj.color.z = color.b;
+            obj.color.w = 1.0f;
             obj.attribute_index = current_geometry_attribute_index;
             current_geometry_attribute_index++;
         }

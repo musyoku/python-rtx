@@ -1,6 +1,5 @@
 #pragma once
-#include "mesh.h"
-#include "light.h"
+#include "object.h"
 #include <memory>
 #include <vector>
 
@@ -10,10 +9,8 @@ private:
     bool _updated;
 
 public:
-    std::vector<std::shared_ptr<Mesh>> _mesh_array;
-    std::vector<std::shared_ptr<Light>> _light_array;
-    void add(std::shared_ptr<Mesh> mesh);
-    void add(std::shared_ptr<Light> light);
+    std::vector<std::shared_ptr<Object>> _object_array;
+    void add(std::shared_ptr<Object> object);
     bool updated();
     void set_updated(bool updated);
     int num_triangles();

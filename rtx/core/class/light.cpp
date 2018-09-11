@@ -44,4 +44,8 @@ float Light::brightness() const
 {
     return _brightness;
 }
+glm::vec3f Light::color() const
+{
+    return _color;
+}
 }

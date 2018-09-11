@@ -1,14 +1,14 @@
 #include "../core/camera/perspective.h"
 #include "../core/class/camera.h"
 #include "../core/class/geometry.h"
+#include "../core/class/mapping.h"
 #include "../core/class/material.h"
-#include "../core/class/mesh.h"
+#include "../core/class/object.h"
 #include "../core/class/scene.h"
 #include "../core/geometry/box.h"
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
-#include "../core/light/rect_area_light.h"
 #include "../core/material/lambert.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
@@ -22,21 +22,19 @@ PYBIND11_MODULE(rtx, module)
 {
     py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
     py::class_<Material, std::shared_ptr<Material>>(module, "Material");
-    py::class_<Light, std::shared_ptr<Light>>(module, "Light")
-        .def("set_position", (void (Light::*)(py::tuple)) & Light ::set_position)
-        .def("set_rotation", (void (Light::*)(py::tuple)) & Light ::set_rotation);
+    py::class_<Mapping, std::shared_ptr<Mapping>>(module, "Mapping");
     py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
-    py::class_<Mesh, std::shared_ptr<Mesh>>(module, "Mesh")
-        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>>(), py::arg("geometry"), py::arg("material"))
-        .def("set_scale", (void (Mesh::*)(py::tuple)) & Mesh::set_scale)
-        .def("set_position", (void (Mesh::*)(py::tuple)) & Mesh::set_position)
-        .def("set_rotation", (void (Mesh::*)(py::tuple)) & Mesh::set_rotation);
+    py::class_<Object, std::shared_ptr<Object>>(module, "Object")
+        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"))
+        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<LayeredMaterial>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"))
+        .def("set_scale", (void (Object::*)(py::tuple)) & Object::set_scale)
+        .def("set_position", (void (Object::*)(py::tuple)) & Object::set_position)
+        .def("set_rotation", (void (Object::*)(py::tuple)) & Object::set_rotation);
 
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())
-        .def("add", (void (Scene::*)(std::shared_ptr<Mesh>)) & Scene::add)
-        .def("add", (void (Scene::*)(std::shared_ptr<Light>)) & Scene::add)
+        .def("add", &Scene::add)
         .def("num_triangles", &Scene::num_triangles);
 
     py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")

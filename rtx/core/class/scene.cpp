@@ -1,14 +1,9 @@
 #include "scene.h"
 
 namespace rtx {
-void Scene::add(std::shared_ptr<Mesh> mesh)
+void Scene::add(std::shared_ptr<Object> object)
 {
-    _mesh_array.emplace_back(mesh);
-    _updated = true;
-}
-void Scene::add(std::shared_ptr<Light> light)
-{
-    _light_array.emplace_back(light);
+    _object_array.emplace_back(object);
     _updated = true;
 }
 bool Scene::updated()
@@ -23,8 +18,8 @@ void Scene::set_updated(bool updated)
 int Scene::num_triangles()
 {
     int num_triangles = 0;
-    for (auto& mesh : _mesh_array) {
-        num_triangles += mesh->_geometry->num_faces();
+    for (auto& object : _object_array) {
+        num_triangles += object->geometry()->num_faces();
     }
     return num_triangles;
 }
