@@ -64,7 +64,7 @@ teapot.set_rotation((-math.pi / 6, 0, 0))
 scene.add(teapot)
 
 # place light
-light = rtx.RectAreaLight(1.0, 5.0, 5.0)
+light = rtx.RectAreaLight(10.0, 5.0, 5.0)
 light.set_rotation((math.pi / 2, 0, 0))
 light.set_position((0, box_size / 2 - 0.1, 0))
 scene.add(light)
@@ -105,7 +105,7 @@ camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 total_iterations = 100
 for n in range(total_iterations):
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
-    camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
+    # camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
@@ -114,7 +114,7 @@ for n in range(total_iterations):
     plt.imshow(pixels, interpolation="none")
     plt.pause(1e-8)
 
-    camera_rad += math.pi / 10
+    # camera_rad += math.pi / 10
 
 end = time.time()
 print(total_iterations / (end - start))

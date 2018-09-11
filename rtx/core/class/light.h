@@ -15,6 +15,7 @@ public:
     glm::mat4 _model_matrix;
     bool is_light() const override;
     float brightness() const;
+    void set_brightness(float brightness);
     void set_position(pybind11::tuple position);
     void set_rotation(pybind11::tuple rotation_rad);
 };

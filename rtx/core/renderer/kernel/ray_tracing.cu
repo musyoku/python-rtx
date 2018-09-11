@@ -41,10 +41,11 @@ __global__ void global_memory_kernel(
     const int face_vertex_index_array_size,
     const int vertex_array_size,
     const RTXObject* global_object_array, const int object_array_size,
+    const RTXGeometryAttribute* global_geometry_attribute_array, const int geometry_attribute_array_size,
+    const RTXLightAttribute* global_light_attribute_array, const int light_attribute_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const int threaded_bvh_node_array_size,
     const int* global_light_index_array, const int light_index_array_size,
-    void*& global_curand_states,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -52,12 +53,18 @@ __global__ void global_memory_kernel(
 {
     extern __shared__ int shared_memory[];
     int thread_id = threadIdx.x;
-    curandStateXORWOW_t state;;
+    curandStateXORWOW_t state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
     int offset = 0;
     RTXObject* shared_object_array = (RTXObject*)&shared_memory[offset];
     offset += sizeof(RTXObject) / sizeof(int) * object_array_size;
+
+    RTXGeometryAttribute* shared_geometry_attribute_array = (RTXGeometryAttribute*)&shared_memory[offset];
+    offset += sizeof(RTXGeometryAttribute) / sizeof(int) * geometry_attribute_array_size;
+
+    RTXLightAttribute* shared_light_attribute_array = (RTXLightAttribute*)&shared_memory[offset];
+    offset += sizeof(RTXLightAttribute) / sizeof(int) * light_attribute_array_size;
 
     RTXThreadedBVH* shared_threaded_bvh_array = (RTXThreadedBVH*)&shared_memory[offset];
     offset += sizeof(RTXThreadedBVH) / sizeof(int) * threaded_bvh_array_size;
@@ -72,6 +79,12 @@ __global__ void global_memory_kernel(
         for (int k = 0; k < object_array_size; k++) {
             shared_object_array[k] = global_object_array[k];
         }
+        for (int k = 0; k < geometry_attribute_array_size; k++) {
+            shared_geometry_attribute_array[k] = global_geometry_attribute_array[k];
+        }
+        for (int k = 0; k < light_attribute_array_size; k++) {
+            shared_light_attribute_array[k] = global_light_attribute_array[k];
+        }
         for (int k = 0; k < threaded_bvh_array_size; k++) {
             shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
         }
@@ -84,26 +97,26 @@ __global__ void global_memory_kernel(
     }
     __syncthreads();
 
-    if (thread_id == 0) {
-        // for (int i = 0; i < object_array_size; i++) {
-        //     if (shared_object_array[i] != global_object_array[i]) {
-        //         printf("Error: shared_object_array missmatch at %d\n", i);
-        //         return;
-        //     }
-        // }
-        // for (int i = 0; i < threaded_bvh_array_size; i++) {
-        //     if (shared_threaded_bvh_array[i] != global_threaded_bvh_array[i]) {
-        //         printf("Error: shared_threaded_bvh_array missmatch at %d\n", i);
-        //         return;
-        //     }
-        // }
-        for (int i = 0; i < light_index_array_size; i++) {
-            if (shared_light_index_array[i] != global_light_index_array[i]) {
-                printf("Error: shared_light_index_array missmatch at %d\n", i);
-                return;
-            }
-        }
-    }
+    // if (thread_id == 0) {
+    //     // for (int i = 0; i < object_array_size; i++) {
+    //     //     if (shared_object_array[i] != global_object_array[i]) {
+    //     //         printf("Error: shared_object_array missmatch at %d\n", i);
+    //     //         return;
+    //     //     }
+    //     // }
+    //     // for (int i = 0; i < threaded_bvh_array_size; i++) {
+    //     //     if (shared_threaded_bvh_array[i] != global_threaded_bvh_array[i]) {
+    //     //         printf("Error: shared_threaded_bvh_array missmatch at %d\n", i);
+    //     //         return;
+    //     //     }
+    //     // }
+    //     for (int i = 0; i < light_index_array_size; i++) {
+    //         if (shared_light_index_array[i] != global_light_index_array[i]) {
+    //             printf("Error: shared_light_index_array missmatch at %d\n", i);
+    //             return;
+    //         }
+    //     }
+    // }
 
     const float eps = 0.0000001;
     CUDARay ray;
@@ -157,126 +170,181 @@ __global__ void global_memory_kernel(
 
             for (int object_index = 0; object_index < object_array_size; object_index++) {
                 RTXObject object = shared_object_array[object_index];
+                bool is_geometry = (1 & (~object.type)) == 1;
+                bool is_light = (1 & object.type) == 1;
 
-                // if (thread_id == 0) {
-                //     printf("object: %d\n", object_index);
-                //     printf("face: ");
-                //     for (int i = face_index_offset; i < face_index_offset + faces_count; i++) {
-                //         printf("%d ", shared_face_vertex_index_array[i * 4 + 0]);
-                //         printf("%d ", shared_face_vertex_index_array[i * 4 + 1]);
-                //         printf("%d ", shared_face_vertex_index_array[i * 4 + 2]);
-                //         printf("%d ", shared_face_vertex_index_array[i * 4 + 3]);
-                //     }
-                //     printf("\n");
-                //     printf("vertex: ");
-                //     for (int i = 0; i < faces_count; i++) {
-                //         int array_index = shared_face_vertex_index_array[(face_index_offset + i) * 4 + 0];
-                //         printf("(%f, %f, %f) ", shared_vertex_array[array_index * 4 + 0], shared_vertex_array[array_index * 4 + 1], shared_vertex_array[array_index * 4 + 2]);
-                //         array_index = shared_face_vertex_index_array[(face_index_offset + i) * 4 + 1];
-                //         printf("(%f, %f, %f) ", shared_vertex_array[array_index * 4 + 0], shared_vertex_array[array_index * 4 + 1], shared_vertex_array[array_index * 4 + 2]);
-                //         array_index = shared_face_vertex_index_array[(face_index_offset + i) * 4 + 2];
-                //         printf("(%f, %f, %f) ", shared_vertex_array[array_index * 4 + 0], shared_vertex_array[array_index * 4 + 1], shared_vertex_array[array_index * 4 + 2]);
-                //     }
-                //     printf("\n");
-                // }
-                if (object.bvh_enabled) {
-                    RTXThreadedBVH bvh = shared_threaded_bvh_array[object.bvh_index];
-                    // BVH traversal
+                if (is_geometry) {
+                    RTXGeometryAttribute attr = shared_geometry_attribute_array[object.attribute_index];
+                    if (attr.bvh_enabled) {
+                        RTXThreadedBVH bvh = shared_threaded_bvh_array[attr.bvh_index];
 
-                    // for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
-                    //     RTXThreadedBVHNode node = shared_threaded_bvh_node_array[bvh.node_index_offset + traversal];
-                    //     if (thread_id == 0) {
-                    //         printf("traversal: %d hit: %d miss: %d start: %d end: %d \n", traversal, node.hit_node_index, node.miss_node_index, node.assigned_face_index_start, node.assigned_face_index_end);
-                    //     }
-                    // }
+                        int bvh_current_node_index = 0;
+                        for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
+                            if (bvh_current_node_index == THREADED_BVH_TERMINAL_NODE) {
+                                break;
+                            }
 
-                    int bvh_current_node_index = 0;
-                    for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
-                        if (bvh_current_node_index == THREADED_BVH_TERMINAL_NODE) {
-                            break;
+                            int index = bvh.node_index_offset + bvh_current_node_index;
+
+                            CUDAThreadedBVHNode node;
+                            float4 attributes_float = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 0);
+                            int4* attributes_integer_ptr = reinterpret_cast<int4*>(&attributes_float);
+                            node.hit_node_index = attributes_integer_ptr->x;
+                            node.miss_node_index = attributes_integer_ptr->y;
+                            node.assigned_face_index_start = attributes_integer_ptr->z;
+                            node.assigned_face_index_end = attributes_integer_ptr->w;
+                            node.aabb_max = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 1);
+                            node.aabb_min = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 2);
+
+                            bool is_inner_node = node.assigned_face_index_start == -1;
+                            if (is_inner_node) {
+                                // http://www.cs.utah.edu/~awilliam/box/box.pdf
+                                float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;
+                                float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;
+                                float tmp_tmin = ((ray_direction_inv.y < 0 ? node.aabb_max.y : node.aabb_min.y) - ray.origin.y) * ray_direction_inv.y;
+                                float tmp_tmax = ((ray_direction_inv.y < 0 ? node.aabb_min.y : node.aabb_max.y) - ray.origin.y) * ray_direction_inv.y;
+
+                                if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                                    bvh_current_node_index = node.miss_node_index;
+                                    continue;
+                                }
+                                if (tmp_tmin > tmin) {
+                                    tmin = tmp_tmin;
+                                }
+                                if (tmp_tmax < tmax) {
+                                    tmax = tmp_tmax;
+                                }
+                                tmp_tmin = ((ray_direction_inv.z < 0 ? node.aabb_max.z : node.aabb_min.z) - ray.origin.z) * ray_direction_inv.z;
+                                tmp_tmax = ((ray_direction_inv.z < 0 ? node.aabb_min.z : node.aabb_max.z) - ray.origin.z) * ray_direction_inv.z;
+                                if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
+                                    bvh_current_node_index = node.miss_node_index;
+                                    continue;
+                                }
+                                if (tmp_tmin > tmin) {
+                                    tmin = tmp_tmin;
+                                }
+                                if (tmp_tmax < tmax) {
+                                    tmax = tmp_tmax;
+                                }
+
+                                if (tmax < 0.001) {
+                                    bvh_current_node_index = node.miss_node_index;
+                                    continue;
+                                }
+                            } else {
+                                int num_assigned_faces = node.assigned_face_index_end - node.assigned_face_index_start + 1;
+                                // if (ray_index == 4986257) {
+                                //     printf("node: %d hit: %d miss: %d start: %d end: %d \n", bvh_current_node_index,
+                                //         node.hit_node_index,
+                                //         node.miss_node_index,
+                                //         node.assigned_face_index_start,
+                                //         node.assigned_face_index_end);
+                                // }
+                                for (int m = 0; m < num_assigned_faces; m++) {
+                                    int index = node.assigned_face_index_start + m + object.face_index_offset;
+
+                                    int4 face = tex1Dfetch(face_vertex_index_texture, index);
+                                    // RTXFace face = global_face_vertex_index_array[index];
+
+                                    float4 va = tex1Dfetch(vertex_texture, face.x);
+                                    float4 vb = tex1Dfetch(vertex_texture, face.y);
+                                    float4 vc = tex1Dfetch(vertex_texture, face.z);
+                                    // RTXVector4f va = global_vertex_array[face.a];
+                                    // RTXVector4f vb = global_vertex_array[face.b];
+                                    // RTXVector4f vc = global_vertex_array[face.c];
+
+                                    float3 edge_ba;
+                                    edge_ba.x = vb.x - va.x;
+                                    edge_ba.y = vb.y - va.y;
+                                    edge_ba.z = vb.z - va.z;
+
+                                    float3 edge_ca;
+                                    edge_ca.x = vc.x - va.x;
+                                    edge_ca.y = vc.y - va.y;
+                                    edge_ca.z = vc.z - va.z;
+
+                                    float3 h;
+                                    h.x = ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y;
+                                    h.y = ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z;
+                                    h.z = ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x;
+                                    float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;
+                                    if (f > -eps && f < eps) {
+                                        continue;
+                                    }
+
+                                    f = 1.0f / f;
+
+                                    float3 s;
+                                    s.x = ray.origin.x - va.x;
+                                    s.y = ray.origin.y - va.y;
+                                    s.z = ray.origin.z - va.z;
+                                    float dot = s.x * h.x + s.y * h.y + s.z * h.z;
+                                    float u = f * dot;
+                                    if (u < 0.0f || u > 1.0f) {
+                                        continue;
+                                    }
+
+                                    h.x = s.y * edge_ba.z - s.z * edge_ba.y;
+                                    h.y = s.z * edge_ba.x - s.x * edge_ba.z;
+                                    h.z = s.x * edge_ba.y - s.y * edge_ba.x;
+                                    dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z;
+                                    float v = f * dot;
+                                    if (v < 0.0f || u + v > 1.0f) {
+                                        continue;
+                                    }
+                                    s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
+                                    s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
+                                    s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
+
+                                    float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;
+
+                                    s.x = s.x / norm;
+                                    s.y = s.y / norm;
+                                    s.z = s.z / norm;
+
+                                    dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z;
+                                    if (dot > 0.0f) {
+                                        continue;
+                                    }
+
+                                    dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;
+                                    float t = f * dot;
+
+                                    if (t <= 0.001f) {
+                                        continue;
+                                    }
+                                    if (min_distance <= t) {
+                                        continue;
+                                    }
+
+                                    min_distance = t;
+                                    hit_point.x = ray.origin.x + t * ray.direction.x;
+                                    hit_point.y = ray.origin.y + t * ray.direction.y;
+                                    hit_point.z = ray.origin.z + t * ray.direction.z;
+
+                                    hit_face_normal.x = s.x;
+                                    hit_face_normal.y = s.y;
+                                    hit_face_normal.z = s.z;
+
+                                    did_hit_object = true;
+                                    did_hit_light = false;
+
+                                    hit_color.r = 1.0f;
+                                    hit_color.g = 1.0f;
+                                    hit_color.b = 1.0f;
+                                }
+                            }
+
+                            if (node.hit_node_index == THREADED_BVH_TERMINAL_NODE) {
+                                bvh_current_node_index = node.miss_node_index;
+                            } else {
+                                bvh_current_node_index = node.hit_node_index;
+                            }
                         }
-
-                        int index = bvh.node_index_offset + bvh_current_node_index;
-
-                        // RTXThreadedBVHNode node = global_threaded_bvh_node_array[index];
-
-                        CUDAThreadedBVHNode node;
-                        float4 attributes_float = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 0);
-                        int4* attributes_integer_ptr = reinterpret_cast<int4*>(&attributes_float);
-                        node.hit_node_index = attributes_integer_ptr->x;
-                        node.miss_node_index = attributes_integer_ptr->y;
-                        node.assigned_face_index_start = attributes_integer_ptr->z;
-                        node.assigned_face_index_end = attributes_integer_ptr->w;
-                        node.aabb_max = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 1);
-                        node.aabb_min = tex1Dfetch(threaded_bvh_node_texture, index * 3 + 2);
-
-                        // if(thread_id == 0){
-                        //     printf("attribute: %d %d ", node.hit_node_index, a->x);
-                        //     printf("%d %d ", node.miss_node_index, a->y);
-                        //     printf("%d %d ", node.assigned_face_index_start, a->z);
-                        //     printf("%d %d ", node.assigned_face_index_end, a->w);
-
-                        //     printf("aabb_max: %f %f ", node.aabb_max.x, aabb_max.x);
-                        //     printf("%f %f ", node.aabb_max.y, aabb_max.y);
-                        //     printf("%f %f ", node.aabb_max.z, aabb_max.z);
-
-                        //     printf("aabb_min: %f %f ", node.aabb_min.x, aabb_min.x);
-                        //     printf("%f %f ", node.aabb_min.y, aabb_min.y);
-                        //     printf("%f %f ", node.aabb_min.z, aabb_min.z);
-
-                        //     printf("\n");
-                        // }
-
-                        bool is_inner_node = node.assigned_face_index_start == -1;
-                        if (is_inner_node) {
-                            // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                            float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;
-                            float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;
-                            float tmp_tmin = ((ray_direction_inv.y < 0 ? node.aabb_max.y : node.aabb_min.y) - ray.origin.y) * ray_direction_inv.y;
-                            float tmp_tmax = ((ray_direction_inv.y < 0 ? node.aabb_min.y : node.aabb_max.y) - ray.origin.y) * ray_direction_inv.y;
-
-                            if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                                bvh_current_node_index = node.miss_node_index;
-                                continue;
-                            }
-                            if (tmp_tmin > tmin) {
-                                tmin = tmp_tmin;
-                            }
-                            if (tmp_tmax < tmax) {
-                                tmax = tmp_tmax;
-                            }
-                            tmp_tmin = ((ray_direction_inv.z < 0 ? node.aabb_max.z : node.aabb_min.z) - ray.origin.z) * ray_direction_inv.z;
-                            tmp_tmax = ((ray_direction_inv.z < 0 ? node.aabb_min.z : node.aabb_max.z) - ray.origin.z) * ray_direction_inv.z;
-                            if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                                bvh_current_node_index = node.miss_node_index;
-                                continue;
-                            }
-                            if (tmp_tmin > tmin) {
-                                tmin = tmp_tmin;
-                            }
-                            if (tmp_tmax < tmax) {
-                                tmax = tmp_tmax;
-                            }
-
-                            if (tmax < 0.001) {
-                                bvh_current_node_index = node.miss_node_index;
-                                continue;
-                            }
-
-                            // reflection_decay.r = 1.0f;
-                            // reflection_decay.g = 0.0f;
-                            // reflection_decay.b = 0.0f;
-                        } else {
-                            int num_assigned_faces = node.assigned_face_index_end - node.assigned_face_index_start + 1;
-                            // if (ray_index == 4986257) {
-                            //     printf("node: %d hit: %d miss: %d start: %d end: %d \n", bvh_current_node_index,
-                            //         node.hit_node_index,
-                            //         node.miss_node_index,
-                            //         node.assigned_face_index_start,
-                            //         node.assigned_face_index_end);
-                            // }
-                            for (int m = 0; m < num_assigned_faces; m++) {
-                                int index = node.assigned_face_index_start + m + object.face_index_offset;
+                    } else {
+                        if (object.type == RTXObjectTypeStandardGeometry) {
+                            for (int m = 0; m < object.num_faces; m++) {
+                                int index = object.face_index_offset + m;
 
                                 int4 face = tex1Dfetch(face_vertex_index_texture, index);
                                 // RTXFace face = global_face_vertex_index_array[index];
@@ -367,37 +435,208 @@ __global__ void global_memory_kernel(
                                 hit_color.r = 1.0f;
                                 hit_color.g = 1.0f;
                                 hit_color.b = 1.0f;
-
-                                // reflection_decay.r = (hit_face_normal.x + 1.0f) / 2.0f;
-                                // reflection_decay.g = (hit_face_normal.y + 1.0f) / 2.0f;
-                                // reflection_decay.b = (hit_face_normal.z + 1.0f) / 2.0f;
-
-                                // reflection_decay.r = (float)((bvh_current_node_index * 5 + 1) % bvh.num_nodes) / (float)bvh.num_nodes;
-                                // reflection_decay.g = (float)((bvh_current_node_index * 2 + 2) % bvh.num_nodes) / (float)bvh.num_nodes;
-                                // reflection_decay.b = (float)((bvh_current_node_index * 3 + 3) % bvh.num_nodes) / (float)bvh.num_nodes;
                             }
                         }
+                        // if (geometry_type == RTXObjectTypeStandardGeometry) {
+                        //     for (int j = 0; j < faces_count; j++) {
+                        //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 0];
+                        //         if (array_index < 0) {
+                        //             continue;
+                        //         }
+                        //         // if (thread_id == 0) {
+                        //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
+                        //         // }
+                        //         assert(array_index + 0 < vertex_array_size);
+                        //         float va_x = vertex_array[array_index + 0];
+                        //         float va_y = vertex_array[array_index + 1];
+                        //         float va_z = vertex_array[array_index + 2];
 
-                        if (node.hit_node_index == THREADED_BVH_TERMINAL_NODE) {
-                            bvh_current_node_index = node.miss_node_index;
-                        } else {
-                            bvh_current_node_index = node.hit_node_index;
-                        }
+                        //         // if (thread_id == 0) {
+                        //         //     printf("va: (%f, %f, %f)\n", va_x, va_y, va_z);
+                        //         // }
+
+                        //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 1];
+                        //         if (array_index < 0) {
+                        //             continue;
+                        //         }
+                        //         // if (thread_id == 0) {
+                        //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
+                        //         // }
+                        //         assert(array_index + 0 < vertex_array_size);
+                        //         float vb_x = vertex_array[array_index + 0];
+                        //         float vb_y = vertex_array[array_index + 1];
+                        //         float vb_z = vertex_array[array_index + 2];
+
+                        //         // if (thread_id == 0) {
+                        //         //     printf("vb: (%f, %f, %f)\n", vb_x, vb_y, vb_z);
+                        //         // }
+
+                        //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 2];
+                        //         if (array_index < 0) {
+                        //             continue;
+                        //         }
+                        //         // if (thread_id == 0) {
+                        //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
+                        //         // }
+                        //         assert(array_index + 0 < vertex_array_size);
+                        //         float vc_x = vertex_array[array_index + 0];
+                        //         float vc_y = vertex_array[array_index + 1];
+                        //         float vc_z = vertex_array[array_index + 2];
+
+                        //         // if (thread_id == 0) {
+                        //         //     printf("vc: (%f, %f, %f)\n", vc_x, vc_y, vc_z);
+                        //         // }
+
+                        //         float edge_ba_x = vb_x - va_x;
+                        //         float edge_ba_y = vb_y - va_y;
+                        //         float edge_ba_z = vb_z - va_z;
+
+                        //         float edge_ca_x = vc_x - va_x;
+                        //         float edge_ca_y = vc_y - va_y;
+                        //         float edge_ca_z = vc_z - va_z;
+
+                        //         float h_x = ray.direction.y * edge_ca_z - ray.direction.z * edge_ca_y;
+                        //         float h_y = ray.direction.z * edge_ca_x - ray.direction.x * edge_ca_z;
+                        //         float h_z = ray.direction.x * edge_ca_y - ray.direction.y * edge_ca_x;
+                        //         float a = edge_ba_x * h_x + edge_ba_y * h_y + edge_ba_z * h_z;
+                        //         if (a > -eps && a < eps) {
+                        //             continue;
+                        //         }
+                        //         float f = 1.0f / a;
+
+                        //         float s_x = ray.origin.x - va_x;
+                        //         float s_y = ray.origin.y - va_y;
+                        //         float s_z = ray.origin.z - va_z;
+                        //         float dot = s_x * h_x + s_y * h_y + s_z * h_z;
+                        //         float u = f * dot;
+                        //         if (u < 0.0f || u > 1.0f) {
+                        //             continue;
+                        //         }
+                        //         float q_x = s_y * edge_ba_z - s_z * edge_ba_y;
+                        //         float q_y = s_z * edge_ba_x - s_x * edge_ba_z;
+                        //         float q_z = s_x * edge_ba_y - s_y * edge_ba_x;
+                        //         dot = q_x * ray.direction.x + q_y * ray.direction.y + q_z * ray.direction.z;
+                        //         float v = f * dot;
+                        //         if (v < 0.0f || u + v > 1.0f) {
+                        //             continue;
+                        //         }
+                        //         float tmp_x = edge_ba_y * edge_ca_z - edge_ba_z * edge_ca_y;
+                        //         float tmp_y = edge_ba_z * edge_ca_x - edge_ba_x * edge_ca_z;
+                        //         float tmp_z = edge_ba_x * edge_ca_y - edge_ba_y * edge_ca_x;
+
+                        //         float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
+
+                        //         tmp_x = tmp_x / norm;
+                        //         tmp_y = tmp_y / norm;
+                        //         tmp_z = tmp_z / norm;
+
+                        //         dot = tmp_x * ray.direction.x + tmp_y * ray.direction.y + tmp_z * ray.direction.z;
+                        //         if (dot > 0.0f) {
+                        //             continue;
+                        //         }
+
+                        //         dot = edge_ca_x * q_x + edge_ca_y * q_y + edge_ca_z * q_z;
+                        //         float t = f * dot;
+
+                        //         if (t <= 0.001f) {
+                        //             continue;
+                        //         }
+                        //         if (min_distance <= t) {
+                        //             continue;
+                        //         }
+
+                        //         min_distance = t;
+                        //         hit_point.x = ray.origin.x + t * ray.direction.x;
+                        //         hit_point.y = ray.origin.y + t * ray.direction.y;
+                        //         hit_point.z = ray.origin.z + t * ray.direction.z;
+
+                        //         hit_face_normal.x = tmp_x;
+                        //         hit_face_normal.y = tmp_y;
+                        //         hit_face_normal.z = tmp_z;
+
+                        //         hit_color_r = 0.8f;
+                        //         hit_color_g = 0.8f;
+                        //         hit_color_b = 0.8f;
+
+                        //         if (object_index == 0) {
+                        //             hit_color_r = 1.0f;
+                        //             hit_color_g = 1.0f;
+                        //             hit_color_b = 1.0f;
+                        //             did_hit_light = true;
+                        //             continue;
+                        //         }
+
+                        //         did_hit_object = true;
+                        //         did_hit_light = false;
+                        //     }
+                        // } else if (geometry_type == RTXObjectTypeSphereGeometry) {
+                        //     array_index = 4 * face_vertex_index_array[face_index_offset * 4 + 0];
+                        //     assert(array_index + 0 < vertex_array_size);
+
+                        //     float center_x = vertex_array[array_index + 0];
+                        //     float center_y = vertex_array[array_index + 1];
+                        //     float center_z = vertex_array[array_index + 2];
+                        //     float radius = vertex_array[array_index + 4];
+
+                        //     float oc_x = ray.origin.x - center_x;
+                        //     float oc_y = ray.origin.y - center_y;
+                        //     float oc_z = ray.origin.z - center_z;
+
+                        //     float a = ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z;
+                        //     float b = 2.0f * (ray.direction.x * oc_x + ray.direction.y * oc_y + ray.direction.z * oc_z);
+                        //     float c = (oc_x * oc_x + oc_y * oc_y + oc_z * oc_z) - radius * radius;
+                        //     float d = b * b - 4.0f * a * c;
+
+                        //     if (d <= 0) {
+                        //         continue;
+                        //     }
+                        //     float root = sqrt(d);
+                        //     float t = (-b - root) / (2.0f * a);
+                        //     if (t <= 0.001f) {
+                        //         t = (-b + root) / (2.0f * a);
+                        //         if (t <= 0.001f) {
+                        //             continue;
+                        //         }
+                        //     }
+
+                        //     if (min_distance <= t) {
+                        //         continue;
+                        //     }
+
+                        //     min_distance = t;
+                        //     hit_point.x = ray.origin.x + t * ray.direction.x;
+                        //     hit_point.y = ray.origin.y + t * ray.direction.y;
+                        //     hit_point.z = ray.origin.z + t * ray.direction.z;
+
+                        //     float tmp_x = hit_point.x - center_x;
+                        //     float tmp_y = hit_point.y - center_y;
+                        //     float tmp_z = hit_point.z - center_z;
+                        //     float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
+
+                        //     hit_face_normal.x = tmp_x / norm;
+                        //     hit_face_normal.y = tmp_y / norm;
+                        //     hit_face_normal.z = tmp_z / norm;
+
+                        //     hit_color_r = 0.8f;
+                        //     hit_color_g = 0.8f;
+                        //     hit_color_b = 0.8f;
+
+                        //     did_hit_object = true;
+                        //     did_hit_light = false;
+                        //     continue;
+                        // }
                     }
-                } else {
-                    if (object.type == RTXObjectTypeStandardGeometry || object.type == RTXObjectTypeRectAreaLight) {
+                } else if (is_light) {
+                    RTXLightAttribute attr = shared_light_attribute_array[object.attribute_index];
+                    if (object.type == RTXObjectTypeRectAreaLight) {
                         for (int m = 0; m < object.num_faces; m++) {
                             int index = object.face_index_offset + m;
 
                             int4 face = tex1Dfetch(face_vertex_index_texture, index);
-                            // RTXFace face = global_face_vertex_index_array[index];
 
                             float4 va = tex1Dfetch(vertex_texture, face.x);
                             float4 vb = tex1Dfetch(vertex_texture, face.y);
                             float4 vc = tex1Dfetch(vertex_texture, face.z);
-                            // RTXVector4f va = global_vertex_array[face.a];
-                            // RTXVector4f vb = global_vertex_array[face.b];
-                            // RTXVector4f vc = global_vertex_array[face.c];
 
                             float3 edge_ba;
                             edge_ba.x = vb.x - va.x;
@@ -472,206 +711,14 @@ __global__ void global_memory_kernel(
                             hit_face_normal.y = s.y;
                             hit_face_normal.z = s.z;
 
-                            did_hit_object = !object.is_light;
-                            did_hit_light = object.is_light;
+                            did_hit_object = false;
+                            did_hit_light = true;
 
                             hit_color.r = 1.0f;
                             hit_color.g = 1.0f;
                             hit_color.b = 1.0f;
-
-                            // reflection_decay.r = (hit_face_normal.x + 1.0f) / 2.0f;
-                            // reflection_decay.g = (hit_face_normal.y + 1.0f) / 2.0f;
-                            // reflection_decay.b = (hit_face_normal.z + 1.0f) / 2.0f;
                         }
                     }
-                    // if (geometry_type == RTXObjectTypeStandardGeometry) {
-                    //     for (int j = 0; j < faces_count; j++) {
-                    //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 0];
-                    //         if (array_index < 0) {
-                    //             continue;
-                    //         }
-                    //         // if (thread_id == 0) {
-                    //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
-                    //         // }
-                    //         assert(array_index + 0 < vertex_array_size);
-                    //         float va_x = vertex_array[array_index + 0];
-                    //         float va_y = vertex_array[array_index + 1];
-                    //         float va_z = vertex_array[array_index + 2];
-
-                    //         // if (thread_id == 0) {
-                    //         //     printf("va: (%f, %f, %f)\n", va_x, va_y, va_z);
-                    //         // }
-
-                    //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 1];
-                    //         if (array_index < 0) {
-                    //             continue;
-                    //         }
-                    //         // if (thread_id == 0) {
-                    //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
-                    //         // }
-                    //         assert(array_index + 0 < vertex_array_size);
-                    //         float vb_x = vertex_array[array_index + 0];
-                    //         float vb_y = vertex_array[array_index + 1];
-                    //         float vb_z = vertex_array[array_index + 2];
-
-                    //         // if (thread_id == 0) {
-                    //         //     printf("vb: (%f, %f, %f)\n", vb_x, vb_y, vb_z);
-                    //         // }
-
-                    //         array_index = 4 * face_vertex_index_array[(face_index_offset + j) * 4 + 2];
-                    //         if (array_index < 0) {
-                    //             continue;
-                    //         }
-                    //         // if (thread_id == 0) {
-                    //         //     printf("object: %u face: %d vertex: %d\n", bvh_object_index, j, array_index);
-                    //         // }
-                    //         assert(array_index + 0 < vertex_array_size);
-                    //         float vc_x = vertex_array[array_index + 0];
-                    //         float vc_y = vertex_array[array_index + 1];
-                    //         float vc_z = vertex_array[array_index + 2];
-
-                    //         // if (thread_id == 0) {
-                    //         //     printf("vc: (%f, %f, %f)\n", vc_x, vc_y, vc_z);
-                    //         // }
-
-                    //         float edge_ba_x = vb_x - va_x;
-                    //         float edge_ba_y = vb_y - va_y;
-                    //         float edge_ba_z = vb_z - va_z;
-
-                    //         float edge_ca_x = vc_x - va_x;
-                    //         float edge_ca_y = vc_y - va_y;
-                    //         float edge_ca_z = vc_z - va_z;
-
-                    //         float h_x = ray.direction.y * edge_ca_z - ray.direction.z * edge_ca_y;
-                    //         float h_y = ray.direction.z * edge_ca_x - ray.direction.x * edge_ca_z;
-                    //         float h_z = ray.direction.x * edge_ca_y - ray.direction.y * edge_ca_x;
-                    //         float a = edge_ba_x * h_x + edge_ba_y * h_y + edge_ba_z * h_z;
-                    //         if (a > -eps && a < eps) {
-                    //             continue;
-                    //         }
-                    //         float f = 1.0f / a;
-
-                    //         float s_x = ray.origin.x - va_x;
-                    //         float s_y = ray.origin.y - va_y;
-                    //         float s_z = ray.origin.z - va_z;
-                    //         float dot = s_x * h_x + s_y * h_y + s_z * h_z;
-                    //         float u = f * dot;
-                    //         if (u < 0.0f || u > 1.0f) {
-                    //             continue;
-                    //         }
-                    //         float q_x = s_y * edge_ba_z - s_z * edge_ba_y;
-                    //         float q_y = s_z * edge_ba_x - s_x * edge_ba_z;
-                    //         float q_z = s_x * edge_ba_y - s_y * edge_ba_x;
-                    //         dot = q_x * ray.direction.x + q_y * ray.direction.y + q_z * ray.direction.z;
-                    //         float v = f * dot;
-                    //         if (v < 0.0f || u + v > 1.0f) {
-                    //             continue;
-                    //         }
-                    //         float tmp_x = edge_ba_y * edge_ca_z - edge_ba_z * edge_ca_y;
-                    //         float tmp_y = edge_ba_z * edge_ca_x - edge_ba_x * edge_ca_z;
-                    //         float tmp_z = edge_ba_x * edge_ca_y - edge_ba_y * edge_ca_x;
-
-                    //         float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
-
-                    //         tmp_x = tmp_x / norm;
-                    //         tmp_y = tmp_y / norm;
-                    //         tmp_z = tmp_z / norm;
-
-                    //         dot = tmp_x * ray.direction.x + tmp_y * ray.direction.y + tmp_z * ray.direction.z;
-                    //         if (dot > 0.0f) {
-                    //             continue;
-                    //         }
-
-                    //         dot = edge_ca_x * q_x + edge_ca_y * q_y + edge_ca_z * q_z;
-                    //         float t = f * dot;
-
-                    //         if (t <= 0.001f) {
-                    //             continue;
-                    //         }
-                    //         if (min_distance <= t) {
-                    //             continue;
-                    //         }
-
-                    //         min_distance = t;
-                    //         hit_point.x = ray.origin.x + t * ray.direction.x;
-                    //         hit_point.y = ray.origin.y + t * ray.direction.y;
-                    //         hit_point.z = ray.origin.z + t * ray.direction.z;
-
-                    //         hit_face_normal.x = tmp_x;
-                    //         hit_face_normal.y = tmp_y;
-                    //         hit_face_normal.z = tmp_z;
-
-                    //         hit_color_r = 0.8f;
-                    //         hit_color_g = 0.8f;
-                    //         hit_color_b = 0.8f;
-
-                    //         if (object_index == 0) {
-                    //             hit_color_r = 1.0f;
-                    //             hit_color_g = 1.0f;
-                    //             hit_color_b = 1.0f;
-                    //             did_hit_light = true;
-                    //             continue;
-                    //         }
-
-                    //         did_hit_object = true;
-                    //         did_hit_light = false;
-                    //     }
-                    // } else if (geometry_type == RTXObjectTypeSphereGeometry) {
-                    //     array_index = 4 * face_vertex_index_array[face_index_offset * 4 + 0];
-                    //     assert(array_index + 0 < vertex_array_size);
-
-                    //     float center_x = vertex_array[array_index + 0];
-                    //     float center_y = vertex_array[array_index + 1];
-                    //     float center_z = vertex_array[array_index + 2];
-                    //     float radius = vertex_array[array_index + 4];
-
-                    //     float oc_x = ray.origin.x - center_x;
-                    //     float oc_y = ray.origin.y - center_y;
-                    //     float oc_z = ray.origin.z - center_z;
-
-                    //     float a = ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z;
-                    //     float b = 2.0f * (ray.direction.x * oc_x + ray.direction.y * oc_y + ray.direction.z * oc_z);
-                    //     float c = (oc_x * oc_x + oc_y * oc_y + oc_z * oc_z) - radius * radius;
-                    //     float d = b * b - 4.0f * a * c;
-
-                    //     if (d <= 0) {
-                    //         continue;
-                    //     }
-                    //     float root = sqrt(d);
-                    //     float t = (-b - root) / (2.0f * a);
-                    //     if (t <= 0.001f) {
-                    //         t = (-b + root) / (2.0f * a);
-                    //         if (t <= 0.001f) {
-                    //             continue;
-                    //         }
-                    //     }
-
-                    //     if (min_distance <= t) {
-                    //         continue;
-                    //     }
-
-                    //     min_distance = t;
-                    //     hit_point.x = ray.origin.x + t * ray.direction.x;
-                    //     hit_point.y = ray.origin.y + t * ray.direction.y;
-                    //     hit_point.z = ray.origin.z + t * ray.direction.z;
-
-                    //     float tmp_x = hit_point.x - center_x;
-                    //     float tmp_y = hit_point.y - center_y;
-                    //     float tmp_z = hit_point.z - center_z;
-                    //     float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
-
-                    //     hit_face_normal.x = tmp_x / norm;
-                    //     hit_face_normal.y = tmp_y / norm;
-                    //     hit_face_normal.z = tmp_z / norm;
-
-                    //     hit_color_r = 0.8f;
-                    //     hit_color_g = 0.8f;
-                    //     hit_color_b = 0.8f;
-
-                    //     did_hit_object = true;
-                    //     did_hit_light = false;
-                    //     continue;
-                    // }
                 }
             }
 
@@ -723,14 +770,6 @@ __global__ void global_memory_kernel(
         }
 
         global_render_array[ray_index] = reflection_decay;
-        // assert(ray_index * 4 + 2 < render_array_size);
-        // render_array[ray_index * 4 + 0] = reflection_decay_r;
-        // render_array[ray_index * 4 + 1] = reflection_decay_g;
-        // render_array[ray_index * 4 + 2] = reflection_decay_b;
-
-        // render_array[ray_index * 3 + 0] = (ray.direction.x + 1.0f) / 2.0f;
-        // render_array[ray_index * 3 + 1] = (ray.direction.y + 1.0f) / 2.0f;
-        // render_array[ray_index * 3 + 2] = (ray.direction.z + 1.0f) / 2.0f;
     }
 }
 
@@ -1178,10 +1217,11 @@ void rtx_cuda_render(
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
     RTXVertex*& gpu_vertex_array, const int vertex_array_size,
     RTXObject*& gpu_object_array, const int object_array_size,
+    RTXGeometryAttribute*& gpu_geometry_attribute_array, const int geometry_attribute_array_size,
+    RTXLightAttribute*& gpu_light_attribute_array, const int light_attribute_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     int*& gpu_light_index_array, const int light_index_array_size,
-    void*& gpu_curand_states,
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_threads,
     const int num_blocks,
@@ -1193,9 +1233,11 @@ void rtx_cuda_render(
     assert(gpu_face_vertex_index_array != NULL);
     assert(gpu_vertex_array != NULL);
     assert(gpu_object_array != NULL);
+    assert(gpu_geometry_attribute_array != NULL);
     assert(gpu_threaded_bvh_array != NULL);
     assert(gpu_threaded_bvh_node_array != NULL);
     if (light_index_array_size > 0) {
+        assert(gpu_light_attribute_array != NULL);
         assert(gpu_light_index_array != NULL);
     }
     assert(gpu_render_array != NULL);
@@ -1206,7 +1248,7 @@ void rtx_cuda_render(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    long required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size + sizeof(int) * light_index_array_size;
+    long required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXGeometryAttribute) * geometry_attribute_array_size + sizeof(RTXLightAttribute) * light_attribute_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size + sizeof(int) * light_index_array_size;
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
@@ -1222,13 +1264,13 @@ void rtx_cuda_render(
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
         // int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
-        long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(int) * light_index_array_size;
+        long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXGeometryAttribute) * geometry_attribute_array_size + sizeof(RTXLightAttribute) * light_attribute_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(int) * light_index_array_size;
         printf("    shared memory: %ld bytes\n", required_shared_memory_bytes);
         printf("    available: %d bytes\n", dev.sharedMemPerBlock);
         printf("    num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
 
         if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
-            long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(int) * light_index_array_size;
+            long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXGeometryAttribute) * geometry_attribute_array_size + sizeof(RTXLightAttribute) * light_attribute_array_size + sizeof(int) * light_index_array_size;
             printf("        shared memory: %ld bytes\n", required_shared_memory_bytes);
             printf("        available: %d bytes\n", dev.sharedMemPerBlock);
             printf("        num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
@@ -1244,10 +1286,11 @@ void rtx_cuda_render(
                 face_vertex_index_array_size,
                 vertex_array_size,
                 gpu_object_array, object_array_size,
+                gpu_geometry_attribute_array, geometry_attribute_array_size,
+                gpu_light_attribute_array, light_attribute_array_size,
                 gpu_threaded_bvh_array, threaded_bvh_array_size,
                 threaded_bvh_node_array_size,
                 gpu_light_index_array, light_index_array_size,
-                gpu_curand_states,
                 gpu_render_array,
                 num_rays_per_thread,
                 max_bounce,

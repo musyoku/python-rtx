@@ -24,9 +24,9 @@ typedef struct RTXThreadedBVH {
 typedef RTXVector4f RTXVertex;
 
 typedef struct RTXFace {
-    int a;  // vertex index
-    int b;  // vertex index
-    int c;  // vertex index
+    int a; // vertex index
+    int b; // vertex index
+    int c; // vertex index
     int dummy_axis;
 } RTXFace;
 
@@ -43,12 +43,19 @@ typedef struct RTXPixel {
 
 typedef struct RTXObject {
     int num_faces;
-    int face_index_offset;      // offset of the face from the start of the serialzied face array
+    int face_index_offset; // offset of the face from the start of the serialzied face array
     int num_vertices;
-    int vertex_index_offset;    // offset of the vertex from the start of the serialzied face array
-    bool bvh_enabled;
-    int bvh_index;
-    bool is_light;
+    int vertex_index_offset; // offset of the vertex from the start of the serialzied face array
     int type;
+    int attribute_index;
     RTXVector4f color;
 } RTXObject;
+
+typedef struct RTXGeometryAttribute {
+    bool bvh_enabled;
+    int bvh_index;
+} RTXGeometry;
+
+typedef struct RTXLightAttribute {
+    float brightness;
+} RTXLight;

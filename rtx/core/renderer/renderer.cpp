@@ -20,13 +20,13 @@ Renderer::Renderer()
     _gpu_face_vertex_indices_array = NULL;
     _gpu_vertex_array = NULL;
     _gpu_object_array = NULL;
+    _gpu_geometry_attribute_array = NULL;
+    _gpu_light_attribute_array = NULL;
     _gpu_threaded_bvh_array = NULL;
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_light_index_array = NULL;
     _gpu_render_array = NULL;
-    _gpu_curand_states = NULL;
     _total_frames = 0;
-    _prev_num_threads = -1;
 }
 Renderer::~Renderer()
 {
@@ -34,6 +34,8 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_face_vertex_indices_array);
     rtx_cuda_free((void**)&_gpu_vertex_array);
     rtx_cuda_free((void**)&_gpu_object_array);
+    rtx_cuda_free((void**)&_gpu_geometry_attribute_array);
+    rtx_cuda_free((void**)&_gpu_light_attribute_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
     rtx_cuda_free((void**)&_gpu_light_index_array);
@@ -172,29 +174,57 @@ void Renderer::serialize_objects()
     assert(face_index_offset_array.size() == face_count_array.size());
     assert(vertex_index_offset_array.size() == face_index_offset_array.size());
 
+    int num_geometries = 0;
+    int num_lights = 0;
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& object = transformed_object_array.at(object_index);
+        if (object->is_light()) {
+            num_lights++;
+        } else {
+            num_geometries++;
+        }
+    }
+
+    _cpu_geometry_attribute_array = rtx::array<RTXGeometryAttribute>(num_geometries);
+    _cpu_light_attribute_array = rtx::array<RTXLightAttribute>(num_lights);
+
+    int current_geometry_attribute_index = 0;
+    int current_light_attribute_index = 0;
+
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = transformed_object_array.at(object_index);
         RTXObject obj;
-        obj.bvh_enabled = object->bvh_enabled();
-
-        obj.bvh_index = -1;
-        if (obj.bvh_enabled) {
-            assert(_map_object_bvh.find(object_index) != _map_object_bvh.end());
-            obj.bvh_index = _map_object_bvh[object_index];
-        }
-
         obj.num_faces = face_count_array[object_index];
         obj.face_index_offset = face_index_offset_array[object_index];
         obj.num_vertices = vertex_count_array[object_index];
         obj.vertex_index_offset = vertex_index_offset_array[object_index];
-        obj.is_light = object->is_light();
         obj.type = object->type();
-
-        _cpu_object_array[object_index] = obj;
 
         if (object->is_light()) {
             _cpu_light_index_array.push_back(object_index);
+
+            std::shared_ptr<Light> light = std::static_pointer_cast<Light>(object);
+            RTXLightAttribute attr;
+            attr.brightness = light->brightness();
+            _cpu_light_attribute_array[current_light_attribute_index] = attr;
+
+            obj.attribute_index = current_light_attribute_index;
+            current_light_attribute_index++;
+        } else {
+            RTXGeometryAttribute attr;
+            attr.bvh_enabled = object->bvh_enabled();
+            attr.bvh_index = -1;
+            if (attr.bvh_enabled) {
+                assert(_map_object_bvh.find(object_index) != _map_object_bvh.end());
+                attr.bvh_index = _map_object_bvh[object_index];
+            }
+            _cpu_geometry_attribute_array[current_geometry_attribute_index] = attr;
+
+            obj.attribute_index = current_geometry_attribute_index;
+            current_geometry_attribute_index++;
         }
+
+        _cpu_object_array[object_index] = obj;
     }
     // for (int object_index = 0; object_index < num_objects; object_index++) {
     //     std::cout << "vertex_offset: " << _object_vertex_offset_array[object_index] << " face_offset: " << _face_offset_array[object_index] << std::endl;
@@ -340,11 +370,15 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_free((void**)&_gpu_face_vertex_indices_array);
         rtx_cuda_free((void**)&_gpu_vertex_array);
         rtx_cuda_free((void**)&_gpu_object_array);
+        rtx_cuda_free((void**)&_gpu_geometry_attribute_array);
+        rtx_cuda_free((void**)&_gpu_light_attribute_array);
         rtx_cuda_free((void**)&_gpu_light_index_array);
         rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
         rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_malloc((void**)&_gpu_object_array, sizeof(RTXObject) * _cpu_object_array.size());
+        rtx_cuda_malloc((void**)&_gpu_geometry_attribute_array, sizeof(RTXGeometry) * _cpu_geometry_attribute_array.size());
         if (_cpu_light_index_array.size() > 0) {
+            rtx_cuda_malloc((void**)&_gpu_light_attribute_array, sizeof(RTXLightAttribute) * _cpu_light_attribute_array.size());
             rtx_cuda_malloc((void**)&_gpu_light_index_array, sizeof(int) * _cpu_light_index_array.size());
         }
     }
@@ -352,7 +386,9 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), sizeof(RTXVertex) * _cpu_vertex_array.size());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), sizeof(RTXObject) * _cpu_object_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_geometry_attribute_array, (void*)_cpu_geometry_attribute_array.data(), sizeof(RTXGeometryAttribute) * _cpu_geometry_attribute_array.size());
         if (_cpu_light_index_array.size() > 0) {
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_light_attribute_array, (void*)_cpu_light_attribute_array.data(), sizeof(RTXLightAttribute) * _cpu_light_attribute_array.size());
             rtx_cuda_memcpy_host_to_device((void*)_gpu_light_index_array, (void*)_cpu_light_index_array.data(), sizeof(int) * _cpu_light_index_array.size());
         }
     }
@@ -375,12 +411,6 @@ void Renderer::render_objects(int height, int width)
         _prev_width = width;
     }
 
-    // cuRAND
-    if (_prev_num_threads != _cuda_args->num_threads()) {
-        rtx_cuda_free((void**)&_gpu_curand_states);
-        rtx_cuda_malloc((void**)&_gpu_curand_states, rtx_curand_state_bytes() * _cuda_args->num_threads());
-    }
-
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("preprocessing: %lf msec\n", elapsed);
@@ -391,10 +421,11 @@ void Renderer::render_objects(int height, int width)
         _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
         _gpu_vertex_array, _cpu_vertex_array.size(),
         _gpu_object_array, _cpu_object_array.size(),
+        _gpu_geometry_attribute_array, _cpu_geometry_attribute_array.size(),
+        _gpu_light_attribute_array, _cpu_light_attribute_array.size(),
         _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
         _gpu_light_index_array, _cpu_light_index_array.size(),
-        _gpu_curand_states,
         _gpu_render_array, _cpu_render_array.size(),
         _cuda_args->num_threads(),
         _cuda_args->num_blocks(),

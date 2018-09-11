@@ -11,9 +11,9 @@ enum RTXMaterialType {
 };
 
 enum RTXObjectType {
-    RTXObjectTypeStandardGeometry = 1,
-    RTXObjectTypeSphereGeometry,
-    RTXObjectTypeRectAreaLight,
+    RTXObjectTypeStandardGeometry = 0b0010,
+    RTXObjectTypeSphereGeometry = 0b0100,
+    RTXObjectTypeRectAreaLight = 0b0001,
 };
 
 enum RTXCameraType {
