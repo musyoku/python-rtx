@@ -303,6 +303,7 @@ void Node::collect_leaves(std::vector<std::shared_ptr<Node>>& leaves)
 }
 BVH::BVH(std::shared_ptr<Geometry>& geometry)
 {
+    _geometry = geometry;
     std::vector<int> assigned_face_indices;
     if (geometry->type() == RTXGeometryTypeStandard) {
         std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
@@ -336,12 +337,12 @@ int BVH::num_nodes()
 {
     return _num_nodes;
 }
-void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
+void BVH::serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serialization_offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
     for (auto& node : children) {
-        int pos = node->_index + offset;
+        int pos = node->_index + serialization_offset;
 
         RTXThreadedBVHNode cuda_node;
         cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
@@ -361,8 +362,52 @@ void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
         // printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
     }
 }
+void BVH::serialize_faces(rtx::array<RTXFace>& face_vertex_indices_array,
+    int face_index_offset,
+    int vertex_index_offset)
+{
+    std::vector<std::shared_ptr<bvh::Node>> leaves;
+    collect_leaves(leaves);
+    assert(_geometry.expired() == false);
+
+    auto geometry = _geometry.lock();
+    assert(geometry);
+
+    if (geometry->type() == RTXGeometryTypeStandard) {
+        std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
+        auto& face_vertex_indices_array = standard->_face_vertex_indices_array;
+        // printf("============================================================\n");
+        // for (int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {
+        //     auto& face = face_vertex_indices_array[face_index];
+        //     // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
+        // }
+        // printf("============================================================\n");
+        for (auto& node : leaves) {
+            int pos = node->_assigned_face_index_start + face_index_offset;
+            for (int face_index : node->_assigned_face_indices) {
+                glm::vec3i face = face_vertex_indices_array[face_index];
+                face_vertex_indices_array[pos] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
+                pos++;
+                // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
+            }
+        }
+        return;
+    }
+    if (geometry->type() == RTXGeometryTypeSphere) {
+        std::shared_ptr<SphereGeometry> sphere = std::static_pointer_cast<SphereGeometry>(geometry);
+        int pos = face_index_offset;
+        // 0 for center
+        // 1 for radius
+        face_vertex_indices_array[pos] = { 0 + vertex_index_offset, 1 + vertex_index_offset, -1 };
+        return;
+    }
+}
 void BVH::collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves)
 {
+    if (_root->_is_leaf) {
+        leaves.push_back(_root);
+        return;
+    }
     _root->collect_leaves(leaves);
 }
 }

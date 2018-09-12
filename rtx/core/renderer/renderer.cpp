@@ -58,7 +58,7 @@ void Renderer::transform_objects_to_view_space()
 }
 void Renderer::serialize_objects()
 {
-    int num_objects = transformed_object_array.size();
+    int num_objects = _transformed_object_array.size();
     assert(num_objects > 0);
 
     int total_faces = 0;
@@ -75,127 +75,66 @@ void Renderer::serialize_objects()
     _cpu_light_sampling_table = std::vector<int>();
 
     // serialize vertices
-    int serialized_array_offset = 0;
+    int vertex_index_offset = 0;
     int vertex_offset = 0;
     std::vector<int> vertex_index_offset_array;
     std::vector<int> vertex_count_array;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& object = transformed_object_array.at(object_index);
+        auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
-        geometry->serialize_vertices(_cpu_vertex_array, serialized_array_offset);
-        vertex_index_offset_array.push_back(serialized_array_offset);
+        geometry->serialize_vertices(_cpu_vertex_array, vertex_index_offset);
+        vertex_index_offset_array.push_back(vertex_index_offset);
         vertex_count_array.push_back(geometry->num_vertices());
-        serialized_array_offset += geometry->num_vertices();
+        vertex_index_offset += geometry->num_vertices();
     }
 
     // serialize faces
-    serialized_array_offset = 0;
-    std::vector<int> face_index_offset_array;
-    std::vector<int> face_count_array;
+    int face_index_offset = 0;
+    std::vector<int> face_index_offset_array(num_objects);
+    std::vector<int> face_count_array(num_objects);
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& object = transformed_object_array.at(object_index);
-        int vertex_offset = vertex_index_offset_array[object_index];
-        if (object->bvh_enabled()) {
-            int bvh_index = _map_object_bvh.at(object_index);
-            auto& bvh = _geometry_bvh_array.at(bvh_index);
-            std::vector<std::shared_ptr<bvh::Node>> nodes;
-            bvh->_root->collect_leaves(nodes);
-            std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(object);
-            auto& face_vertex_indices_array = standard->_face_vertex_indices_array;
-            // printf("============================================================\n");
-            for (int face_index = 0; face_index < face_vertex_indices_array.size(); face_index++) {
-                auto& face = face_vertex_indices_array[face_index];
-                // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
-            }
-            // printf("============================================================\n");
-            for (auto& node : nodes) {
-                int serialized_array_index = node->_assigned_face_index_start + serialized_array_offset;
-                assert(serialized_array_index < total_faces);
-                for (int face_index : node->_assigned_face_indices) {
-                    glm::vec3i face = face_vertex_indices_array[face_index];
-                    _cpu_face_vertex_indices_array[serialized_array_index] = { face[0] + vertex_offset, face[1] + vertex_offset, face[2] + vertex_offset };
-                    serialized_array_index++;
-                    // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
-                }
-            }
-        } else {
-            object->serialize_faces(_cpu_face_vertex_indices_array, serialized_array_offset, vertex_offset);
-        }
-        // std::cout << "face: ";serialized_array_offset
-        // for(int i = array_index;i < next_array_index;i++){
-        //     std::cout << _cpu_face_vertex_indices_array[i] << " ";
-        // }
-        // std::cout << std::endl;
-        face_index_offset_array.push_back(serialized_array_offset);
-        face_count_array.push_back(object->num_faces());
-        serialized_array_offset += object->num_faces();
+        auto& object = _transformed_object_array.at(object_index);
+        auto& geometry = object->geometry();
+        auto& bvh = _geometry_bvh_array.at(object_index);
+        int vertex_index_offset = vertex_index_offset_array[object_index];
+        bvh->serialize_faces(_cpu_face_vertex_indices_array, face_index_offset, vertex_index_offset);
+        face_index_offset_array[object_index] = face_index_offset;
+        face_count_array[object_index] = geometry->num_faces();
+        face_index_offset += geometry->num_faces();
     }
 
-    assert(vertex_index_offset_array.size() == vertex_count_array.size());
-    assert(face_index_offset_array.size() == face_count_array.size());
-    assert(vertex_index_offset_array.size() == face_index_offset_array.size());
+    assert(vertex_index_offset_array.size() == num_objects);
+    assert(face_index_offset_array.size() == num_objects);
 
+    int total_material_bytes = 0;
     int num_geometries = 0;
     int num_lights = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& object = transformed_object_array.at(object_index);
-        if (object->is_light()) {
-            num_lights++;
-        } else {
-            num_geometries++;
-        }
+        auto& object = _transformed_object_array.at(object_index);
+        auto& material = object->material();
+        total_material_bytes += material->attribute_bytes();
     }
+    _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_bytes);
 
-    _cpu_geometry_attribute_array = rtx::array<RTXGeometryAttribute>(num_geometries);
-    _cpu_light_attribute_array = rtx::array<RTXLightAttribute>(num_lights);
-
-    int current_geometry_attribute_index = 0;
-    int current_light_attribute_index = 0;
-
+    int material_attribute_byte_offset = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
-        auto& object = transformed_object_array.at(object_index);
-        RTXObject obj;
-        obj.num_faces = face_count_array[object_index];
-        obj.face_index_offset = face_index_offset_array[object_index];
-        obj.num_vertices = vertex_count_array[object_index];
-        obj.vertex_index_offset = vertex_index_offset_array[object_index];
-        obj.type = object->type();
+        auto& object = _transformed_object_array.at(object_index);
+        auto& geometry = object->geometry();
+        auto& material = object->material();
+        auto& mapping = object->mapping();
 
-        if (object->is_light()) {
-            _cpu_light_sampling_table.push_back(object_index);
+        RTXObject cuda_object;
+        cuda_object.num_faces = face_count_array[object_index];
+        cuda_object.face_index_offset = face_index_offset_array[object_index];
+        cuda_object.num_vertices = vertex_count_array[object_index];
+        cuda_object.vertex_index_offset = vertex_index_offset_array[object_index];
+        cuda_object.geometry_type = geometry->type();
+        cuda_object.num_material_layers = material->num_layers();
+        cuda_object.layerd_material_types = material->types();
+        cuda_object.material_attribute_byte_offset = material_attribute_byte_offset;
 
-            std::shared_ptr<Light> light = std::static_pointer_cast<Light>(object);
-            RTXLightAttribute attr;
-            attr.brightness = light->brightness();
-            _cpu_light_attribute_array[current_light_attribute_index] = attr;
-
-            glm::vec3f color = light->color();
-            obj.color.x = color.r;
-            obj.color.y = color.g;
-            obj.color.z = color.b;
-            obj.color.w = 1.0f;
-            obj.attribute_index = current_light_attribute_index;
-            current_light_attribute_index++;
-        } else {
-            RTXGeometryAttribute attr;
-            attr.bvh_enabled = object->bvh_enabled();
-            attr.bvh_index = -1;
-            if (attr.bvh_enabled) {
-                assert(_map_object_bvh.find(object_index) != _map_object_bvh.end());
-                attr.bvh_index = _map_object_bvh[object_index];
-            }
-            _cpu_geometry_attribute_array[current_geometry_attribute_index] = attr;
-
-            glm::vec3f color = light->color();
-            obj.color.x = color.r;
-            obj.color.y = color.g;
-            obj.color.z = color.b;
-            obj.color.w = 1.0f;
-            obj.attribute_index = current_geometry_attribute_index;
-            current_geometry_attribute_index++;
-        }
-
-        _cpu_object_array[object_index] = obj;
+        _cpu_object_array[object_index] = cuda_object;
+        material_attribute_byte_offset += material->attribute_bytes();
     }
     // for (int object_index = 0; object_index < num_objects; object_index++) {
     //     std::cout << "vertex_offset: " << _object_vertex_offset_array[object_index] << " face_offset: " << _face_offset_array[object_index] << std::endl;
@@ -233,7 +172,7 @@ void Renderer::construct_bvh()
         cuda_bvh.num_nodes = bvh->num_nodes();
         _cpu_threaded_bvh_array[bvh_index] = cuda_bvh;
 
-        bvh->serialize(_cpu_threaded_bvh_node_array, node_index_offset);
+        bvh->serialize_nodes(_cpu_threaded_bvh_node_array, node_index_offset);
         node_index_offset += bvh->num_nodes();
     }
 }

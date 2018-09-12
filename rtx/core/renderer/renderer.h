@@ -22,9 +22,7 @@ private:
     rtx::array<RTXFace> _cpu_face_vertex_indices_array;
     rtx::array<RTXVertex> _cpu_vertex_array;
     rtx::array<RTXObject> _cpu_object_array;
-    rtx::array<RTXGeometryAttribute> _cpu_geometry_attribute_array;
-    rtx::array<RTXLightAttribute> _cpu_light_attribute_array;
-    rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
+    rtx::array<RTXMaterialAttributeByte> _cpu_material_attribute_byte_array;
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<RTXPixel> _cpu_render_array;
     rtx::array<RTXPixel> _cpu_render_buffer_array;
@@ -35,8 +33,7 @@ private:
     RTXFace* _gpu_face_vertex_indices_array;
     RTXVertex* _gpu_vertex_array;
     RTXObject* _gpu_object_array;
-    RTXGeometryAttribute* _gpu_geometry_attribute_array;
-    RTXLightAttribute* _gpu_light_attribute_array;
+    RTXMaterialAttributeByte* _gpu_material_attribute_byte_array;
     RTXThreadedBVH* _gpu_threaded_bvh_array;
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
     RTXPixel* _gpu_render_array;

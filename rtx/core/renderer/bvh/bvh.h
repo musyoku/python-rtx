@@ -39,12 +39,16 @@ private:
     int _current_node_index;
     int _current_assigned_face_index_offset;
     int _num_nodes;
+    std::weak_ptr<Geometry> _geometry;
 
 public:
     BVH(std::shared_ptr<Geometry>& geometry);
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
-    void serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset);
+    void serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serialization_offset);
+    void serialize_faces(rtx::array<RTXFace>& face_vertex_indices_array,
+        int face_index_offset,
+        int vertex_index_offset);
     void collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves);
 };
 }

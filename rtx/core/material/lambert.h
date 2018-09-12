@@ -11,5 +11,6 @@ private:
 public:
     LambertMaterial(float albedo);
     int type() const override;
+    int attribute_bytes() const override;
 };
 }

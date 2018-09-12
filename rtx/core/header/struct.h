@@ -39,23 +39,34 @@ typedef struct RTXPixel {
     float r;
     float g;
     float b;
+    float a;
 } RTXPixel;
+
+typedef struct RTXLayeredMaterialTypes {
+    int outside;
+    int middle;
+    int inside;
+} RTXLayeredMaterialTypes;
 
 typedef struct RTXObject {
     int num_faces;
     int face_index_offset; // offset of the face from the start of the serialzied face array
     int num_vertices;
     int vertex_index_offset; // offset of the vertex from the start of the serialzied face array
-    int type;
-    int attribute_index;
-    RTXVector4f color;
+    int geometry_type;
+    int num_material_layers;
+    RTXLayeredMaterialTypes layerd_material_types;
+    int material_attribute_byte_offset;
+    int mapping_type;
+    int mapping_index;
 } RTXObject;
 
-typedef struct RTXGeometryAttribute {
-    bool bvh_enabled;
-    int bvh_index;
-} RTXGeometry;
+typedef int RTXMaterialAttributeByte;
 
-typedef struct RTXLightAttribute {
+typedef struct RTXEmissiveMaterialAttribute {
     float brightness;
-} RTXLight;
+} RTXEmissiveMaterialAttribute;
+
+typedef struct RTXLambertMaterialAttribute {
+    float albedo;
+} RTXLambertMaterialAttribute;
