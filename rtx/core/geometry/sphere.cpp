@@ -7,9 +7,17 @@ SphereGeometry::SphereGeometry(float radius)
     _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
     _radius = glm::vec4f(radius, radius, radius, 0.0f);
 }
+glm::vec4f SphereGeometry::radius()
+{
+    return _radius;
+}
+glm::vec4f SphereGeometry::center()
+{
+    return _center;
+}
 int SphereGeometry::type() const
 {
-    return RTXObjectTypeSphereGeometry;
+    return RTXGeometryTypeSphere;
 }
 int SphereGeometry::num_faces() const
 {
@@ -29,7 +37,7 @@ void SphereGeometry::serialize_faces(rtx::array<RTXFace>& array, int array_offse
 {
     array[0 + array_offset] = { 0 + vertex_index_offset, 1 + vertex_index_offset, -1 };
 }
-std::shared_ptr<Object> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
+std::shared_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto sphere = std::make_shared<SphereGeometry>(_radius[0]);
     sphere->_center = transformation_matrix * _center;

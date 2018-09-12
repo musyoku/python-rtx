@@ -231,6 +231,21 @@ Node::Node(std::vector<int> assigned_face_indices,
     _left = std::make_shared<Node>(left_assigned_indices, geometry, current_node_index, current_assigned_face_index_offset);
     _right = std::make_shared<Node>(right_assigned_indices, geometry, current_node_index, current_assigned_face_index_offset);
 }
+Node::Node(std::vector<int> assigned_face_indices,
+    std::shared_ptr<SphereGeometry>& geometry)
+{
+    assert(assigned_face_indices.size() > 0);
+    _assigned_face_indices = assigned_face_indices;
+    _index = 0;
+    _assigned_face_index_start = 0;
+    _assigned_face_index_end = 0;
+
+    _aabb_max = geometry->center() + geometry->radius();
+    _aabb_min = geometry->center() - geometry->radius();
+
+    _is_leaf = false;
+    _is_leaf = true;
+}
 void Node::set_hit_and_miss_links()
 {
     if (_left) {
@@ -286,18 +301,36 @@ void Node::collect_leaves(std::vector<std::shared_ptr<Node>>& leaves)
         }
     }
 }
-BVH::BVH(std::shared_ptr<StandardGeometry>& geometry)
+BVH::BVH(std::shared_ptr<Geometry>& geometry)
 {
     std::vector<int> assigned_face_indices;
-    for (int face_index = 0; face_index < (int)geometry->_face_vertex_indices_array.size(); face_index++) {
-        assigned_face_indices.push_back(face_index);
-    }
-    _current_node_index = 0;
-    _current_assigned_face_index_offset = 0;
-    _root = std::make_shared<Node>(assigned_face_indices, geometry, _current_node_index, _current_assigned_face_index_offset);
-    _root->set_hit_and_miss_links();
+    if (geometry->type() == RTXGeometryTypeStandard) {
+        std::shared_ptr<StandardGeometry> standard = std::static_pointer_cast<StandardGeometry>(geometry);
+        for (int face_index = 0; face_index < (int)standard->_face_vertex_indices_array.size(); face_index++) {
+            assigned_face_indices.push_back(face_index);
+        }
+        _current_node_index = 0;
+        _current_assigned_face_index_offset = 0;
+        _root = std::make_shared<Node>(assigned_face_indices, standard, _current_node_index, _current_assigned_face_index_offset);
+        _root->set_hit_and_miss_links();
 
-    _num_nodes = _root->num_children() + 1;
+        _num_nodes = _root->num_children() + 1;
+        return;
+    }
+    if (geometry->type() == RTXGeometryTypeSphere) {
+        std::shared_ptr<SphereGeometry> sphere = std::static_pointer_cast<SphereGeometry>(geometry);
+        std::vector<int> assigned_face_indices;
+        for (int face_index = 0; face_index < geometry->num_faces(); face_index++) {
+            assigned_face_indices.push_back(face_index);
+        }
+        _current_node_index = 0;
+        _current_assigned_face_index_offset = 0;
+        _root = std::make_shared<Node>(assigned_face_indices, sphere);
+        _root->set_hit_and_miss_links();
+
+        _num_nodes = _root->num_children() + 1;
+        return;
+    }
 }
 int BVH::num_nodes()
 {
@@ -307,25 +340,25 @@ void BVH::serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
-    for (auto& node_obj : children) {
-        int j = node_obj->_index + offset;
+    for (auto& node : children) {
+        int pos = node->_index + offset;
 
-        RTXThreadedBVHNode node;
-        node.hit_node_index = node_obj->_hit ? node_obj->_hit->_index : -1;
-        node.miss_node_index = node_obj->_miss ? node_obj->_miss->_index : -1;
-        node.assigned_face_index_start = node_obj->_assigned_face_index_start;
-        node.assigned_face_index_end = node_obj->_assigned_face_index_end;
-        node.aabb_max.x = node_obj->_aabb_max.x;
-        node.aabb_max.y = node_obj->_aabb_max.y;
-        node.aabb_max.z = node_obj->_aabb_max.z;
-        node.aabb_min.x = node_obj->_aabb_min.x;
-        node.aabb_min.y = node_obj->_aabb_min.y;
-        node.aabb_min.z = node_obj->_aabb_min.z;
+        RTXThreadedBVHNode cuda_node;
+        cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
+        cuda_node.miss_node_index = node->_miss ? node->_miss->_index : -1;
+        cuda_node.assigned_face_index_start = node->_assigned_face_index_start;
+        cuda_node.assigned_face_index_end = node->_assigned_face_index_end;
+        cuda_node.aabb_max.x = node->_aabb_max.x;
+        cuda_node.aabb_max.y = node->_aabb_max.y;
+        cuda_node.aabb_max.z = node->_aabb_max.z;
+        cuda_node.aabb_min.x = node->_aabb_min.x;
+        cuda_node.aabb_min.y = node->_aabb_min.y;
+        cuda_node.aabb_min.z = node->_aabb_min.z;
 
-        node_array[j] = node;
+        node_array[pos] = cuda_node;
 
-        // printf("node_obj: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node_obj->_index, node_obj->_assigned_face_index_start, node_obj->_assigned_face_index_end, node_obj->_aabb_max.x, node_obj->_aabb_max.y, node_obj->_aabb_max.z, node_obj->_aabb_min.x, node_obj->_aabb_min.y, node_obj->_aabb_min.z);
-        // printf("    hit: %d miss: %d left: %d right: %d\n", (node_obj->_hit ? node_obj->_hit->_index : -1), (node_obj->_miss ? node_obj->_miss->_index : -1), (node_obj->_left ? node_obj->_left->_index : -1), (node_obj->_right ? node_obj->_right->_index : -1));
+        // printf("node: %d face_start: %d face_end: %d max: (%f, %f, %f) min: (%f, %f, %f)\n", node->_index, node->_assigned_face_index_start, node->_assigned_face_index_end, node->_aabb_max.x, node->_aabb_max.y, node->_aabb_max.z, node->_aabb_min.x, node->_aabb_min.y, node->_aabb_min.z);
+        // printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
     }
 }
 void BVH::collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves)

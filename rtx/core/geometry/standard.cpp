@@ -15,7 +15,7 @@ StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
     py::array_t<float, py::array::c_style> vertices)
 {
-    init(face_vertex_indeces, vertices, -1);
+    init(face_vertex_indeces, vertices, BVH_DEFAULT_TRIANGLES_PER_NODE);
 }
 StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
@@ -72,7 +72,7 @@ void StandardGeometry::set_bvh_max_triangles_per_node(int bvh_max_triangles_per_
 }
 int StandardGeometry::type() const
 {
-    return RTXObjectTypeStandardGeometry;
+    return RTXGeometryTypeStandard;
 }
 int StandardGeometry::num_faces() const
 {
@@ -89,7 +89,6 @@ void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int arr
         buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z };
     }
 }
-
 void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset, int vertex_index_offset) const
 {
     for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
@@ -97,24 +96,20 @@ void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_of
         buffer[j + array_offset] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
     }
 }
-std::shared_ptr<Object> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
+std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
 {
     auto geometry = std::make_shared<StandardGeometry>();
     geometry->_bvh_max_triangles_per_node = _bvh_max_triangles_per_node;
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     geometry->_vertex_array.resize(_vertex_array.size());
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int index = 0; index < _vertex_array.size(); index++) {
         auto& vertex = _vertex_array[index];
         glm::vec4f v = transformation_matrix * vertex;
         geometry->_vertex_array[index] = v;
     }
     return geometry;
-}
-bool StandardGeometry::bvh_enabled() const
-{
-    return _bvh_max_triangles_per_node > 0;
 }
 int StandardGeometry::bvh_max_triangles_per_node() const
 {

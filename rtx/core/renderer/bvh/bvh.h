@@ -1,4 +1,5 @@
 #pragma once
+#include "../../geometry/sphere.h"
 #include "../../geometry/standard.h"
 #include "../../header/array.h"
 #include "../../header/glm.h"
@@ -21,6 +22,8 @@ namespace bvh {
             std::shared_ptr<StandardGeometry>& geometry,
             int& current_node_index,
             int& current_assigned_face_index_offset);
+        Node(std::vector<int> assigned_face_indices,
+            std::shared_ptr<SphereGeometry>& geometry);
         std::shared_ptr<Node> _left;
         std::shared_ptr<Node> _right;
         std::shared_ptr<Node> _miss;
@@ -38,7 +41,7 @@ private:
     int _num_nodes;
 
 public:
-    BVH(std::shared_ptr<StandardGeometry>& geometry);
+    BVH(std::shared_ptr<Geometry>& geometry);
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
     void serialize(rtx::array<RTXThreadedBVHNode>& node_array, int offset);

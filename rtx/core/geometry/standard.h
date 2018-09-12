@@ -1,5 +1,7 @@
 #pragma once
 #include "../class/geometry.h"
+#include "../header/array.h"
+#include "../header/enum.h"
 #include "../header/glm.h"
 #include <memory>
 #include <pybind11/numpy.h>
@@ -9,7 +11,7 @@
 namespace rtx {
 class StandardGeometry : public Geometry {
 protected:
-    int _bvh_max_triangles_per_node = -1;
+    int _bvh_max_triangles_per_node = BVH_DEFAULT_TRIANGLES_PER_NODE;
     void init(pybind11::array_t<int, pybind11::array::c_style> face_vertex_indeces,
         pybind11::array_t<float, pybind11::array::c_style> vertices,
         int bvh_max_triangles_per_node);
@@ -36,8 +38,7 @@ public:
     void set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node);
     void serialize_vertices(rtx::array<RTXVertex>& array, int offset) const override;
     void serialize_faces(rtx::array<RTXFace>& array, int array_offset, int vertex_index_offset) const override;
-    std::shared_ptr<Object> transoform(glm::mat4& transformation_matrix) const override;
-    bool bvh_enabled() const override;
+    std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const override;
     int bvh_max_triangles_per_node() const override;
 };
 }

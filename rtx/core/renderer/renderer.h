@@ -1,6 +1,5 @@
 #pragma once
 #include "../class/camera.h"
-#include "../class/ray.h"
 #include "../class/scene.h"
 #include "../header/array.h"
 #include "../header/glm.h"
@@ -29,7 +28,7 @@ private:
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<RTXPixel> _cpu_render_array;
     rtx::array<RTXPixel> _cpu_render_buffer_array;
-    std::vector<int> _cpu_light_index_array;
+    std::vector<int> _cpu_light_sampling_table;
 
     // device
     RTXRay* _gpu_ray_array;
@@ -47,10 +46,8 @@ private:
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<RayTracingArguments> _rt_args;
     std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
-    std::vector<std::shared_ptr<Object>> _transformed_geometry_array;
-    std::vector<std::shared_ptr<Object>> _transformed_light_array;
+    std::vector<std::shared_ptr<Object>> _transformed_object_array;
     std::vector<std::shared_ptr<BVH>> _geometry_bvh_array;
-    std::unordered_map<int, int> _map_object_bvh;
 
     int _prev_height;
     int _prev_width;

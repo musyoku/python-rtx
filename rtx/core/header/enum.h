@@ -31,5 +31,4 @@ enum RTXCameraType {
     RTXCameraTypeOrthogonal,
 };
 
-#define SCENE_BVH_TERMINAL_NODE 255
-#define SCENE_BVH_INNER_NODE 255
+#define BVH_DEFAULT_TRIANGLES_PER_NODE 25
