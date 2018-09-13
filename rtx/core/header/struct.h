@@ -61,7 +61,7 @@ typedef struct RTXObject {
     int mapping_index;
 } RTXObject;
 
-typedef int RTXMaterialAttributeByte;
+typedef unsigned char RTXMaterialAttributeByte;
 
 typedef struct RTXEmissiveMaterialAttribute {
     float brightness;

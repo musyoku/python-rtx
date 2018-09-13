@@ -20,8 +20,8 @@ public:
     void set_material(std::shared_ptr<LayeredMaterial> material);
     void set_material(std::shared_ptr<Material> material);
     void set_mapping(std::shared_ptr<Mapping> mapping);
-    std::shared_ptr<Geometry> geometry();
-    std::shared_ptr<LayeredMaterial> material();
-    std::shared_ptr<Mapping> mapping();
+    std::shared_ptr<Geometry>& geometry();
+    std::shared_ptr<LayeredMaterial>& material();
+    std::shared_ptr<Mapping>& mapping();
 };
 }

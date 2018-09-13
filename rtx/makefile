@@ -8,7 +8,7 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/class/*.cpp) \
 		  $(wildcard ./core/geometry/*.cpp) \
 		  $(wildcard ./core/material/*.cpp) \
-		  $(wildcard ./core/light/*.cpp) \
+		  $(wildcard ./core/mapping/*.cpp) \
 		  $(wildcard ./core/camera/*.cpp) \
 		  $(wildcard ./core/renderer/bvh/*.cpp) \
 		  $(wildcard ./core/renderer/kernel/*.cu) \

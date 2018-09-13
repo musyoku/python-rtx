@@ -9,7 +9,9 @@
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
+#include "../core/mapping/solid_color.h"
 #include "../core/material/lambert.h"
+#include "../core/material/emissive.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
 #include "../core/renderer/renderer.h"
@@ -20,17 +22,17 @@ using namespace rtx;
 
 PYBIND11_MODULE(rtx, module)
 {
-    py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry");
+    py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry")
+        .def("set_scale", (void (Geometry::*)(py::tuple)) & Geometry::set_scale)
+        .def("set_position", (void (Geometry::*)(py::tuple)) & Geometry::set_position)
+        .def("set_rotation", (void (Geometry::*)(py::tuple)) & Geometry::set_rotation);
     py::class_<Material, std::shared_ptr<Material>>(module, "Material");
     py::class_<Mapping, std::shared_ptr<Mapping>>(module, "Mapping");
     py::class_<Camera, std::shared_ptr<Camera>>(module, "Camera");
 
     py::class_<Object, std::shared_ptr<Object>>(module, "Object")
         .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"))
-        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<LayeredMaterial>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"))
-        .def("set_scale", (void (Object::*)(py::tuple)) & Object::set_scale)
-        .def("set_position", (void (Object::*)(py::tuple)) & Object::set_position)
-        .def("set_rotation", (void (Object::*)(py::tuple)) & Object::set_rotation);
+        .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<LayeredMaterial>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"));
 
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<>())
@@ -48,10 +50,12 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<float, float, float>(), py::arg("width"), py::arg("height"), py::arg("depth"));
 
     py::class_<LambertMaterial, Material, std::shared_ptr<LambertMaterial>>(module, "LambertMaterial")
-        .def(py::init<py::tuple, float>(), py::arg("color"), py::arg("diffuse_reflectance"));
+        .def(py::init<float>(), py::arg("albedo"));
+    py::class_<EmissiveMaterial, Material, std::shared_ptr<EmissiveMaterial>>(module, "EmissiveMaterial")
+        .def(py::init<float>(), py::arg("brightness"));
 
-    py::class_<RectAreaLight, Light, std::shared_ptr<RectAreaLight>>(module, "RectAreaLight")
-        .def(py::init<float, float, float, py::tuple>(), py::arg("width"), py::arg("height"), py::arg("brightness"), py::arg("color"));
+    py::class_<SolidColorMapping, Mapping, std::shared_ptr<SolidColorMapping>>(module, "SolidColorMapping")
+        .def(py::init<py::tuple>(), py::arg("color"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

@@ -1,8 +1,9 @@
 #include "../rtx/core/camera/perspective.h"
 #include "../rtx/core/class/scene.h"
+#include "../rtx/core/class/object.h"
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/lambert.h"
-#include "../rtx/core/light/rect_area_light.h"
+#include "../rtx/core/mapping/solid_color.h"
 #include "../rtx/core/renderer/header/ray_tracing.h"
 #include "../rtx/core/renderer/renderer.h"
 #include "../rtx/core/renderer/arguments/ray_tracing.h"
@@ -7497,14 +7498,15 @@ void run(int num_blocks, int num_threads)
     geometry->add_vertex(glm::vec3f(-0.1757092922925949, -0.24013739824295044, 0.05167252942919731));
     geometry->set_bvh_max_triangles_per_node(50);
     float color[3] = { 1, 1, 1 };
-    auto material = std::make_shared<LambertMaterial>(color, 0.8f);
-    auto mesh = std::make_shared<Mesh>(geometry, material);
+    auto material = std::make_shared<LambertMaterial>(0.8f);
+    auto mapping = std::make_shared<SolidColorMapping>(color);
+    auto object = std::make_shared<Object>(geometry, material, mapping);
     float position[3] = { 0, -1, -1 };
-    mesh->set_position(position);
-    scene->add(mesh);
+    geometry->set_position(position);
+    scene->add(object);
 
-    auto light = std::make_shared<RectAreaLight>(1.0, 1.0, 1.0);
-    scene->add(light);
+    // auto light = std::make_shared<RectAreaLight>(1.0, 1.0, 1.0);
+    // scene->add(light);
 
     float eye[] = { 0.0f, 0.0f, 2.0f };
     float center[] = { 0.0f, 0.0f, 0.0f };

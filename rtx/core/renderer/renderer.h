@@ -23,6 +23,7 @@ private:
     rtx::array<RTXVertex> _cpu_vertex_array;
     rtx::array<RTXObject> _cpu_object_array;
     rtx::array<RTXMaterialAttributeByte> _cpu_material_attribute_byte_array;
+    rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
     rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<RTXPixel> _cpu_render_array;
     rtx::array<RTXPixel> _cpu_render_buffer_array;

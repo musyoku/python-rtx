@@ -30,15 +30,15 @@ void Object::set_mapping(std::shared_ptr<Mapping> mapping)
 {
     _mapping = mapping;
 }
-std::shared_ptr<Geometry> Object::geometry()
+std::shared_ptr<Geometry>& Object::geometry()
 {
     return _geometry;
 }
-std::shared_ptr<LayeredMaterial> Object::material()
+std::shared_ptr<LayeredMaterial>& Object::material()
 {
     return _material;
 }
-std::shared_ptr<Mapping> Object::mapping()
+std::shared_ptr<Mapping>& Object::mapping()
 {
     return _mapping;
 }

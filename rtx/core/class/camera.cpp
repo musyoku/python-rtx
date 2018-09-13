@@ -19,6 +19,10 @@ void Camera::look_at(float (&eye)[3], float (&center)[3], float (&up)[3])
         glm::vec3(up[0], up[1], up[2]));
     _updated = true;
 }
+glm::mat4 Camera::view_matrix()
+{
+    return _view_matrix;
+}
 bool Camera::updated()
 {
     return _updated;

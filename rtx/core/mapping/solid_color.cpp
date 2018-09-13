@@ -22,7 +22,7 @@ void SolidColorMapping::set_color(float (&color)[3])
     _color[1] = color[1];
     _color[2] = color[2];
 }
-int SolidColorMapping::type() const override
+int SolidColorMapping::type() const
 {
     return RTXMappingTypeSolidColor;
 }

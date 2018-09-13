@@ -8,7 +8,7 @@ SOURCES = $(wildcard ../rtx/external/gl3w/*.c) \
 		  $(wildcard ../rtx/core/class/*.cpp) \
 		  $(wildcard ../rtx/core/geometry/*.cpp) \
 		  $(wildcard ../rtx/core/material/*.cpp) \
-		  $(wildcard ../rtx/core/light/*.cpp) \
+		  $(wildcard ../rtx/core/mapping/*.cpp) \
 		  $(wildcard ../rtx/core/camera/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/*.cpp) \
 		  $(wildcard ../rtx/core/renderer/kernel/*.cu) \
