@@ -9,6 +9,7 @@ private:
 
 public:
     LambertMaterial(float albedo);
+    float albedo() const;
     int type() const override;
     int attribute_bytes() const override;
     void serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const override;

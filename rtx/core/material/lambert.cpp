@@ -8,6 +8,10 @@ LambertMaterial::LambertMaterial(float albedo)
 {
     _albedo = albedo;
 }
+float LambertMaterial::albedo() const
+{
+    return _albedo;
+}
 int LambertMaterial::type() const
 {
     return RTXMaterialTypeLambert;

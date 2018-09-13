@@ -56,7 +56,7 @@ typedef struct RTXObject {
     int geometry_type;
     int num_material_layers;
     RTXLayeredMaterialTypes layerd_material_types;
-    int material_attribute_byte_offset;
+    int material_attribute_byte_array_offset;
     int mapping_type;
     int mapping_index;
 } RTXObject;

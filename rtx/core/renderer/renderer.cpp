@@ -4,6 +4,8 @@
 #include "../geometry/sphere.h"
 #include "../geometry/standard.h"
 #include "../header/enum.h"
+#include "../material/emissive.h"
+#include "../material/lambert.h"
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -114,7 +116,7 @@ void Renderer::serialize_objects()
     }
     _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_bytes / sizeof(RTXMaterialAttributeByte));
 
-    int material_attribute_byte_offset = 0;
+    int material_attribute_byte_array_offset = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
@@ -129,14 +131,36 @@ void Renderer::serialize_objects()
         cuda_object.geometry_type = geometry->type();
         cuda_object.num_material_layers = material->num_layers();
         cuda_object.layerd_material_types = material->types();
-        cuda_object.material_attribute_byte_offset = material_attribute_byte_offset;
+        cuda_object.material_attribute_byte_array_offset = material_attribute_byte_array_offset;
         _cpu_object_array[object_index] = cuda_object;
 
-        material->serialize_attributes(_cpu_material_attribute_byte_array, material_attribute_byte_offset);
-        material_attribute_byte_offset += material->attribute_bytes();
+        material->serialize_attributes(_cpu_material_attribute_byte_array, material_attribute_byte_array_offset);
+        material_attribute_byte_array_offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
     }
     // for (int object_index = 0; object_index < num_objects; object_index++) {
     //     std::cout << "vertex_offset: " << _object_vertex_offset_array[object_index] << " face_offset: " << _face_offset_array[object_index] << std::endl;
+    // }
+
+    // material_attribute_byte_array_offset = 0;
+    // RTXMaterialAttributeByte* pointer = _cpu_material_attribute_byte_array.data();
+    // for (int object_index = 0; object_index < num_objects; object_index++) {
+    //     auto& object = _transformed_object_array.at(object_index);
+    //     auto& layered_material = object->material();
+    //     for (int layer_index = 0; layer_index < layered_material->num_layers(); layer_index++) {
+    //         auto& material = layered_material->_material_array[layer_index];
+    //         if (material->type() == RTXMaterialTypeLambert) {
+    //             LambertMaterial* lambert = static_cast<LambertMaterial*>(material.get());
+    //             RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&pointer[material_attribute_byte_array_offset])[0];
+    //             printf("Lambert: %f == %f\n", attr.albedo, lambert->albedo());
+    //         }
+    //         if (material->type() == RTXMaterialTypeEmissive) {
+    //             EmissiveMaterial* emissive = static_cast<EmissiveMaterial*>(material.get());
+    //             RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&pointer[material_attribute_byte_array_offset])[0];
+    //             printf("Emissive: %f == %f\n", attr.brightness, emissive->brightness());
+    //         }
+    //         material_attribute_byte_array_offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
+    //         printf("offset: %d\n", material_attribute_byte_array_offset);
+    //     }
     // }
 }
 void Renderer::construct_bvh()
@@ -263,19 +287,19 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_free((void**)&_gpu_object_array);
         rtx_cuda_free((void**)&_gpu_material_attribute_byte_array);
         rtx_cuda_free((void**)&_gpu_light_index_array);
-        rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
-        rtx_cuda_malloc((void**)&_gpu_vertex_array, sizeof(RTXVertex) * _cpu_vertex_array.size());
-        rtx_cuda_malloc((void**)&_gpu_object_array, sizeof(RTXObject) * _cpu_object_array.size());
-        rtx_cuda_malloc((void**)&_gpu_material_attribute_byte_array, sizeof(RTXMaterialAttributeByte) * _cpu_material_attribute_byte_array.size());
+        rtx_cuda_malloc((void**)&_gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.bytes());
+        rtx_cuda_malloc((void**)&_gpu_vertex_array, _cpu_vertex_array.bytes());
+        rtx_cuda_malloc((void**)&_gpu_object_array, _cpu_object_array.bytes());
+        rtx_cuda_malloc((void**)&_gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.bytes());
         if (_cpu_light_sampling_table.size() > 0) {
             rtx_cuda_malloc((void**)&_gpu_light_index_array, sizeof(int) * _cpu_light_sampling_table.size());
         }
     }
     if (should_transfer_to_gpu) {
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), sizeof(RTXFace) * _cpu_face_vertex_indices_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), sizeof(RTXVertex) * _cpu_vertex_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), sizeof(RTXObject) * _cpu_object_array.size());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_material_attribute_byte_array, (void*)_cpu_material_attribute_byte_array.data(), sizeof(RTXMaterialAttributeByte) * _cpu_material_attribute_byte_array.size());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), _cpu_face_vertex_indices_array.bytes());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), _cpu_vertex_array.bytes());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_object_array, (void*)_cpu_object_array.data(), _cpu_object_array.bytes());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_material_attribute_byte_array, (void*)_cpu_material_attribute_byte_array.data(), _cpu_material_attribute_byte_array.bytes());
         if (_cpu_light_sampling_table.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_light_index_array, (void*)_cpu_light_sampling_table.data(), sizeof(int) * _cpu_light_sampling_table.size());
         }
@@ -290,9 +314,9 @@ void Renderer::render_objects(int height, int width)
         serialize_rays(height, width);
         rtx_cuda_free((void**)&_gpu_ray_array);
         rtx_cuda_free((void**)&_gpu_render_array);
-        rtx_cuda_malloc((void**)&_gpu_ray_array, sizeof(RTXRay) * num_rays);
-        rtx_cuda_malloc((void**)&_gpu_render_array, sizeof(RTXPixel) * num_rays);
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_array, (void*)_cpu_ray_array.data(), sizeof(RTXRay) * _cpu_ray_array.size());
+        rtx_cuda_malloc((void**)&_gpu_ray_array, _cpu_ray_array.bytes());
+        rtx_cuda_malloc((void**)&_gpu_render_array, _cpu_render_array.bytes());
+        rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_array, (void*)_cpu_ray_array.data(), _cpu_ray_array.bytes());
         _cpu_render_array = rtx::array<RTXPixel>(num_rays);
         _cpu_render_buffer_array = rtx::array<RTXPixel>(height * width * 3);
         _prev_height = height;
@@ -323,7 +347,7 @@ void Renderer::render_objects(int height, int width)
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("kernel: %lf msec\n", elapsed);
 
-    rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, sizeof(RTXPixel) * num_rays);
+    rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, _cpu_render_array.bytes());
 
     _scene->set_updated(false);
     _camera->set_updated(false);

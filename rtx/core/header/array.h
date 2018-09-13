@@ -85,6 +85,10 @@ public:
     {
         return _size;
     }
+    size_t bytes() const
+    {
+        return sizeof(T) * _size;
+    }
     T* data()
     {
         return _array;

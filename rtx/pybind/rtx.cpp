@@ -10,8 +10,8 @@
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
 #include "../core/mapping/solid_color.h"
-#include "../core/material/lambert.h"
 #include "../core/material/emissive.h"
+#include "../core/material/lambert.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
 #include "../core/renderer/renderer.h"
@@ -53,6 +53,10 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<float>(), py::arg("albedo"));
     py::class_<EmissiveMaterial, Material, std::shared_ptr<EmissiveMaterial>>(module, "EmissiveMaterial")
         .def(py::init<float>(), py::arg("brightness"));
+    py::class_<LayeredMaterial, std::shared_ptr<LayeredMaterial>>(module, "LayeredMaterial")
+        .def(py::init<std::shared_ptr<Material>>())
+        .def(py::init<std::shared_ptr<Material>, std::shared_ptr<Material>>())
+        .def(py::init<std::shared_ptr<Material>, std::shared_ptr<Material>, std::shared_ptr<Material>>());
 
     py::class_<SolidColorMapping, Mapping, std::shared_ptr<SolidColorMapping>>(module, "SolidColorMapping")
         .def(py::init<py::tuple>(), py::arg("color"));

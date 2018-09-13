@@ -9,6 +9,7 @@ private:
 
 public:
     EmissiveMaterial(float brightness);
+    float brightness() const;
     int type() const override;
     int attribute_bytes() const override;
     void serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const override;

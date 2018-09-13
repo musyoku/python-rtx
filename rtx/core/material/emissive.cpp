@@ -8,6 +8,10 @@ EmissiveMaterial::EmissiveMaterial(float brightness)
 {
     _brightness = brightness;
 }
+float EmissiveMaterial::brightness() const
+{
+    return _brightness;
+}
 int EmissiveMaterial::type() const
 {
     return RTXMaterialTypeEmissive;
