@@ -70,12 +70,12 @@ teapot = rtx.Object(geometry, material, mapping)
 scene.add(teapot)
 
 # place ball
-geometry = rtx.SphereGeometry(1.0)
-geometry.set_position((0, 0, 0))
-material = rtx.LambertMaterial(1.0)
-mapping = rtx.SolidColorMapping((1, 1, 1))
-sphere = rtx.Object(geometry, material, mapping)
-scene.add(sphere)
+# geometry = rtx.SphereGeometry(1.0)
+# geometry.set_position((0, 0, 0))
+# material = rtx.LambertMaterial(1.0)
+# mapping = rtx.SolidColorMapping((1, 1, 1))
+# sphere = rtx.Object(geometry, material, mapping)
+# scene.add(sphere)
 
 # place light
 geometry = rtx.PlainGeometry(5.0, 5.0)
