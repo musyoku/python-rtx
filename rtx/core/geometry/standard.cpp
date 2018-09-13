@@ -1,6 +1,6 @@
 #include "standard.h"
-#include "../header/glm.h"
 #include "../header/enum.h"
+#include "../header/glm.h"
 #include <cassert>
 #include <cfloat>
 #include <iostream>
@@ -9,11 +9,13 @@
 namespace rtx {
 namespace py = pybind11;
 StandardGeometry::StandardGeometry()
+    : Geometry()
 {
 }
 StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
     py::array_t<float, py::array::c_style> vertices)
+    : Geometry()
 {
     init(face_vertex_indeces, vertices, BVH_DEFAULT_TRIANGLES_PER_NODE);
 }
@@ -21,6 +23,7 @@ StandardGeometry::StandardGeometry(
     py::array_t<int, py::array::c_style> face_vertex_indeces,
     py::array_t<float, py::array::c_style> vertices,
     int bvh_max_triangles_per_node)
+    : Geometry()
 {
     init(face_vertex_indeces, vertices, bvh_max_triangles_per_node);
 }
@@ -45,16 +48,13 @@ void StandardGeometry::init(
     auto faces = np_face_vertex_indeces.mutable_unchecked<2>();
     auto vertices = np_vertices.mutable_unchecked<2>();
     for (int n = 0; n < num_faces; n++) {
-        glm::vec3i face = glm::vec3i(faces(n, 0), faces(n, 1), faces(n, 2));
-        _face_vertex_indices_array.emplace_back(face);
+        _face_vertex_indices_array.emplace_back(glm::vec3i(faces(n, 0), faces(n, 1), faces(n, 2)));
     }
     for (int n = 0; n < num_vertices; n++) {
         if (ndim_vertex == 3) {
-            glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), 1.0f);
-            _vertex_array.emplace_back(vertex);
+            _vertex_array.emplace_back(glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), 1.0f));
         } else {
-            glm::vec4f vertex = glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3));
-            _vertex_array.emplace_back(vertex);
+            _vertex_array.emplace_back(glm::vec4f(vertices(n, 0), vertices(n, 1), vertices(n, 2), vertices(n, 3)));
         }
     }
 }
@@ -86,14 +86,14 @@ void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int arr
 {
     for (int j = 0; j < _vertex_array.size(); j++) {
         auto& vertex = _vertex_array[j];
-        buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z };
+        buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z, 1.0f };
     }
 }
-void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset, int vertex_index_offset) const
+void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset) const
 {
     for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
         auto& face = _face_vertex_indices_array[j];
-        buffer[j + array_offset] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
+        buffer[j + array_offset] = { face[0], face[1], face[2], -1 };
     }
 }
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const
@@ -103,7 +103,7 @@ std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation
     geometry->_face_vertex_indices_array = _face_vertex_indices_array;
     geometry->_vertex_array.resize(_vertex_array.size());
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int index = 0; index < _vertex_array.size(); index++) {
         auto& vertex = _vertex_array[index];
         glm::vec4f v = transformation_matrix * vertex;

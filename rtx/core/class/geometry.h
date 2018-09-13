@@ -14,6 +14,7 @@ protected:
     glm::mat4 _model_matrix;
 
 public:
+    Geometry();
     void set_scale(pybind11::tuple scale);
     void set_scale(float (&scale)[3]);
     void set_position(pybind11::tuple position);
@@ -26,7 +27,7 @@ public:
     virtual int num_faces() const = 0;
     virtual int num_vertices() const = 0;
     virtual void serialize_vertices(rtx::array<RTXVertex>& array, int offset) const = 0;
-    virtual void serialize_faces(rtx::array<RTXFace>& array, int array_offset, int vertex_index_offset) const = 0;
+    virtual void serialize_faces(rtx::array<RTXFace>& array, int array_offset) const = 0;
     virtual std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const = 0;
 };
 }

@@ -4,6 +4,14 @@
 
 namespace rtx {
 namespace py = pybind11;
+
+Geometry::Geometry()
+{
+    _position = glm::vec3f(0.0f);
+    _rotation_rad = glm::vec3f(0.0f);
+    _scale = glm::vec3f(1.0f);
+    update_model_matrix();
+}
 void Geometry::set_scale(py::tuple scale)
 {
     _scale[0] = scale[0].cast<float>();

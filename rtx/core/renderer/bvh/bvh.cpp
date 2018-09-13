@@ -243,7 +243,6 @@ Node::Node(std::vector<int> assigned_face_indices,
     _aabb_max = geometry->center() + geometry->radius();
     _aabb_min = geometry->center() - geometry->radius();
 
-    _is_leaf = false;
     _is_leaf = true;
 }
 void Node::set_hit_and_miss_links()
@@ -362,9 +361,7 @@ void BVH::serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serial
         // printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
     }
 }
-void BVH::serialize_faces(rtx::array<RTXFace>& face_vertex_indices_array,
-    int face_index_offset,
-    int vertex_index_offset)
+void BVH::serialize_faces(rtx::array<RTXFace>& buffer, int serialization_offset)
 {
     std::vector<std::shared_ptr<bvh::Node>> leaves;
     collect_leaves(leaves);
@@ -381,12 +378,11 @@ void BVH::serialize_faces(rtx::array<RTXFace>& face_vertex_indices_array,
         //     auto& face = face_vertex_indices_array[face_index];
         //     // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
         // }
-        // printf("============================================================\n");
         for (auto& node : leaves) {
-            int pos = node->_assigned_face_index_start + face_index_offset;
+            int pos = node->_assigned_face_index_start + serialization_offset;
             for (int face_index : node->_assigned_face_indices) {
                 glm::vec3i face = face_vertex_indices_array[face_index];
-                face_vertex_indices_array[pos] = { face[0] + vertex_index_offset, face[1] + vertex_index_offset, face[2] + vertex_index_offset };
+                buffer[pos] = { face[0], face[1], face[2] };
                 pos++;
                 // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
             }
@@ -394,11 +390,10 @@ void BVH::serialize_faces(rtx::array<RTXFace>& face_vertex_indices_array,
         return;
     }
     if (geometry->type() == RTXGeometryTypeSphere) {
-        std::shared_ptr<SphereGeometry> sphere = std::static_pointer_cast<SphereGeometry>(geometry);
-        int pos = face_index_offset;
+        int pos = serialization_offset;
         // 0 for center
         // 1 for radius
-        face_vertex_indices_array[pos] = { 0 + vertex_index_offset, 1 + vertex_index_offset, -1 };
+        buffer[pos] = { 0, 1, -1 };
         return;
     }
 }

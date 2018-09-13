@@ -38,7 +38,7 @@ private:
     RTXThreadedBVH* _gpu_threaded_bvh_array;
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
     RTXPixel* _gpu_render_array;
-    int* _gpu_light_index_array;
+    int* _gpu_light_sampling_table;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;

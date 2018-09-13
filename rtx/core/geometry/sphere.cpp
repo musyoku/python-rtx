@@ -3,6 +3,7 @@
 
 namespace rtx {
 SphereGeometry::SphereGeometry(float radius)
+    : Geometry()
 {
     _center = glm::vec4f(0.0f, 0.0f, 0.0f, 1.0f);
     _radius = glm::vec4f(radius, radius, radius, 0.0f);
@@ -33,9 +34,9 @@ void SphereGeometry::serialize_vertices(rtx::array<RTXVertex>& array, int offset
     array[0 + offset] = { _center.x, _center.y, _center.z };
     array[1 + offset] = { _radius.x, _radius.y, _radius.z };
 }
-void SphereGeometry::serialize_faces(rtx::array<RTXFace>& array, int array_offset, int vertex_index_offset) const
+void SphereGeometry::serialize_faces(rtx::array<RTXFace>& array, int array_offset) const
 {
-    array[0 + array_offset] = { 0 + vertex_index_offset, 1 + vertex_index_offset, -1 };
+    array[0 + array_offset] = { 0, 1, -1 };
 }
 std::shared_ptr<Geometry> SphereGeometry::transoform(glm::mat4& transformation_matrix) const
 {

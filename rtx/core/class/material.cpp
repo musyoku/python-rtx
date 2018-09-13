@@ -58,6 +58,7 @@ RTXLayeredMaterialTypes LayeredMaterial::types()
 void LayeredMaterial::serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const
 {
     for (auto& material : _material_array) {
+        assert(offset < array.size());
         material->serialize_attributes(array, offset);
         offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
     }

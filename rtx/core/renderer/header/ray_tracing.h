@@ -6,9 +6,7 @@ void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t siz
 void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size);
 void rtx_cuda_free(void** array);
 void cuda_device_reset();
-size_t rtx_curand_state_bytes();
 
-void rtx_cuda_init_curand_state(void*& states, int num_threads);
 void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,

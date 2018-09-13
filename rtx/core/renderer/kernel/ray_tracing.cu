@@ -30,12 +30,6 @@ texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
 texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_texture;
 
-__global__ void kernel_curand_init_state(void* states)
-{
-    int thread_id = threadIdx.x;
-    curandStateXORWOW_t* state = &((curandStateXORWOW_t*)states)[thread_id];
-    curand_init(0, blockIdx.x * blockDim.x + threadIdx.x, 0, state);
-}
 __global__ void global_memory_kernel(
     const int ray_array_size,
     const int face_vertex_index_array_size,
@@ -71,23 +65,23 @@ __global__ void global_memory_kernel(
     // RTXThreadedBVHNode* shared_threaded_bvh_node_array = (RTXThreadedBVHNode*)&shared_memory[offset];
     // offset += sizeof(RTXThreadedBVHNode) / sizeof(int) * threaded_bvh_node_array_size;
 
-    // if (thread_id == 0) {
-    //     for (int k = 0; k < object_array_size; k++) {
-    //         shared_object_array[k] = global_object_array[k];
-    //     }
-    //     for (int k = 0; k < light_attribute_array_size; k++) {
-    //         shared_light_attribute_array[k] = global_light_attribute_array[k];
-    //     }
-    //     for (int k = 0; k < threaded_bvh_array_size; k++) {
-    //         shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
-    //     }
-    //     for (int k = 0; k < light_sampling_table_size; k++) {
-    //         shared_light_index_array[k] = global_light_index_array[k];
-    //     }
-    //     // for (int k = 0; k < threaded_bvh_node_array_size; k++) {
-    //     //     shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
-    //     // }
-    // }
+    if (thread_id == 0) {
+        for (int k = 0; k < object_array_size; k++) {
+            shared_object_array[k] = global_object_array[k];
+        }
+        for (int k = 0; k < material_attribute_byte_array_size; k++) {
+            shared_material_attribute_byte_array[k] = global_material_attribute_byte_array[k];
+        }
+        for (int k = 0; k < threaded_bvh_array_size; k++) {
+            shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
+        }
+        for (int k = 0; k < light_sampling_table_size; k++) {
+            shared_light_index_array[k] = global_light_index_array[k];
+        }
+        // for (int k = 0; k < threaded_bvh_node_array_size; k++) {
+        //     shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
+        // }
+    }
     __syncthreads();
 
     // if (thread_id == 0) {
@@ -226,9 +220,9 @@ __global__ void global_memory_kernel(
                             int4 face = tex1Dfetch(face_vertex_index_texture, index);
                             // RTXFace face = global_face_vertex_index_array[index];
 
-                            float4 va = tex1Dfetch(vertex_texture, face.x);
-                            float4 vb = tex1Dfetch(vertex_texture, face.y);
-                            float4 vc = tex1Dfetch(vertex_texture, face.z);
+                            float4 va = tex1Dfetch(vertex_texture, face.x + object.vertex_index_offset);
+                            float4 vb = tex1Dfetch(vertex_texture, face.y + object.vertex_index_offset);
+                            float4 vc = tex1Dfetch(vertex_texture, face.z + object.vertex_index_offset);
                             // RTXVector4f va = global_vertex_array[face.a];
                             // RTXVector4f vb = global_vertex_array[face.b];
                             // RTXVector4f vc = global_vertex_array[face.c];
@@ -306,12 +300,17 @@ __global__ void global_memory_kernel(
                             hit_face_normal.y = s.y;
                             hit_face_normal.z = s.z;
 
-                            did_hit_object = true;
-                            did_hit_light = false;
-
-                            hit_color.r = 1.0f;
-                            hit_color.g = 1.0f;
-                            hit_color.b = 1.0f;
+                            int material_type = object.layerd_material_types.outside;
+                            if (material_type == RTXMaterialTypeLambert) {
+                                RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
+                                did_hit_light = true;
+                            } else if (material_type == RTXMaterialTypeEmissive) {
+                                RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
+                                did_hit_light = true;
+                            }
+                            hit_color.r = 0.9f;
+                            hit_color.g = 0.9f;
+                            hit_color.b = 0.9f;
                         }
                     }
 
@@ -797,22 +796,6 @@ void cuda_device_reset()
 {
     cudaDeviceReset();
 }
-size_t rtx_curand_state_bytes()
-{
-    return sizeof(curandStateXORWOW_t);
-}
-void rtx_cuda_init_curand_state(void*& states, int num_threads)
-{
-    kernel_curand_init_state<<<1, num_threads>>>(states);
-    cudaError_t status = cudaGetLastError();
-    if (status != 0) {
-        fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-    }
-    cudaError_t error = cudaThreadSynchronize();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-    }
-}
 void rtx_cuda_render(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
@@ -901,23 +884,29 @@ void rtx_cuda_render(
         }
 
     } else {
-        // shared_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
-        //     gpu_ray_array, ray_array_size,
-        //     gpu_face_vertex_index_array, face_vertex_index_array_size,
-        //     gpu_vertex_array, vertex_array_size,
-        //     gpu_object_face_count_array, object_face_count_array_size,
-        //     gpu_object_face_offset_array, object_face_offset_array_size,
-        //     gpu_object_vertex_count_array, object_vertex_count_array_size,
-        //     gpu_object_vertex_offset_array, object_vertex_offset_array_size,
-        //     gpu_object_geometry_attributes_array, object_geometry_attributes_array_size,
-        //     gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
-        //     gpu_threaded_bvh_num_nodes_array, threaded_bvh_num_nodes_array_size,
-        //     gpu_threaded_bvh_index_offset_array, threaded_bvh_index_offset_array_size,
-        //     gpu_threaded_bvh_aabb_array, threaded_bvh_aabb_array_size,
-        //     gpu_render_array, render_array_size,
-        //     num_rays,
-        //     num_rays_per_thread,
-        //     max_bounce);
+        cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
+        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
+        cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+
+        global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
+            ray_array_size,
+            face_vertex_index_array_size,
+            vertex_array_size,
+            gpu_object_array, object_array_size,
+            gpu_material_attribute_byte_array, material_attribute_byte_array_size,
+            gpu_threaded_bvh_array, threaded_bvh_array_size,
+            threaded_bvh_node_array_size,
+            gpu_light_sampling_table, light_sampling_table_size,
+            gpu_render_array,
+            num_rays_per_thread,
+            max_bounce,
+            curand_seed);
+
+        cudaUnbindTexture(ray_texture);
+        cudaUnbindTexture(face_vertex_index_texture);
+        cudaUnbindTexture(vertex_texture);
+        cudaUnbindTexture(threaded_bvh_node_texture);
     }
 
     // num_rays_per_thread = 1;
