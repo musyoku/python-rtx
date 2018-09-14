@@ -150,9 +150,12 @@ __global__ void global_memory_kernel(
         reflection_decay.b = 1.0f;
 
         bool did_hit_light = false;
-
+        bool did_hit_object = false;
+        
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
+            did_hit_light = false;
+            did_hit_object = false;
 
             for (int object_index = 0; object_index < object_array_size; object_index++) {
                 RTXObject object = shared_object_array[object_index];
@@ -303,9 +306,11 @@ __global__ void global_memory_kernel(
                             if (material_type == RTXMaterialTypeLambert) {
                                 RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
                                 did_hit_light = false;
+                                did_hit_object = true;
                             } else if (material_type == RTXMaterialTypeEmissive) {
                                 RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
                                 did_hit_light = true;
+                                did_hit_object = false;
                             }
                             hit_color.r = 0.9f;
                             hit_color.g = 0.9f;
@@ -328,36 +333,39 @@ __global__ void global_memory_kernel(
                 break;
             }
 
-            ray.origin.x = hit_point.x;
-            ray.origin.y = hit_point.y;
-            ray.origin.z = hit_point.z;
+            if(did_hit_object){
 
-            // diffuse reflection
-            float diffuese_x = curand_normal(&state);
-            float diffuese_y = curand_normal(&state);
-            float diffuese_z = curand_normal(&state);
-            float norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
-            diffuese_x /= norm;
-            diffuese_y /= norm;
-            diffuese_z /= norm;
+                ray.origin.x = hit_point.x;
+                ray.origin.y = hit_point.y;
+                ray.origin.z = hit_point.z;
 
-            float dot = hit_face_normal.x * diffuese_x + hit_face_normal.y * diffuese_y + hit_face_normal.z * diffuese_z;
-            if (dot < 0.0f) {
-                diffuese_x = -diffuese_x;
-                diffuese_y = -diffuese_y;
-                diffuese_z = -diffuese_z;
+                // diffuse reflection
+                float diffuese_x = curand_normal(&state);
+                float diffuese_y = curand_normal(&state);
+                float diffuese_z = curand_normal(&state);
+                float norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
+                diffuese_x /= norm;
+                diffuese_y /= norm;
+                diffuese_z /= norm;
+
+                float dot = hit_face_normal.x * diffuese_x + hit_face_normal.y * diffuese_y + hit_face_normal.z * diffuese_z;
+                if (dot < 0.0f) {
+                    diffuese_x = -diffuese_x;
+                    diffuese_y = -diffuese_y;
+                    diffuese_z = -diffuese_z;
+                }
+                ray.direction.x = diffuese_x;
+                ray.direction.y = diffuese_y;
+                ray.direction.z = diffuese_z;
+
+                ray_direction_inv.x = 1.0f / ray.direction.x;
+                ray_direction_inv.y = 1.0f / ray.direction.y;
+                ray_direction_inv.z = 1.0f / ray.direction.z;
+
+                reflection_decay.r *= hit_color.r;
+                reflection_decay.g *= hit_color.g;
+                reflection_decay.b *= hit_color.b;
             }
-            ray.direction.x = diffuese_x;
-            ray.direction.y = diffuese_y;
-            ray.direction.z = diffuese_z;
-
-            ray_direction_inv.x = 1.0f / ray.direction.x;
-            ray_direction_inv.y = 1.0f / ray.direction.y;
-            ray_direction_inv.z = 1.0f / ray.direction.z;
-
-            reflection_decay.r *= hit_color.r;
-            reflection_decay.g *= hit_color.g;
-            reflection_decay.b *= hit_color.b;
         }
 
         if (did_hit_light == false) {
