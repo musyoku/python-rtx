@@ -62,10 +62,19 @@ void Geometry::update_model_matrix()
     _model_matrix = glm::rotate(_model_matrix, _rotation_rad[1], glm::vec3(0.0f, 1.0f, 0.0f));
     _model_matrix = glm::rotate(_model_matrix, _rotation_rad[2], glm::vec3(0.0f, 0.0f, 1.0f));
     _model_matrix = glm::scale(_model_matrix, _scale);
+    _updated = true;
 }
 glm::mat4f Geometry::model_matrix()
 {
     return _model_matrix;
+}
+bool Geometry::updated()
+{
+    return _updated;
+}
+void Geometry::set_updated(bool updated)
+{
+    _updated = updated;
 }
 int Geometry::bvh_max_triangles_per_node() const
 {

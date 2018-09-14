@@ -12,6 +12,7 @@ protected:
     glm::vec3f _rotation_rad;
     glm::vec3f _scale;
     glm::mat4 _model_matrix;
+    bool _updated;
 
 public:
     Geometry();
@@ -21,6 +22,8 @@ public:
     void set_position(float (&position)[3]);
     void set_rotation(pybind11::tuple rotation_rad);
     void set_rotation(float (&rotation)[3]);
+    bool updated();
+    void set_updated(bool updated);
     glm::mat4f model_matrix();
     virtual int bvh_max_triangles_per_node() const;
     virtual int type() const = 0;

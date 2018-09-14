@@ -8,11 +8,22 @@ void Scene::add(std::shared_ptr<Object> object)
 }
 bool Scene::updated()
 {
-    return _updated;
+    if (_updated) {
+        return true;
+    }
+    for (auto& object : _object_array) {
+        if (object->geometry()->updated()) {
+            return true;
+        }
+    }
+    return false;
 }
 void Scene::set_updated(bool updated)
 {
     _updated = updated;
+    for (auto& object : _object_array) {
+        object->geometry()->set_updated(updated);
+    }
 }
 
 int Scene::num_triangles()
