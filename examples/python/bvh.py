@@ -70,12 +70,12 @@ teapot = rtx.Object(geometry, material, mapping)
 scene.add(teapot)
 
 # place ball
-# geometry = rtx.SphereGeometry(1.0)
-# geometry.set_position((0, 0, 0))
-# material = rtx.LambertMaterial(1.0)
-# mapping = rtx.SolidColorMapping((1, 1, 1))
-# sphere = rtx.Object(geometry, material, mapping)
-# scene.add(sphere)
+geometry = rtx.SphereGeometry(1.0)
+geometry.set_position((0, 0, 0))
+material = rtx.LambertMaterial(1.0)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+sphere = rtx.Object(geometry, material, mapping)
+scene.add(sphere)
 
 # place light
 geometry = rtx.PlainGeometry(5.0, 5.0)
@@ -88,8 +88,8 @@ scene.add(rect_area_light)
 
 print("#triangles", scene.num_triangles())
 
-screen_width = 512
-screen_height = 512
+screen_width = 32
+screen_height = 32
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 32
@@ -119,7 +119,7 @@ start = time.time()
 eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
 camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))
 
-total_iterations = 100
+total_iterations = 20
 for n in range(total_iterations):
     eye = (radius * math.sin(camera_rad), 0.0, radius * math.cos(camera_rad))
     # camera.look_at(eye=eye, center=(0, 0, 0), up=(0, 1, 0))

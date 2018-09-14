@@ -7522,13 +7522,13 @@ void run(int num_blocks, int num_threads)
     rt_args->set_max_bounce(4);
     auto render = std::make_shared<Renderer>();
 
-    int width = 512;
-    int height = 512;
+    int width = 16;
+    int height = 16;
     int channels = 3;
     unsigned char* pixels = new unsigned char[height * width * channels];
     render->render(scene, camera, rt_args, cuda_args, pixels, height, width, channels, num_blocks, num_threads);
     auto start = std::chrono::system_clock::now();
-    int repeat = 10;
+    int repeat = 1;
     for (int i = 0; i < repeat; i++) {
         float eye[] = { 0.0f, 0.0f, 2.0f };
         render->render(scene, camera, rt_args, cuda_args, pixels, height, width, channels, num_blocks, num_threads);

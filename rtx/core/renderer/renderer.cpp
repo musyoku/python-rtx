@@ -337,6 +337,9 @@ void Renderer::render_objects(int height, int width)
     // Ray
     if (should_update_ray) {
         _cpu_render_array = rtx::array<RTXPixel>(num_rays);
+        for (int n = 0; n < num_rays; n++) {
+            _cpu_render_array[n] = { -1.0f, -1.0f, -1.0f, -1.0f };
+        }
         _cpu_render_buffer_array = rtx::array<RTXPixel>(height * width * 3);
         serialize_rays(height, width);
         rtx_cuda_free((void**)&_gpu_ray_array);
