@@ -3,7 +3,7 @@
 #include "../../geometry/standard.h"
 #include "../../header/array.h"
 #include "../../header/glm.h"
-#include "../header/ray_tracing.h"
+#include "../header/cuda.h"
 #include <memory>
 #include <vector>
 

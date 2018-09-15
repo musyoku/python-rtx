@@ -6,6 +6,7 @@
 #include "../header/enum.h"
 #include "../material/emissive.h"
 #include "../material/lambert.h"
+#include "header/cuda.h"
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -107,10 +108,13 @@ void Renderer::serialize_objects()
 
     int total_material_bytes = 0;
     int num_geometries = 0;
-    int num_lights = 0;
+    _cpu_light_sampling_table = std::vector<int>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& material = object->material();
+        if(material->is_emissive()){
+            _cpu_light_sampling_table.push_back(object_index);
+        }
         total_material_bytes += material->attribute_bytes();
     }
     _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_bytes / sizeof(RTXMaterialAttributeByte));
@@ -356,7 +360,7 @@ void Renderer::render_objects(int height, int width)
     printf("preprocessing: %lf msec\n", elapsed);
 
     start = std::chrono::system_clock::now();
-    rtx_cuda_render(
+    rtx_cuda_launch_standard_kernel(
         _gpu_ray_array, _cpu_ray_array.size(),
         _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
         _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -396,9 +400,6 @@ void Renderer::render_objects(int height, int width)
             for (int m = 0; m < num_rays_per_pixel; m++) {
                 int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
                 RTXPixel pixel = _cpu_render_array[index];
-                if (pixel.r < 0.0f) {
-                    continue;
-                }
                 pixel_buffer.r += pixel.r / float(num_rays_per_pixel);
                 pixel_buffer.g += pixel.g / float(num_rays_per_pixel);
                 pixel_buffer.b += pixel.b / float(num_rays_per_pixel);

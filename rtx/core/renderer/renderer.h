@@ -7,7 +7,7 @@
 #include "arguments/cuda_kernel.h"
 #include "arguments/ray_tracing.h"
 #include "bvh/bvh.h"
-#include "header/ray_tracing.h"
+#include "header/cuda.h"
 #include <array>
 #include <map>
 #include <memory>

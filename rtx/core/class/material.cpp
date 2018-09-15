@@ -1,4 +1,5 @@
 #include "material.h"
+#include "../header/enum.h"
 
 namespace rtx {
 LayeredMaterial::LayeredMaterial(std::shared_ptr<Material> material)
@@ -62,5 +63,9 @@ void LayeredMaterial::serialize_attributes(rtx::array<RTXMaterialAttributeByte>&
         material->serialize_attributes(array, offset);
         offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
     }
+}
+bool LayeredMaterial::is_emissive()
+{
+    return _material_array[0]->type() == RTXMaterialTypeEmissive;
 }
 }

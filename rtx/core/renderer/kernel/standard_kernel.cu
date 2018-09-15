@@ -1,14 +1,11 @@
 #include "../../header/enum.h"
-#include "../header/ray_tracing.h"
+#include "../header/cuda.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <float.h>
 #include <stdio.h>
 #include <time.h>
-
-#define THREADED_BVH_TERMINAL_NODE -1
-#define THREADED_BVH_INNER_NODE -1
 
 typedef struct CUDARay {
     float4 direction;
@@ -38,7 +35,7 @@ __global__ void global_memory_kernel(
     const RTXMaterialAttributeByte* global_material_attribute_byte_array, const int material_attribute_byte_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const int threaded_bvh_node_array_size,
-    const int* global_light_index_array, const int light_sampling_table_size,
+    const int* global_light_sampling_table, const int light_sampling_table_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -47,7 +44,7 @@ __global__ void global_memory_kernel(
     extern __shared__ unsigned char shared_memory[];
     int thread_id = threadIdx.x;
     curandStateXORWOW_t state;
-    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, curand_seed, &state);
+    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
     int offset = 0;
     RTXObject* shared_object_array = (RTXObject*)&shared_memory[offset];
@@ -76,7 +73,7 @@ __global__ void global_memory_kernel(
             shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
         }
         for (int k = 0; k < light_sampling_table_size; k++) {
-            shared_light_index_array[k] = global_light_index_array[k];
+            shared_light_index_array[k] = global_light_sampling_table[k];
         }
         // for (int k = 0; k < threaded_bvh_node_array_size; k++) {
         //     shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
@@ -98,7 +95,7 @@ __global__ void global_memory_kernel(
     //     //     }
     //     // }
     //     for (int i = 0; i < light_sampling_table_size; i++) {
-    //         if (shared_light_index_array[i] != global_light_index_array[i]) {
+    //         if (shared_light_index_array[i] != global_light_sampling_table[i]) {
     //             printf("Error: shared_light_index_array missmatch at %d\n", i);
     //             return;
     //         }
@@ -400,173 +397,66 @@ __global__ void global_memory_kernel(
             }
 
             if (did_hit_light) {
-                reflection_decay.r *= hit_color.r;
-                reflection_decay.g *= hit_color.g;
-                reflection_decay.b *= hit_color.b;
+                reflection_decay.r *= hit_color.r * intensity;
+                reflection_decay.g *= hit_color.g * intensity;
+                reflection_decay.b *= hit_color.b * intensity;
                 break;
             }
 
             if (did_hit_object) {
+                float4 path;
+                path.x = hit_point.x - ray.origin.x;
+                path.y = hit_point.y - ray.origin.y;
+                path.z = hit_point.z - ray.origin.z;
+                float distance = sqrt(path.x * path.x + path.y * path.y + path.z * path.z);
+
                 ray.origin.x = hit_point.x;
                 ray.origin.y = hit_point.y;
                 ray.origin.z = hit_point.z;
 
                 // diffuse reflection
-                float diffuese_x = curand_normal(&state);
-                float diffuese_y = curand_normal(&state);
-                float diffuese_z = curand_normal(&state);
-                float norm = sqrt(diffuese_x * diffuese_x + diffuese_y * diffuese_y + diffuese_z * diffuese_z);
-                diffuese_x /= norm;
-                diffuese_y /= norm;
-                diffuese_z /= norm;
+                float unit_diffuese_x = curand_normal(&state);
+                float unit_diffuese_y = curand_normal(&state);
+                float unit_diffuese_z = curand_normal(&state);
+                float norm = sqrt(unit_diffuese_x * unit_diffuese_x + unit_diffuese_y * unit_diffuese_y + unit_diffuese_z * unit_diffuese_z);
+                unit_diffuese_x /= norm;
+                unit_diffuese_y /= norm;
+                unit_diffuese_z /= norm;
 
-                float dot = hit_face_normal.x * diffuese_x + hit_face_normal.y * diffuese_y + hit_face_normal.z * diffuese_z;
+                float dot = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
                 if (dot < 0.0f) {
-                    diffuese_x = -diffuese_x;
-                    diffuese_y = -diffuese_y;
-                    diffuese_z = -diffuese_z;
+                    unit_diffuese_x = -unit_diffuese_x;
+                    unit_diffuese_y = -unit_diffuese_y;
+                    unit_diffuese_z = -unit_diffuese_z;
                 }
-                ray.direction.x = diffuese_x;
-                ray.direction.y = diffuese_y;
-                ray.direction.z = diffuese_z;
+                ray.direction.x = unit_diffuese_x;
+                ray.direction.y = unit_diffuese_y;
+                ray.direction.z = unit_diffuese_z;
+
+                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.y * unit_diffuese_y;
 
                 ray_direction_inv.x = 1.0f / ray.direction.x;
                 ray_direction_inv.y = 1.0f / ray.direction.y;
                 ray_direction_inv.z = 1.0f / ray.direction.z;
 
-                intensity /= M_PI;
+                intensity *= cosine_term;
 
-                reflection_decay.r *= hit_color.r * intensity;
-                reflection_decay.g *= hit_color.g * intensity;
-                reflection_decay.b *= hit_color.b * intensity;
-
+                reflection_decay.r *= hit_color.r;
+                reflection_decay.g *= hit_color.g;
+                reflection_decay.b *= hit_color.b;
             }
         }
 
         if (did_hit_light == false) {
-            reflection_decay.r = -1.0f;
-            reflection_decay.g = -1.0f;
-            reflection_decay.b = -1.0f;
+            reflection_decay.r = 0.0f;
+            reflection_decay.g = 0.0f;
+            reflection_decay.b = 0.0f;
         }
 
         global_render_array[ray_index] = reflection_decay;
     }
 }
-
-__global__ void shared_memory_kernel(
-    const float* ray_array, const int ray_array_size,
-    const int* face_vertex_index_array, const int face_vertex_index_array_size,
-    const float* vertex_array, const int vertex_array_size,
-    const int* object_face_count_array, const int object_face_count_array_size,
-    const int* object_face_offset_array, const int object_face_offset_array_size,
-    const int* object_vertex_count_array, const int object_vertex_count_array_size,
-    const int* object_vertex_offset_array, const int object_vertex_offset_array_size,
-    const int* object_geometry_type_array, const int object_geometry_attributes_array_size,
-    const int* threaded_bvh_node_array, const int threaded_bvh_node_array_size,
-    const int* threaded_bvh_num_nodes_array, const int threaded_bvh_num_nodes_array_size,
-    const int* threaded_bvh_index_offset_array, const int threaded_bvh_index_offset_array_size,
-    const float* scene_threaded_bvh_aabb_array, const int threaded_bvh_aabb_array_size,
-    float* render_array, const int render_array_size,
-    const int num_rays,
-    const int num_rays_per_thread,
-    const int max_bounce)
-{
-}
-// __global__ void _render(
-//                 if (object_type == RTXObjectTypeSphereGeometry) {
-//                     const float center_x = shared_face_vertices[index + 0];
-//                     const float center_y = shared_face_vertices[index + 1];
-//                     const float center_z = shared_face_vertices[index + 2];
-//                     const float radius = shared_face_vertices[index + 4];
-
-//                     const float oc_x = ray.origin.x - center_x;
-//                     const float oc_y = ray.origin.y - center_y;
-//                     const float oc_z = ray.origin.z - center_z;
-
-//                     const float a = ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z;
-//                     const float b = 2.0f * (ray.direction.x * oc_x + ray.direction.y * oc_y + ray.direction.z * oc_z);
-//                     const float c = (oc_x * oc_x + oc_y * oc_y + oc_z * oc_z) - radius * radius;
-//                     const float d = b * b - 4.0f * a * c;
-
-//                     if (d <= 0) {
-//                         continue;
-//                     }
-//                     const float root = sqrt(d);
-//                     float t = (-b - root) / (2.0f * a);
-//                     if (t <= 0.001f) {
-//                         t = (-b + root) / (2.0f * a);
-//                         if (t <= 0.001f) {
-//                             continue;
-//                         }
-//                     }
-
-//                     if (min_distance <= t) {
-//                         continue;
-//                     }
-//                     min_distance = t;
-//                     hit_point.x = ray.origin.x + t * ray.direction.x;
-//                     hit_point.y = ray.origin.y + t * ray.direction.y;
-//                     hit_point.z = ray.origin.z + t * ray.direction.z;
-
-//                     float tmp_x = hit_point.x - center_x;
-//                     float tmp_y = hit_point.y - center_y;
-//                     float tmp_z = hit_point.z - center_z;
-//                     float norm = sqrtf(tmp_x * tmp_x + tmp_y * tmp_y + tmp_z * tmp_z) + 1e-12;
-
-//                     hit_face_normal.x = tmp_x / norm;
-//                     hit_face_normal.y = tmp_y / norm;
-//                     hit_face_normal.z = tmp_z / norm;
-
-//                     material_type = shared_material_types[face_index];
-
-//                     hit_color_r = shared_face_colors[face_index * colors_stride + 0];
-//                     hit_color_g = shared_face_colors[face_index * colors_stride + 1];
-//                     hit_color_b = shared_face_colors[face_index * colors_stride + 2];
-
-//                     did_hit_object = true;
-//                     continue;
-//                 }
-
-void rtx_cuda_malloc(void** gpu_array, size_t size)
-{
-    assert(size > 0);
-    cudaError_t error = cudaMalloc(gpu_array, size);
-    // printf("malloc %p\n", *gpu_array);
-    cudaError_t status = cudaGetLastError();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
-    }
-}
-void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size)
-{
-    cudaError_t error = cudaMemcpy(gpu_array, cpu_array, size, cudaMemcpyHostToDevice);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(error));
-    }
-}
-void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size)
-{
-    cudaError_t error = cudaMemcpy(cpu_array, gpu_array, size, cudaMemcpyDeviceToHost);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(error));
-    }
-}
-void rtx_cuda_free(void** array)
-{
-    if (*array != NULL) {
-        // printf("free %p\n", *array);
-        cudaError_t error = cudaFree(*array);
-        if (error != cudaSuccess) {
-            fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(error));
-        }
-        *array = NULL;
-    }
-}
-void cuda_device_reset()
-{
-    cudaDeviceReset();
-}
-void rtx_cuda_render(
+void rtx_cuda_launch_standard_kernel(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
     RTXVertex*& gpu_vertex_array, const int vertex_array_size,
@@ -700,59 +590,3 @@ void rtx_cuda_render(
     // printf(" shared memory / block : %d (KB)\n", dev.sharedMemPerBlock/1024);
     // printf(" register / block : %d\n", dev.regsPerBlock);
 }
-
-// __global__ void test_linear_kernel(
-//     const int* node_array, const int num_nodes)
-// {
-//     int s = 0;
-//     for (int j = 0; j < 1000; j++) {
-//         for (int i = 0; i < num_nodes; i++) {
-//             int hit = node_array[i * 4 + 0];
-//             int miss = node_array[i * 4 + 1];
-//             int start = node_array[i * 4 + 2];
-//             int end = node_array[i * 4 + 3];
-//             s += hit + miss + start + end;
-//         }
-//     }
-// }
-
-// __global__ void test_struct_kernel(
-//     const RTXThreadedBVHNode* node_array, const int num_nodes)
-// {
-//     int s = 0;
-//     for (int j = 0; j < 1000; j++) {
-//         for (int i = 0; i < num_nodes; i++) {
-//             RTXThreadedBVHNode node = node_array[i];
-//             s += node.hit_node_index + node.miss_node_index + node.assigned_face_index_start + node.assigned_face_index_end;
-//         }
-//     }
-// }
-
-// void launch_test_linear_kernel(
-//     int*& gpu_node_array, const int num_nodes)
-// {
-//     test_linear_kernel<<<256, 32>>>(gpu_node_array, num_nodes);
-//     cudaError_t status = cudaGetLastError();
-//     if (status != 0) {
-//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-//     }
-//     cudaError_t error = cudaThreadSynchronize();
-//     if (error != cudaSuccess) {
-//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-//     }
-// }
-
-// void launch_test_struct_kernel(
-//     RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes)
-// {
-
-//     test_struct_kernel<<<256, 32>>>(gpu_struct_array, num_nodes);
-//     cudaError_t status = cudaGetLastError();
-//     if (status != 0) {
-//         fprintf(stderr, "CUDA Error at kernel: %s\n", cudaGetErrorString(status));
-//     }
-//     cudaError_t error = cudaThreadSynchronize();
-//     if (error != cudaSuccess) {
-//         fprintf(stderr, "CUDA Error at cudaThreadSynchronize: %s\n", cudaGetErrorString(error));
-//     }
-// }

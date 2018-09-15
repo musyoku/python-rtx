@@ -1,13 +1,16 @@
 #pragma once
 #include "../../header/struct.h"
 
+#define THREADED_BVH_TERMINAL_NODE -1
+#define THREADED_BVH_INNER_NODE -1
+
 void rtx_cuda_malloc(void** gpu_array, size_t size);
 void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size);
 void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size);
 void rtx_cuda_free(void** array);
-void cuda_device_reset();
+void rtx_cuda_device_reset();
 
-void rtx_cuda_render(
+void rtx_cuda_launch_standard_kernel(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
     RTXVertex*& gpu_vertex_array, const int vertex_array_size,

@@ -22,5 +22,6 @@ public:
     int num_layers();
     void serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const;
     RTXLayeredMaterialTypes types();
+    bool is_emissive();
 };
 }

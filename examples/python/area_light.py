@@ -59,9 +59,9 @@ scene.add(sphere)
 
 # place light
 geometry = rtx.PlainGeometry(2.0, 0.5)
-geometry.set_rotation((math.pi / 4, 0, math.pi / 3))
+geometry.set_rotation((math.pi / 4, 0, 0))
 geometry.set_position((0, 1, -2))
-material = rtx.EmissiveMaterial(100.0)
+material = rtx.EmissiveMaterial(10.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 rect_area_light = rtx.Object(geometry, material, mapping)
 scene.add(rect_area_light)
@@ -97,11 +97,12 @@ start = time.time()
 
 total_iterations = 100
 for n in range(total_iterations):
-    if n % 10 == 0:
-        geometry.set_rotation((0, 0, light_rad))
-        light_rad += math.pi / 2
+    # if n % 10 == 0:
+    #     geometry.set_rotation((math.pi / 4, 0, light_rad))
+    #     light_rad += math.pi / 2
 
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
+    print(np.amax(render_buffer))
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
