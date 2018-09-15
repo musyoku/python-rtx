@@ -28,6 +28,7 @@ private:
     rtx::array<RTXPixel> _cpu_render_array;
     rtx::array<RTXPixel> _cpu_render_buffer_array;
     std::vector<int> _cpu_light_sampling_table;
+    std::vector<RTXColor> _cpu_color_mapping_array;
 
     // device
     RTXRay* _gpu_ray_array;
@@ -39,6 +40,7 @@ private:
     RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
     RTXPixel* _gpu_render_array;
     int* _gpu_light_sampling_table;
+    RTXColor* _gpu_color_mapping_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;

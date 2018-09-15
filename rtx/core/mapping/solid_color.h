@@ -14,5 +14,6 @@ public:
     void set_color(pybind11::tuple color);
     void set_color(float (&color)[3]);
     int type() const override;
+    glm::vec4f color();
 };
 }

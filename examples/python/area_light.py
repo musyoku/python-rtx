@@ -22,7 +22,7 @@ bottom = np.amin(vertices, axis=0)
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 geometry.set_position((-2.25, -bottom[2], 0))
 material = rtx.LambertMaterial(1.0)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((0, 1, 0))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
@@ -33,7 +33,7 @@ geometry = rtx.StandardGeometry(faces, vertices, 25)
 geometry.set_position((-0.75, -bottom[2] * 1.5, 0))
 geometry.set_scale((1.5, 1.5, 1.5))
 material = rtx.LambertMaterial(1.0)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((1, 1, 0))
 teapot = rtx.Object(geometry, material, mapping)
 scene.add(teapot)
 
@@ -45,7 +45,7 @@ geometry.set_position((0.75, -bottom[2] * 1.5, 0))
 geometry.set_scale((1.5, 1.5, 1.5))
 geometry.set_rotation((0, -math.pi / 4, 0))
 material = rtx.LambertMaterial(1.0)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((1, 0, 1))
 dragon = rtx.Object(geometry, material, mapping)
 scene.add(dragon)
 
@@ -53,11 +53,35 @@ scene.add(dragon)
 geometry = rtx.SphereGeometry(0.5)
 geometry.set_position((2.25, 0.5, 0))
 material = rtx.LambertMaterial(1.0)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((0, 1, 1))
 sphere = rtx.Object(geometry, material, mapping)
 scene.add(sphere)
 
 # place light
+geometry = rtx.PlainGeometry(2.0, 0.5)
+geometry.set_rotation((0, 0, math.pi / 2))
+geometry.set_position((-2, 1, -3))
+material = rtx.EmissiveMaterial(5.0)
+mapping = rtx.SolidColorMapping((1, 0, 0))
+rect_area_light = rtx.Object(geometry, material, mapping)
+scene.add(rect_area_light)
+
+geometry = rtx.PlainGeometry(2.0, 0.5)
+geometry.set_rotation((0, 0, math.pi / 2))
+geometry.set_position((0, 1, -3))
+material = rtx.EmissiveMaterial(20.0)
+mapping = rtx.SolidColorMapping((0, 0, 1))
+rect_area_light = rtx.Object(geometry, material, mapping)
+scene.add(rect_area_light)
+
+geometry = rtx.PlainGeometry(2.0, 0.5)
+geometry.set_rotation((0, 0, math.pi / 2))
+geometry.set_position((2, 1, -3))
+material = rtx.EmissiveMaterial(5.0)
+mapping = rtx.SolidColorMapping((1, 1, 0))
+rect_area_light = rtx.Object(geometry, material, mapping)
+scene.add(rect_area_light)
+
 geometry = rtx.PlainGeometry(2.0, 0.5)
 geometry.set_rotation((math.pi / 4, 0, 0))
 geometry.set_position((0, 1, -2))
@@ -72,7 +96,7 @@ screen_width = 384
 screen_height = 256
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 32
+rt_args.num_rays_per_pixel = 64
 rt_args.max_bounce = 4
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
@@ -82,7 +106,7 @@ cuda_args.num_blocks = 1024
 renderer = rtx.Renderer()
 camera = rtx.PerspectiveCamera(
     eye=(-3, 3, 3),
-    center=(0, 0.5, 0),
+    center=(0, 0.5, -0.25),
     up=(0, 1, 0),
     fov_rad=math.pi / 4,
     aspect_ratio=screen_width / screen_height,
@@ -95,11 +119,11 @@ light_rad = 0
 radius = 5.5
 start = time.time()
 
-total_iterations = 100
+total_iterations = 1000
 for n in range(total_iterations):
-    # if n % 10 == 0:
-    #     geometry.set_rotation((math.pi / 4, 0, light_rad))
-    #     light_rad += math.pi / 2
+    if n % 10 == 0:
+        geometry.set_rotation((math.pi / 4, 0, light_rad))
+        light_rad += math.pi / 2
 
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     print(np.amax(render_buffer))

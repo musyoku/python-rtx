@@ -18,7 +18,7 @@ void rtx_cuda_launch_standard_kernel(
     RTXMaterialAttributeByte*& gpu_material_attribute_byte_array, const int material_attribute_byte_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
-    int*& gpu_light_sampling_table, const int light_sampling_table_size,
+    RTXColor*& gpu_color_mapping_array, const int color_mapping_array_size,
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_threads,
     const int num_blocks,
@@ -26,7 +26,19 @@ void rtx_cuda_launch_standard_kernel(
     const int max_bounce,
     const int curand_seed);
 
-// void launch_test_linear_kernel(
-//     int*& gpu_node_array, const int num_nodes);
-// void launch_test_struct_kernel(
-//     RTXThreadedBVHNode*& gpu_struct_array, const int num_nodes);
+void rtx_cuda_launch_next_event_estimation_kernel(
+    RTXRay*& gpu_ray_array, const int ray_array_size,
+    RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,
+    RTXVertex*& gpu_vertex_array, const int vertex_array_size,
+    RTXObject*& gpu_object_array, const int object_array_size,
+    RTXMaterialAttributeByte*& gpu_material_attribute_byte_array, const int material_attribute_byte_array_size,
+    RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
+    RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    int*& gpu_light_sampling_table, const int light_sampling_table_size,
+    RTXColor*& gpu_color_mapping_array, const int color_mapping_array_size,
+    RTXPixel*& gpu_render_array, const int render_array_size,
+    const int num_threads,
+    const int num_blocks,
+    const int num_rays_per_pixel,
+    const int max_bounce,
+    const int curand_seed);

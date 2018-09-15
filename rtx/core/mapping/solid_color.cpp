@@ -26,4 +26,8 @@ int SolidColorMapping::type() const
 {
     return RTXMappingTypeSolidColor;
 }
+glm::vec4f SolidColorMapping::color()
+{
+    return _color;
+}
 }

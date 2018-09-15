@@ -4,9 +4,10 @@
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/lambert.h"
 #include "../rtx/core/mapping/solid_color.h"
-#include "../rtx/core/renderer/header/ray_tracing.h"
+#include "../rtx/core/renderer/header/cuda.h"
 #include "../rtx/core/renderer/renderer.h"
 #include "../rtx/core/renderer/arguments/ray_tracing.h"
+#include "../rtx/core/renderer/arguments/cuda_kernel.h"
 #include <chrono>
 #include <cmath>
 #include <string>
@@ -7584,6 +7585,6 @@ int main(int argc, char *argv[])
         run(num_blocks, num_threads);
     }
     // test_structure();
-    cuda_device_reset();
+    rtx_cuda_device_reset();
     return 0;
 }

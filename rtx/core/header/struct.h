@@ -7,6 +7,13 @@ typedef struct RTXVector4f {
     float w;
 } RTXVector4f;
 
+typedef struct RTXColor {
+    float r;
+    float g;
+    float b;
+    float a;
+} RTXColor;
+
 typedef struct RTXThreadedBVHNode {
     int hit_node_index;
     int miss_node_index;

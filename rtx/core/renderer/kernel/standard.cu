@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 
-__global__ void global_memory_kernel(
+__global__ void standard_kernel(
     const int ray_array_size,
     const int face_vertex_index_array_size,
     const int vertex_array_size,
@@ -16,7 +16,7 @@ __global__ void global_memory_kernel(
     const RTXMaterialAttributeByte* global_material_attribute_byte_array, const int material_attribute_byte_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const int threaded_bvh_node_array_size,
-    const int* global_light_sampling_table, const int light_sampling_table_size,
+    const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -37,11 +37,8 @@ __global__ void global_memory_kernel(
     RTXThreadedBVH* shared_threaded_bvh_array = (RTXThreadedBVH*)&shared_memory[offset];
     offset += sizeof(RTXThreadedBVH) / sizeof(unsigned char) * threaded_bvh_array_size;
 
-    int* shared_light_index_array = (int*)&shared_memory[offset];
-    offset += sizeof(unsigned char) * light_sampling_table_size;
-
-    // RTXThreadedBVHNode* shared_threaded_bvh_node_array = (RTXThreadedBVHNode*)&shared_memory[offset];
-    // offset += sizeof(RTXThreadedBVHNode) / sizeof(int) * threaded_bvh_node_array_size;
+    RTXColor* shared_color_mapping_array = (RTXColor*)&shared_memory[offset];
+    offset += sizeof(RTXColor) / sizeof(unsigned char) * color_mapping_array_size;
 
     if (thread_id == 0) {
         for (int k = 0; k < object_array_size; k++) {
@@ -53,35 +50,11 @@ __global__ void global_memory_kernel(
         for (int k = 0; k < threaded_bvh_array_size; k++) {
             shared_threaded_bvh_array[k] = global_threaded_bvh_array[k];
         }
-        for (int k = 0; k < light_sampling_table_size; k++) {
-            shared_light_index_array[k] = global_light_sampling_table[k];
+        for (int k = 0; k < color_mapping_array_size; k++) {
+            shared_color_mapping_array[k] = global_color_mapping_array[k];
         }
-        // for (int k = 0; k < threaded_bvh_node_array_size; k++) {
-        //     shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
-        // }
     }
     __syncthreads();
-
-    // if (thread_id == 0) {
-    //     // for (int i = 0; i < object_array_size; i++) {
-    //     //     if (shared_object_array[i] != global_object_array[i]) {
-    //     //         printf("Error: shared_object_array missmatch at %d\n", i);
-    //     //         return;
-    //     //     }
-    //     // }
-    //     // for (int i = 0; i < threaded_bvh_array_size; i++) {
-    //     //     if (shared_threaded_bvh_array[i] != global_threaded_bvh_array[i]) {
-    //     //         printf("Error: shared_threaded_bvh_array missmatch at %d\n", i);
-    //     //         return;
-    //     //     }
-    //     // }
-    //     for (int i = 0; i < light_sampling_table_size; i++) {
-    //         if (shared_light_index_array[i] != global_light_sampling_table[i]) {
-    //             printf("Error: shared_light_index_array missmatch at %d\n", i);
-    //             return;
-    //         }
-    //     }
-    // }
 
     const float eps = 0.0000001;
     CUDARay ray;
@@ -89,8 +62,7 @@ __global__ void global_memory_kernel(
     float3 ray_direction_inv;
     float3 hit_point;
     float3 hit_face_normal;
-    RTXPixel hit_color;
-    RTXPixel reflection_decay;
+    RTXObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
@@ -123,16 +95,12 @@ __global__ void global_memory_kernel(
         ray_direction_inv.y = 1.0f / ray.direction.y;
         ray_direction_inv.z = 1.0f / ray.direction.z;
 
-        reflection_decay.r = 1.0f;
-        reflection_decay.g = 1.0f;
-        reflection_decay.b = 1.0f;
+        RTXPixel pixel = {0.0f, 0.0f, 0.0f, 0.0f};
+        RTXPixel path_weight = { 1.0f, 1.0f, 1.0f };
 
-        bool did_hit_light = false;
-        bool did_hit_object = false;
-
-        float intensity = 1.0f;
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
+            bool did_hit_object = false;
 
             for (int object_index = 0; object_index < object_array_size; object_index++) {
                 RTXObject object = shared_object_array[object_index];
@@ -281,24 +249,8 @@ __global__ void global_memory_kernel(
                                 hit_face_normal.y = s.y;
                                 hit_face_normal.z = s.z;
 
-                                int material_type = object.layerd_material_types.outside;
-                                int mapping_type = object.mapping_type;
-
-                                hit_color.r = 0.9f;
-                                hit_color.g = 0.9f;
-                                hit_color.b = 0.9f;
-                                if (material_type == RTXMaterialTypeLambert) {
-                                    RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
-                                    did_hit_light = false;
-                                    did_hit_object = true;
-                                } else if (material_type == RTXMaterialTypeEmissive) {
-                                    RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
-                                    did_hit_light = true;
-                                    did_hit_object = false;
-                                    hit_color.r = attr.brightness;
-                                    hit_color.g = attr.brightness;
-                                    hit_color.b = attr.brightness;
-                                }
+                                did_hit_object = true;
+                                hit_object = object;
                             }
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int index = node.assigned_face_index_start + object.face_index_offset;
@@ -348,24 +300,8 @@ __global__ void global_memory_kernel(
                             hit_face_normal.y = tmp.y / norm;
                             hit_face_normal.z = tmp.z / norm;
 
-                            int material_type = object.layerd_material_types.outside;
-                            int mapping_type = object.mapping_type;
-
-                            hit_color.r = 0.9f;
-                            hit_color.g = 0.9f;
-                            hit_color.b = 0.9f;
-                            if (material_type == RTXMaterialTypeLambert) {
-                                RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
-                                did_hit_light = false;
-                                did_hit_object = true;
-                            } else if (material_type == RTXMaterialTypeEmissive) {
-                                RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[object.material_attribute_byte_array_offset])[0];
-                                did_hit_light = true;
-                                did_hit_object = false;
-                                hit_color.r = attr.brightness;
-                                hit_color.g = attr.brightness;
-                                hit_color.b = attr.brightness;
-                            }
+                            did_hit_object = true;
+                            hit_object = object;
                         }
                     }
 
@@ -377,11 +313,34 @@ __global__ void global_memory_kernel(
                 }
             }
 
+            RTXPixel hit_color;
+            bool did_hit_light = false;
+            if (did_hit_object) {
+                int material_type = hit_object.layerd_material_types.outside;
+                int mapping_type = hit_object.mapping_type;
+
+                if (mapping_type == RTXMappingTypeSolidColor) {
+                    RTXColor color = shared_color_mapping_array[hit_object.mapping_index];
+                    hit_color.r = color.r;
+                    hit_color.g = color.g;
+                    hit_color.b = color.b;
+                }
+
+                if (material_type == RTXMaterialTypeLambert) {
+                    RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                } else if (material_type == RTXMaterialTypeEmissive) {
+                    RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    did_hit_light = true;
+                    hit_color.r *= attr.brightness;
+                    hit_color.g *= attr.brightness;
+                    hit_color.b *= attr.brightness;
+                }
+            }
+
             if (did_hit_light) {
-                reflection_decay.r *= hit_color.r * intensity;
-                reflection_decay.g *= hit_color.g * intensity;
-                reflection_decay.b *= hit_color.b * intensity;
-                break;
+                pixel.r += hit_color.r * path_weight.r;
+                pixel.g += hit_color.g * path_weight.g;
+                pixel.b += hit_color.b * path_weight.b;
             }
 
             if (did_hit_object) {
@@ -420,21 +379,13 @@ __global__ void global_memory_kernel(
                 ray_direction_inv.y = 1.0f / ray.direction.y;
                 ray_direction_inv.z = 1.0f / ray.direction.z;
 
-                intensity *= cosine_term;
-
-                reflection_decay.r *= hit_color.r;
-                reflection_decay.g *= hit_color.g;
-                reflection_decay.b *= hit_color.b;
+                path_weight.r *= hit_color.r * cosine_term;
+                path_weight.g *= hit_color.g * cosine_term;
+                path_weight.b *= hit_color.b * cosine_term;
             }
         }
 
-        if (did_hit_light == false) {
-            reflection_decay.r = 0.0f;
-            reflection_decay.g = 0.0f;
-            reflection_decay.b = 0.0f;
-        }
-
-        global_render_array[ray_index] = reflection_decay;
+        global_render_array[ray_index] = pixel;
     }
 }
 void rtx_cuda_launch_standard_kernel(
@@ -445,7 +396,7 @@ void rtx_cuda_launch_standard_kernel(
     RTXMaterialAttributeByte*& gpu_material_attribute_byte_array, const int material_attribute_byte_array_size,
     RTXThreadedBVH*& gpu_threaded_bvh_array, const int threaded_bvh_array_size,
     RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
-    int*& gpu_light_sampling_table, const int light_sampling_table_size,
+    RTXColor*& gpu_color_mapping_array, const int color_mapping_array_size,
     RTXPixel*& gpu_render_array, const int render_array_size,
     const int num_threads,
     const int num_blocks,
@@ -460,10 +411,10 @@ void rtx_cuda_launch_standard_kernel(
     assert(gpu_material_attribute_byte_array != NULL);
     assert(gpu_threaded_bvh_array != NULL);
     assert(gpu_threaded_bvh_node_array != NULL);
-    if (light_sampling_table_size > 0) {
-        assert(gpu_light_sampling_table != NULL);
-    }
     assert(gpu_render_array != NULL);
+    if (color_mapping_array_size > 0) {
+        assert(gpu_color_mapping_array != NULL);
+    }
 
     int num_rays = ray_array_size;
 
@@ -471,7 +422,7 @@ void rtx_cuda_launch_standard_kernel(
 
     int num_rays_per_thread = num_rays / (num_threads * num_blocks) + 1;
 
-    long required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size + sizeof(int) * light_sampling_table_size;
+    long required_shared_memory_bytes = sizeof(RTXFace) * face_vertex_index_array_size + sizeof(RTXVertex) * vertex_array_size + sizeof(RTXObject) * object_array_size + sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size + sizeof(RTXThreadedBVH) + threaded_bvh_array_size * sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size + sizeof(RTXColor) * color_mapping_array_size;
 
     // num_blocks = 1;
     // num_rays_per_thread = 1;
@@ -487,50 +438,19 @@ void rtx_cuda_launch_standard_kernel(
 
     if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
         // int required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size;
-        long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(int) * light_sampling_table_size;
+        long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size + sizeof(RTXThreadedBVH) * threaded_bvh_array_size + sizeof(RTXColor) * color_mapping_array_size;
         printf("    shared memory: %ld bytes\n", required_shared_memory_bytes);
         printf("    available: %d bytes\n", dev.sharedMemPerBlock);
         printf("    num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
 
-        if (required_shared_memory_bytes > dev.sharedMemPerBlock) {
-            long required_shared_memory_bytes = sizeof(RTXObject) * object_array_size + sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size + sizeof(int) * light_sampling_table_size;
-            printf("        shared memory: %ld bytes\n", required_shared_memory_bytes);
-            printf("        available: %d bytes\n", dev.sharedMemPerBlock);
-            printf("        num_blocks: %d num_threads: %d\n", num_blocks, num_threads);
-            assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
-        } else {
-            cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
-            cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
-            cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
-            cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+        assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
 
-            global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
-                ray_array_size,
-                face_vertex_index_array_size,
-                vertex_array_size,
-                gpu_object_array, object_array_size,
-                gpu_material_attribute_byte_array, material_attribute_byte_array_size,
-                gpu_threaded_bvh_array, threaded_bvh_array_size,
-                threaded_bvh_node_array_size,
-                gpu_light_sampling_table, light_sampling_table_size,
-                gpu_render_array,
-                num_rays_per_thread,
-                max_bounce,
-                curand_seed);
-
-            cudaUnbindTexture(ray_texture);
-            cudaUnbindTexture(face_vertex_index_texture);
-            cudaUnbindTexture(vertex_texture);
-            cudaUnbindTexture(threaded_bvh_node_texture);
-        }
-
-    } else {
         cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
         cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
         cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
         cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
 
-        global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
+        standard_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
             ray_array_size,
             face_vertex_index_array_size,
             vertex_array_size,
@@ -538,7 +458,32 @@ void rtx_cuda_launch_standard_kernel(
             gpu_material_attribute_byte_array, material_attribute_byte_array_size,
             gpu_threaded_bvh_array, threaded_bvh_array_size,
             threaded_bvh_node_array_size,
-            gpu_light_sampling_table, light_sampling_table_size,
+            gpu_color_mapping_array, color_mapping_array_size,
+            gpu_render_array,
+            num_rays_per_thread,
+            max_bounce,
+            curand_seed);
+
+        cudaUnbindTexture(ray_texture);
+        cudaUnbindTexture(face_vertex_index_texture);
+        cudaUnbindTexture(vertex_texture);
+        cudaUnbindTexture(threaded_bvh_node_texture);
+
+    } else {
+        cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+        cudaBindTexture(0, face_vertex_index_texture, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
+        cudaBindTexture(0, vertex_texture, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
+        cudaBindTexture(0, threaded_bvh_node_texture, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+
+        standard_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
+            ray_array_size,
+            face_vertex_index_array_size,
+            vertex_array_size,
+            gpu_object_array, object_array_size,
+            gpu_material_attribute_byte_array, material_attribute_byte_array_size,
+            gpu_threaded_bvh_array, threaded_bvh_array_size,
+            threaded_bvh_node_array_size,
+            gpu_color_mapping_array, color_mapping_array_size,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce,

@@ -4,6 +4,7 @@
 #include "../geometry/sphere.h"
 #include "../geometry/standard.h"
 #include "../header/enum.h"
+#include "../mapping/solid_color.h"
 #include "../material/emissive.h"
 #include "../material/lambert.h"
 #include "header/cuda.h"
@@ -27,6 +28,7 @@ Renderer::Renderer()
     _gpu_threaded_bvh_array = NULL;
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_light_sampling_table = NULL;
+    _gpu_color_mapping_array = NULL;
     _gpu_render_array = NULL;
     _total_frames = 0;
 }
@@ -40,6 +42,7 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
     rtx_cuda_free((void**)&_gpu_light_sampling_table);
+    rtx_cuda_free((void**)&_gpu_color_mapping_array);
     rtx_cuda_free((void**)&_gpu_render_array);
 }
 void Renderer::transform_objects_to_view_space()
@@ -112,7 +115,7 @@ void Renderer::serialize_objects()
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& material = object->material();
-        if(material->is_emissive()){
+        if (material->is_emissive()) {
             _cpu_light_sampling_table.push_back(object_index);
         }
         total_material_bytes += material->attribute_bytes();
@@ -120,6 +123,7 @@ void Renderer::serialize_objects()
     _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_bytes / sizeof(RTXMaterialAttributeByte));
 
     int material_attribute_byte_array_offset = 0;
+    _cpu_color_mapping_array = std::vector<RTXColor>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
@@ -135,58 +139,23 @@ void Renderer::serialize_objects()
         cuda_object.num_material_layers = material->num_layers();
         cuda_object.layerd_material_types = material->types();
         cuda_object.material_attribute_byte_array_offset = material_attribute_byte_array_offset;
+        cuda_object.mapping_type = mapping->type();
+        cuda_object.mapping_index = -1;
+
+        if (mapping->type() == RTXMappingTypeSolidColor) {
+            SolidColorMapping* m = static_cast<SolidColorMapping*>(mapping.get());
+            auto color = m->color();
+            RTXColor cuda_color = { color.r, color.g, color.b, color.a };
+            _cpu_color_mapping_array.emplace_back(cuda_color);
+
+            cuda_object.mapping_index = _cpu_color_mapping_array.size() - 1;
+        }
+
         _cpu_object_array[object_index] = cuda_object;
 
         material->serialize_attributes(_cpu_material_attribute_byte_array, material_attribute_byte_array_offset);
         material_attribute_byte_array_offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
     }
-    // for (int object_index = 0; object_index < num_objects; object_index++) {
-    //     std::cout << "vertex_offset: " << _object_vertex_offset_array[object_index] << " face_offset: " << _face_offset_array[object_index] << std::endl;
-    // }
-
-    // for (int object_index = 0; object_index < num_objects; object_index++) {
-    //     int num_faces = face_count_array[object_index];
-    //     int face_index_offset = face_index_offset_array[object_index];
-    //     int num_vertices = vertex_count_array[object_index];
-    //     int vertex_index_offset = vertex_index_offset_array[object_index];
-
-    //     printf("object: %d\n", object_index);
-    //     RTXObject object = _cpu_object_array[object_index];
-    //     RTXThreadedBVH cuda_bvh = _cpu_threaded_bvh_array[object_index];
-    //     for (int node_index = 0; node_index < cuda_bvh.num_nodes; node_index++) {
-    //         RTXThreadedBVHNode cuda_node = _cpu_threaded_bvh_node_array[node_index + cuda_bvh.node_index_offset];
-    //         for (int face_index = cuda_node.assigned_face_index_start; face_index <= cuda_node.assigned_face_index_end; face_index++) {
-    //             auto face = _cpu_face_vertex_indices_array[face_index + object.face_index_offset];
-    //             printf("    face: %d %d %d\n", face.a + object.vertex_index_offset, face.b + object.vertex_index_offset, face.c + object.vertex_index_offset);
-    //             auto va = _cpu_vertex_array[face.a + object.vertex_index_offset];
-    //             auto vb = _cpu_vertex_array[face.b + object.vertex_index_offset];
-    //             auto vc = _cpu_vertex_array[face.c + object.vertex_index_offset];
-    //             printf("    va: %f %f %f, vb: %f %f %f vc: %f %f %f \n", va.x, va.y, va.z, vb.x, vb.y, vb.z, vc.x, vc.y, vc.z);
-    //         }
-    //     }
-    // }
-
-    // material_attribute_byte_array_offset = 0;
-    // RTXMaterialAttributeByte* pointer = _cpu_material_attribute_byte_array.data();
-    // for (int object_index = 0; object_index < num_objects; object_index++) {
-    //     auto& object = _transformed_object_array.at(object_index);
-    //     auto& layered_material = object->material();
-    //     for (int layer_index = 0; layer_index < layered_material->num_layers(); layer_index++) {
-    //         auto& material = layered_material->_material_array[layer_index];
-    //         if (material->type() == RTXMaterialTypeLambert) {
-    //             LambertMaterial* lambert = static_cast<LambertMaterial*>(material.get());
-    //             RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&pointer[material_attribute_byte_array_offset])[0];
-    //             printf("Lambert: %f == %f\n", attr.albedo, lambert->albedo());
-    //         }
-    //         if (material->type() == RTXMaterialTypeEmissive) {
-    //             EmissiveMaterial* emissive = static_cast<EmissiveMaterial*>(material.get());
-    //             RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&pointer[material_attribute_byte_array_offset])[0];
-    //             printf("Emissive: %f == %f\n", attr.brightness, emissive->brightness());
-    //         }
-    //         material_attribute_byte_array_offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
-    //         printf("offset: %d\n", material_attribute_byte_array_offset);
-    //     }
-    // }
 }
 void Renderer::construct_bvh()
 {
@@ -323,6 +292,10 @@ void Renderer::render_objects(int height, int width)
             rtx_cuda_free((void**)&_gpu_light_sampling_table);
             rtx_cuda_malloc((void**)&_gpu_light_sampling_table, sizeof(int) * _cpu_light_sampling_table.size());
         }
+        if (_cpu_color_mapping_array.size() > 0) {
+            rtx_cuda_free((void**)&_gpu_color_mapping_array);
+            rtx_cuda_malloc((void**)&_gpu_color_mapping_array, sizeof(RTXColor) * _cpu_color_mapping_array.size());
+        }
     }
     if (should_transfer_to_gpu) {
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), _cpu_face_vertex_indices_array.bytes());
@@ -331,6 +304,9 @@ void Renderer::render_objects(int height, int width)
         rtx_cuda_memcpy_host_to_device((void*)_gpu_material_attribute_byte_array, (void*)_cpu_material_attribute_byte_array.data(), _cpu_material_attribute_byte_array.bytes());
         if (_cpu_light_sampling_table.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_light_sampling_table, (void*)_cpu_light_sampling_table.data(), sizeof(int) * _cpu_light_sampling_table.size());
+        }
+        if (_cpu_color_mapping_array.size() > 0) {
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_color_mapping_array, (void*)_cpu_color_mapping_array.data(), sizeof(RTXColor) * _cpu_color_mapping_array.size());
         }
     }
 
@@ -368,7 +344,7 @@ void Renderer::render_objects(int height, int width)
         _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
         _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
-        _gpu_light_sampling_table, _cpu_light_sampling_table.size(),
+        _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
         _gpu_render_array, _cpu_render_array.size(),
         _cuda_args->num_threads(),
         _cuda_args->num_blocks(),
