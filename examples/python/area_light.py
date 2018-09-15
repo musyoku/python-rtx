@@ -61,7 +61,7 @@ scene.add(sphere)
 geometry = rtx.PlainGeometry(2.0, 0.5)
 geometry.set_rotation((math.pi / 4, 0, 0))
 geometry.set_position((0, 1, -2))
-material = rtx.EmissiveMaterial(10.0)
+material = rtx.EmissiveMaterial(5.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 rect_area_light = rtx.Object(geometry, material, mapping)
 scene.add(rect_area_light)
@@ -73,7 +73,7 @@ screen_height = 256
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 32
-rt_args.max_bounce = 5
+rt_args.max_bounce = 4
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256

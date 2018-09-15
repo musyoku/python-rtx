@@ -1,31 +1,12 @@
 #include "../../header/enum.h"
 #include "../header/cuda.h"
+#include "common.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <float.h>
 #include <stdio.h>
 #include <time.h>
-
-typedef struct CUDARay {
-    float4 direction;
-    float4 origin;
-} CUDARay;
-
-typedef struct CUDAThreadedBVHNode {
-    int hit_node_index;
-    int miss_node_index;
-    int assigned_face_index_start;
-    int assigned_face_index_end;
-    float4 aabb_max;
-    float4 aabb_min;
-} CUDAThreadedBVHNode;
-
-texture<float4, cudaTextureType1D, cudaReadModeElementType> ray_texture;
-texture<int4, cudaTextureType1D, cudaReadModeElementType> face_vertex_index_texture;
-texture<float4, cudaTextureType1D, cudaReadModeElementType> vertex_texture;
-texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_node_texture;
-texture<float4, cudaTextureType1D, cudaReadModeElementType> threaded_bvh_texture;
 
 __global__ void global_memory_kernel(
     const int ray_array_size,
@@ -43,7 +24,7 @@ __global__ void global_memory_kernel(
 {
     extern __shared__ unsigned char shared_memory[];
     int thread_id = threadIdx.x;
-    curandStateXORWOW_t state;
+    curandStatePhilox4_32_10_t state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
     int offset = 0;

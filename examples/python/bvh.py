@@ -93,8 +93,8 @@ screen_width = 512
 screen_height = 512
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 32
-rt_args.max_bounce = 4
+rt_args.num_rays_per_pixel = 256
+rt_args.max_bounce = 8
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256
