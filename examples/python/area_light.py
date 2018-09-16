@@ -121,9 +121,9 @@ start = time.time()
 
 total_iterations = 1000
 for n in range(total_iterations):
-    if n % 10 == 0:
-        geometry.set_rotation((math.pi / 4, 0, light_rad))
-        light_rad += math.pi / 2
+    # if n % 10 == 0:
+    #     geometry.set_rotation((math.pi / 4, 0, light_rad))
+    #     light_rad += math.pi / 2
 
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     print(np.amax(render_buffer))
