@@ -469,26 +469,8 @@ __global__ void standard_shared_memory_kernel(
             return;
         }
 
-        // ray = global_ray_array[ray_index];
         ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
-
-        // RTXRay ray = global_ray_array[ray_index];
-        // if(ray_index < 5){
-        //     printf("ray: %d\n", ray_index);
-        //     printf("%f == %f\n", ray.direction.x, direction.x);
-        //     printf("%f == %f\n", ray.direction.y, direction.y);
-        //     printf("%f == %f\n", ray.direction.z, direction.z);
-        //     printf("%f == %f\n", ray.origin.x, origin.x);
-        //     printf("%f == %f\n", ray.origin.y, origin.y);
-        //     printf("%f == %f\n", ray.origin.z, origin.z);
-        // }
-        // assert(ray.direction.x == _ray.direction.x);
-        // assert(ray.direction.y == _ray.direction.y);
-        // assert(ray.direction.z == _ray.direction.z);
-        // assert(ray.origin.x == _ray.origin.x);
-        // assert(ray.origin.y == _ray.origin.y);
-        // assert(ray.origin.z == _ray.origin.z);
 
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -748,17 +730,16 @@ __global__ void standard_shared_memory_kernel(
                 unit_diffuese_y /= norm;
                 unit_diffuese_z /= norm;
 
-                float dot = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
-                if (dot < 0.0f) {
-                    unit_diffuese_x = -unit_diffuese_x;
-                    unit_diffuese_y = -unit_diffuese_y;
-                    unit_diffuese_z = -unit_diffuese_z;
+                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
+                if (cosine_term < 0.0f) {
+                    unit_diffuese_x *= -1;
+                    unit_diffuese_y *= -1;
+                    unit_diffuese_z *= -1;
+                    cosine_term *= -1;
                 }
                 ray.direction.x = unit_diffuese_x;
                 ray.direction.y = unit_diffuese_y;
                 ray.direction.z = unit_diffuese_z;
-
-                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.y * unit_diffuese_y;
 
                 ray_direction_inv.x = 1.0f / ray.direction.x;
                 ray_direction_inv.y = 1.0f / ray.direction.y;

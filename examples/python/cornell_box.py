@@ -67,23 +67,10 @@ scene.add(ceil)
 geometry = rtx.PlainGeometry(box_size / 4, box_size / 4)
 geometry.set_rotation((math.pi / 2, 0, 0))
 geometry.set_position((0, box_size / 2 - 0.01, 0))
-material = rtx.EmissiveMaterial(10.0)
+material = rtx.EmissiveMaterial(20.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
-
-# place balls
-# shift = [-1, 0, 1]
-# colors = [(0.25, 1.0, 1.0), (1.0, 1.0, 0.25), (1.0, 0.25, 1.0)]
-# for n in range(27):
-#     color = colors[(n + n // 3 + n // 9) % 3]
-#     geometry = rtx.SphereGeometry(0.5)
-#     geometry.set_position((shift[n % 3], shift[(n // 3) % 3] - 1.5,
-#                            shift[n // 9]))
-#     material = rtx.LambertMaterial(1.0)
-#     mapping = rtx.SolidColorMapping((1, 1, 1))
-#     sphere = rtx.Object(geometry, material, mapping)
-#     scene.add(sphere)
 
 # place boxes
 geometry = rtx.BoxGeometry(1.6, 1.6, 1.6)
@@ -108,7 +95,7 @@ screen_height = 512
 
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 256
+rt_args.num_rays_per_pixel = 128
 rt_args.max_bounce = 4
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
