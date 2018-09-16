@@ -1,13 +1,13 @@
 #pragma once
 #include "../class/camera.h"
 #include "../class/scene.h"
+#include "../mapping/texture.h"
 #include "../header/array.h"
 #include "../header/glm.h"
 #include "../header/struct.h"
 #include "arguments/cuda_kernel.h"
 #include "arguments/ray_tracing.h"
 #include "bvh/bvh.h"
-#include "header/cuda.h"
 #include <array>
 #include <map>
 #include <memory>
@@ -48,6 +48,7 @@ private:
     std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
     std::vector<std::shared_ptr<Object>> _transformed_object_array;
     std::vector<std::shared_ptr<BVH>> _geometry_bvh_array;
+    std::vector<TextureMapping*> _texture_mapping_array;
 
     int _prev_height;
     int _prev_width;

@@ -1,6 +1,7 @@
 #include "../../header/enum.h"
-#include "../header/cuda.h"
-#include "common.h"
+#include "../header/bridge.h"
+#include "../header/cuda_common.h"
+#include "../header/cuda_texture.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -363,17 +364,16 @@ __global__ void standard_global_memory_kernel(
                 unit_diffuese_y /= norm;
                 unit_diffuese_z /= norm;
 
-                float dot = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
-                if (dot < 0.0f) {
-                    unit_diffuese_x = -unit_diffuese_x;
-                    unit_diffuese_y = -unit_diffuese_y;
-                    unit_diffuese_z = -unit_diffuese_z;
+                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
+                if (cosine_term < 0.0f) {
+                    unit_diffuese_x *= -1;
+                    unit_diffuese_y *= -1;
+                    unit_diffuese_z *= -1;
+                    cosine_term *= -1;
                 }
                 ray.direction.x = unit_diffuese_x;
                 ray.direction.y = unit_diffuese_y;
                 ray.direction.z = unit_diffuese_z;
-
-                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.y * unit_diffuese_y;
 
                 ray_direction_inv.x = 1.0f / ray.direction.x;
                 ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -398,6 +398,7 @@ __global__ void standard_shared_memory_kernel(
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const RTXThreadedBVHNode* global_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
+    const cudaTextureObject_t texture_object_array, const int texture_object_array_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -691,6 +692,11 @@ __global__ void standard_shared_memory_kernel(
                     hit_color.r = color.r;
                     hit_color.g = color.g;
                     hit_color.b = color.b;
+                } else if (mapping_type == RTXMappingTypeTexture) {
+                    float4 color = tex2D<float4>(texture_object_array, 0.1f, 0.1f);
+                    hit_color.r = color.x;
+                    hit_color.g = color.y;
+                    hit_color.b = color.z;
                 }
 
                 if (material_type == RTXMaterialTypeLambert) {
@@ -850,6 +856,7 @@ void rtx_cuda_launch_standard_kernel(
             gpu_threaded_bvh_array, threaded_bvh_array_size,
             gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
             gpu_color_mapping_array, color_mapping_array_size,
+            texture_object_array[0], 30,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce,

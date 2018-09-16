@@ -1,6 +1,6 @@
 #include "../../header/enum.h"
-#include "../header/cuda.h"
-#include "common.h"
+#include "../header/bridge.h"
+#include "../header/cuda_common.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>

@@ -4,7 +4,7 @@
 #include "../rtx/core/geometry/sphere.h"
 #include "../rtx/core/material/lambert.h"
 #include "../rtx/core/mapping/solid_color.h"
-#include "../rtx/core/renderer/header/cuda.h"
+#include "../rtx/core/renderer/header/bridge.h"
 #include "../rtx/core/renderer/renderer.h"
 #include "../rtx/core/renderer/arguments/ray_tracing.h"
 #include "../rtx/core/renderer/arguments/cuda_kernel.h"

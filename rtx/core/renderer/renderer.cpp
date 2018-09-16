@@ -7,7 +7,7 @@
 #include "../mapping/solid_color.h"
 #include "../material/emissive.h"
 #include "../material/lambert.h"
-#include "header/cuda.h"
+#include "header/bridge.h"
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -41,7 +41,6 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_material_attribute_byte_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
-    rtx_cuda_free((void**)&_gpu_light_sampling_table);
     rtx_cuda_free((void**)&_gpu_color_mapping_array);
     rtx_cuda_free((void**)&_gpu_render_array);
 }
@@ -124,6 +123,7 @@ void Renderer::serialize_objects()
 
     int material_attribute_byte_array_offset = 0;
     _cpu_color_mapping_array = std::vector<RTXColor>();
+    _texture_mapping_array = std::vector<TextureMapping*>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
@@ -145,10 +145,12 @@ void Renderer::serialize_objects()
         if (mapping->type() == RTXMappingTypeSolidColor) {
             SolidColorMapping* m = static_cast<SolidColorMapping*>(mapping.get());
             auto color = m->color();
-            RTXColor cuda_color = { color.r, color.g, color.b, color.a };
-            _cpu_color_mapping_array.emplace_back(cuda_color);
-
+            _cpu_color_mapping_array.emplace_back(RTXColor({ color.r, color.g, color.b, color.a }));
             cuda_object.mapping_index = _cpu_color_mapping_array.size() - 1;
+        } else if (mapping->type() == RTXMappingTypeTexture) {
+            TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
+            _texture_mapping_array.push_back(m);
+            cuda_object.mapping_index = _texture_mapping_array.size() - 1;
         }
 
         _cpu_object_array[object_index] = cuda_object;
@@ -295,6 +297,15 @@ void Renderer::render_objects(int height, int width)
         if (_cpu_color_mapping_array.size() > 0) {
             rtx_cuda_free((void**)&_gpu_color_mapping_array);
             rtx_cuda_malloc((void**)&_gpu_color_mapping_array, sizeof(RTXColor) * _cpu_color_mapping_array.size());
+        }
+        if (_texture_mapping_array.size() > 0) {
+            for (int mapping_index = 0; mapping_index < (int)_texture_mapping_array.size(); mapping_index++) {
+                TextureMapping* mapping = _texture_mapping_array[mapping_index];
+                rtx_cuda_malloc_texture(mapping_index, mapping->width(), mapping->height());
+                rtx_cuda_memcpy_to_texture(mapping_index, 0, mapping->width(), mapping->pointer(), mapping->bytes());
+                // rtx_cuda_memcpy_to_texture(mapping_index, mapping->width(), mapping->height(), mapping->pointer(), mapping->bytes());
+                rtx_cuda_bind_texture(mapping_index);
+            }
         }
     }
     if (should_transfer_to_gpu) {

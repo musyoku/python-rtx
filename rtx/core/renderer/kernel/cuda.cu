@@ -1,5 +1,7 @@
 #include "../../header/enum.h"
-#include "../header/cuda.h"
+#include "../header/bridge.h"
+#include "../header/cuda_common.h"
+#include "../header/cuda_texture.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -10,6 +12,17 @@ void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
     assert(size > 0);
     cudaError_t error = cudaMalloc(gpu_array, size);
+    // printf("malloc %p\n", *gpu_array);
+    cudaError_t status = cudaGetLastError();
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
+    }
+}
+void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size)
+{
+    printf("cudaMalloc] %p\n", &gpu_array);
+    assert(size > 0);
+    cudaError_t error = cudaMalloc(&gpu_array, size);
     // printf("malloc %p\n", *gpu_array);
     cudaError_t status = cudaGetLastError();
     if (error != cudaSuccess) {
@@ -44,4 +57,48 @@ void rtx_cuda_free(void** array)
 void rtx_cuda_device_reset()
 {
     cudaDeviceReset();
+}
+void rtx_cuda_malloc_texture(int unit_index, int width, int height)
+{
+    cudaChannelFormatDesc desc = cudaCreateChannelDesc<float4>();
+
+    cudaArray*& array = texture_cuda_array[unit_index];
+    cudaError_t error = cudaMallocArray(&array, &desc, width, height);
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMallocArray: %s\n", cudaGetErrorString(error));
+    }
+}
+void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, const void* data, size_t bytes)
+{
+    cudaArray*& array = texture_cuda_array[unit_index];
+    // cudaError_t error = cudaMemcpy2D(array, sizeof(float), data, sizeof(float), width_offset, height_offset, cudaMemcpyHostToDevice);
+    cudaError_t error = cudaMemcpyToArray(array, 0, 0, data, bytes, cudaMemcpyHostToDevice);
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaMemcpyToArray: %s\n", cudaGetErrorString(error));
+    }
+}
+void rtx_cuda_bind_texture(int unit_index)
+{
+    cudaArray*& array = texture_cuda_array[unit_index];
+
+    cudaResourceDesc resource;
+    memset(&resource, 0, sizeof(cudaResourceDesc));
+    resource.resType = cudaResourceTypeArray;
+    resource.res.array.array = array;
+
+    cudaTextureDesc desc;
+    memset(&desc, 0, sizeof(cudaTextureDesc));
+    desc.normalizedCoords = 1;
+    desc.readMode = cudaReadModeElementType;
+    desc.filterMode = cudaFilterModePoint;
+    desc.addressMode[0] = cudaAddressModeWrap;
+    desc.addressMode[1] = cudaAddressModeWrap;
+    desc.readMode = cudaReadModeElementType;
+    cudaCreateTextureObject(&texture_object_array[unit_index], &resource, &desc, NULL);
+}
+void rtx_cuda_free_texture(int unit_index)
+{
+    cudaArray* array = texture_cuda_array[unit_index];
+    cudaFreeArray(array);
+    array = NULL;
 }

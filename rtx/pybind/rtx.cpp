@@ -10,6 +10,7 @@
 #include "../core/geometry/sphere.h"
 #include "../core/geometry/standard.h"
 #include "../core/mapping/solid_color.h"
+#include "../core/mapping/texture.h"
 #include "../core/material/emissive.h"
 #include "../core/material/lambert.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
@@ -60,6 +61,8 @@ PYBIND11_MODULE(rtx, module)
 
     py::class_<SolidColorMapping, Mapping, std::shared_ptr<SolidColorMapping>>(module, "SolidColorMapping")
         .def(py::init<py::tuple>(), py::arg("color"));
+    py::class_<TextureMapping, Mapping, std::shared_ptr<TextureMapping>>(module, "TextureMapping")
+        .def(py::init<py::array_t<float, py::array::c_style>>(), py::arg("texture"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

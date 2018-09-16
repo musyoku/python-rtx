@@ -5,10 +5,16 @@
 #define THREADED_BVH_INNER_NODE -1
 
 void rtx_cuda_malloc(void** gpu_array, size_t size);
+void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size);
 void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size);
 void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size);
 void rtx_cuda_free(void** array);
 void rtx_cuda_device_reset();
+
+void rtx_cuda_malloc_texture(int unit_index, int width, int height);
+void rtx_cuda_free_texture(int unit_index);
+void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, const void* data, size_t bytes);
+void rtx_cuda_bind_texture(int unit_index);
 
 void rtx_cuda_launch_standard_kernel(
     RTXRay*& gpu_ray_array, const int ray_array_size,
