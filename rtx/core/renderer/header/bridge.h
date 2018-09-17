@@ -16,6 +16,9 @@ void rtx_cuda_free_texture(int unit_index);
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, const void* data, size_t bytes);
 void rtx_cuda_bind_texture(int unit_index);
 
+void rtx_cuda_allocate_linear_memory_texture_objects();
+void rtx_cuda_delete_linear_memory_texture_objects();
+
 void rtx_cuda_launch_standard_kernel(
     RTXRay*& gpu_ray_array, const int ray_array_size,
     RTXFace*& gpu_face_vertex_index_array, const int face_vertex_index_array_size,

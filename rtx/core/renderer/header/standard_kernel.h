@@ -4,13 +4,13 @@
 #include <cuda_runtime.h>
 
 __global__ void standard_global_memory_kernel(
-    const int ray_array_size,
-    const int face_vertex_index_array_size,
-    const int vertex_array_size,
+    const cudaTextureObject_t* serial_ray_array_texture_object_ptr, int ray_array_size,
+    const cudaTextureObject_t* serial_face_vertex_index_array_texture_object_ptr, const int face_vertex_index_array_size,
+    const cudaTextureObject_t* serial_vertex_array_texture_object_ptr, const int vertex_array_size,
     const RTXObject* global_object_array, const int object_array_size,
     const RTXMaterialAttributeByte* global_material_attribute_byte_array, const int material_attribute_byte_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
-    const int threaded_bvh_node_array_size,
+    const cudaTextureObject_t* serial_threaded_bvh_node_array_texture_object_ptr, const int threaded_bvh_node_array_size,
     const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
     const cudaTextureObject_t* texture_object_array, const int texture_object_array_size,
     RTXPixel* global_render_array,

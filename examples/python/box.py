@@ -124,5 +124,8 @@ for n in range(total_iterations):
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
 
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1e-8)
+    
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")
