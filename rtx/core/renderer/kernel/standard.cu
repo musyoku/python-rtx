@@ -365,6 +365,9 @@ __global__ void standard_global_memory_kernel(
 
                 if (material_type == RTXMaterialTypeLambert) {
                     RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    hit_color.r *= attr.albedo;
+                    hit_color.g *= attr.albedo;
+                    hit_color.b *= attr.albedo;
                 } else if (material_type == RTXMaterialTypeEmissive) {
                     RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     did_hit_light = true;
@@ -415,9 +418,9 @@ __global__ void standard_global_memory_kernel(
                 ray_direction_inv.y = 1.0f / ray.direction.y;
                 ray_direction_inv.z = 1.0f / ray.direction.z;
 
-                path_weight.r *= hit_color.r * cosine_term;
-                path_weight.g *= hit_color.g * cosine_term;
-                path_weight.b *= hit_color.b * cosine_term;
+                path_weight.r *= 4.0 * hit_color.r * cosine_term;
+                path_weight.g *= 4.0 * hit_color.g * cosine_term;
+                path_weight.b *= 4.0 * hit_color.b * cosine_term;
             }
         }
 

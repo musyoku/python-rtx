@@ -1,6 +1,8 @@
 # :construction: Work in Progress :construction:
 # Python RTX
 
+![https://user-images.githubusercontent.com/15250418/45613852-8a25c700-baa2-11e8-952a-94f19c7e0a7f.png](https://user-images.githubusercontent.com/15250418/45613852-8a25c700-baa2-11e8-952a-94f19c7e0a7f.png)
+
 Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
 **todo**
@@ -13,7 +15,7 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
  Current status:
 
- ![https://thumbs.gfycat.com/DearestFrightenedGoa-size_restricted.gif](https://thumbs.gfycat.com/DearestFrightenedGoa-size_restricted.gif)
+ ![https://thumbs.gfycat.com/JoyfulVainGardensnake-size_restricted.gif](https://thumbs.gfycat.com/JoyfulVainGardensnake-size_restricted.gif)
 
 
 # Requirements

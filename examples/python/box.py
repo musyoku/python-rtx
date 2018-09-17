@@ -13,7 +13,7 @@ box_size = 6
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((0, 0, 0))
 geometry.set_position((0, 0, -box_size / 2))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
@@ -22,7 +22,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((0, -math.pi / 2, 0))
 geometry.set_position((box_size / 2, 0, 0))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
@@ -31,7 +31,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((0, math.pi, 0))
 geometry.set_position((0, 0, box_size / 2))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
@@ -40,7 +40,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_size / 2, 0, 0))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
@@ -49,7 +49,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((math.pi / 2, 0, 0))
 geometry.set_position((0, box_size / 2, 0))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 ceil = rtx.Object(geometry, material, mapping)
 scene.add(ceil)
@@ -58,7 +58,7 @@ scene.add(ceil)
 geometry = rtx.PlainGeometry(box_size, box_size)
 geometry.set_rotation((-math.pi / 2, 0, 0))
 geometry.set_position((0, -box_size / 2, 0))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 ceil = rtx.Object(geometry, material, mapping)
 scene.add(ceil)
@@ -86,7 +86,7 @@ bottom = np.amin(vertices, axis=0)
 geometry = rtx.StandardGeometry(faces, vertices, 25)
 geometry.set_position((0, -box_size / 2 - bottom[2] * 2.5, 0))
 geometry.set_scale((3, 3, 3))
-material = rtx.LambertMaterial(1.0)
+material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
@@ -95,8 +95,8 @@ screen_width = 768
 screen_height = 512
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 32
-rt_args.max_bounce = 4
+rt_args.num_rays_per_pixel = 128
+rt_args.max_bounce = 5
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256
@@ -118,14 +118,18 @@ render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 camera_rad = 0
 # camera_rad = math.pi / 10 * 2
 start = time.time()
-total_iterations = 100
+total_iterations = 30
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
-    plt.imshow(pixels, interpolation="none")
-    plt.pause(1e-8)
+    # plt.imshow(pixels, interpolation="none")
+    # plt.pause(1e-8)
+
+from PIL import Image
+image = Image.fromarray(np.uint8(pixels * 255))
+image.save("result.png")
 
 
 end = time.time()
