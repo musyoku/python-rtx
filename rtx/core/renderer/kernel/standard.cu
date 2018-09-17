@@ -841,9 +841,9 @@ __global__ void standard_shared_memory_kernel(
                 ray_direction_inv.y = 1.0f / ray.direction.y;
                 ray_direction_inv.z = 1.0f / ray.direction.z;
 
-                path_weight.r *= hit_color.r * cosine_term;
-                path_weight.g *= hit_color.g * cosine_term;
-                path_weight.b *= hit_color.b * cosine_term;
+                path_weight.r *= 4.0f * hit_color.r * cosine_term;
+                path_weight.g *= 4.0f * hit_color.g * cosine_term;
+                path_weight.b *= 4.0f * hit_color.b * cosine_term;
             }
         }
 

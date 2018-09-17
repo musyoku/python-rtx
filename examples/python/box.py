@@ -1,80 +1,84 @@
 import math
 import time
-import numpy as np
-import rtx
-import geometry as gm
+
 import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+
+import geometry as gm
+import rtx
 
 scene = rtx.Scene()
 
-box_size = 6
+box_width = 6
+box_height = 5
 
 # 1
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, 0, 0))
-geometry.set_position((0, 0, -box_size / 2))
+geometry.set_position((0, 0, -box_width / 2))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
 # 2
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, -math.pi / 2, 0))
-geometry.set_position((box_size / 2, 0, 0))
+geometry.set_position((box_width / 2, 0, 0))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
 # 3
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi, 0))
-geometry.set_position((0, 0, box_size / 2))
+geometry.set_position((0, 0, box_width / 2))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
 # 4
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi / 2, 0))
-geometry.set_position((-box_size / 2, 0, 0))
+geometry.set_position((-box_width / 2, 0, 0))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
 # ceil
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_width)
 geometry.set_rotation((math.pi / 2, 0, 0))
-geometry.set_position((0, box_size / 2, 0))
+geometry.set_position((0, box_height / 2, 0))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 ceil = rtx.Object(geometry, material, mapping)
 scene.add(ceil)
 
 # floor
-geometry = rtx.PlainGeometry(box_size, box_size)
+geometry = rtx.PlainGeometry(box_width, box_width)
 geometry.set_rotation((-math.pi / 2, 0, 0))
-geometry.set_position((0, -box_size / 2, 0))
+geometry.set_position((0, -box_height / 2, 0))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 ceil = rtx.Object(geometry, material, mapping)
 scene.add(ceil)
 
 # light
-geometry = rtx.PlainGeometry(box_size / 2, box_size / 2)
+geometry = rtx.PlainGeometry(box_width / 2, box_width / 2)
 geometry.set_rotation((0, math.pi / 2, 0))
-geometry.set_position((0.01 - box_size / 2, -box_size / 4, 0))
+geometry.set_position((0.01 - box_width / 2, -box_height / 4, 0))
 material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
-geometry = rtx.PlainGeometry(box_size / 2, box_size / 2)
+geometry = rtx.PlainGeometry(box_width / 2, box_width / 2)
 geometry.set_rotation((0, -math.pi / 2, 0))
-geometry.set_position((box_size / 2 - 0.01, -box_size / 4, 0))
+geometry.set_position((box_width / 2 - 0.01, -box_height / 4, 0))
 material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((0, 1, 1))
 light = rtx.Object(geometry, material, mapping)
@@ -84,7 +88,7 @@ scene.add(light)
 faces, vertices = gm.load("../geometries/bunny")
 bottom = np.amin(vertices, axis=0)
 geometry = rtx.StandardGeometry(faces, vertices, 25)
-geometry.set_position((0, -box_size / 2 - bottom[2] * 2.5, 0))
+geometry.set_position((0, -box_height / 2 - bottom[2] * 2.5, 0))
 geometry.set_scale((3, 3, 3))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
@@ -105,8 +109,8 @@ cuda_args.num_blocks = 1024
 renderer = rtx.Renderer()
 
 camera = rtx.PerspectiveCamera(
-    eye=(0, -1, 6),
-    center=(0, -1, 0),
+    eye=(0, -0.5, 6),
+    center=(0, -0.5, 0),
     up=(0, 1, 0),
     fov_rad=math.pi / 3,
     aspect_ratio=screen_width / screen_height,
@@ -114,23 +118,11 @@ camera = rtx.PerspectiveCamera(
     z_far=100)
 
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-# renderer.render(scene, camera, render_options, render_buffer)
-camera_rad = 0
-# camera_rad = math.pi / 10 * 2
-start = time.time()
 total_iterations = 30
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
-    # display
-    # plt.imshow(pixels, interpolation="none")
-    # plt.pause(1e-8)
 
-from PIL import Image
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")
-
-
-end = time.time()
-print(total_iterations / (end - start))
