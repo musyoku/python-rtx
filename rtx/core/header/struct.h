@@ -34,7 +34,6 @@ typedef struct RTXFace {
     int a; // vertex index
     int b; // vertex index
     int c; // vertex index
-    int dummy_axis;
 } RTXFace;
 
 typedef struct RTXRay {

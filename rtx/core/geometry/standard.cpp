@@ -86,14 +86,14 @@ void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int arr
 {
     for (int j = 0; j < _vertex_array.size(); j++) {
         auto& vertex = _vertex_array[j];
-        buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z, 1.0f };
+        buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z, vertex.w };
     }
 }
 void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset) const
 {
     for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
         auto& face = _face_vertex_indices_array[j];
-        buffer[j + array_offset] = { face[0], face[1], face[2], -1 };
+        buffer[j + array_offset] = { face[0], face[1], face[2] };
     }
 }
 std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation_matrix) const

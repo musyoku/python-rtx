@@ -15,9 +15,7 @@ geometry = rtx.PlainGeometry(100, 100)
 geometry.set_position((0, 0, 0))
 geometry.set_rotation((-math.pi / 2, 0, 0))
 material = rtx.LambertMaterial(1.0)
-texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
-texture[...] = 1.0
-mapping = rtx.TextureMapping(texture)
+mapping = rtx.SolidColorMapping((1, 1, 1))
 floor = rtx.Object(geometry, material, mapping)
 scene.add(floor)
 
@@ -33,8 +31,9 @@ scene.add(sphere)
 geometry = rtx.PlainGeometry(2.0, 2.0)
 geometry.set_rotation((0, 0, math.pi / 2))
 geometry.set_position((0, 1, -3))
-material = rtx.EmissiveMaterial(5.0)
-mapping = rtx.SolidColorMapping((1, 0, 0))
+material = rtx.EmissiveMaterial(1.0)
+texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
+mapping = rtx.TextureMapping(texture)
 rect_area_light = rtx.Object(geometry, material, mapping)
 scene.add(rect_area_light)
 

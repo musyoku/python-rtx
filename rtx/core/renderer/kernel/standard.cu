@@ -63,6 +63,7 @@ __global__ void standard_global_memory_kernel(
     float3 ray_direction_inv;
     float3 hit_point;
     float3 hit_face_normal;
+    float2 uv;
     RTXObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
@@ -462,6 +463,9 @@ __global__ void standard_shared_memory_kernel(
     float3 ray_direction_inv;
     float3 hit_point;
     float3 hit_face_normal;
+    RTXVertex hit_va;
+    RTXVertex hit_vb;
+    RTXVertex hit_vc;
     RTXObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
@@ -617,6 +621,10 @@ __global__ void standard_shared_memory_kernel(
                                 hit_face_normal.y = s.y;
                                 hit_face_normal.z = s.z;
 
+                                hit_va = va;
+                                hit_vb = vb;
+                                hit_vc = vc;
+
                                 did_hit_object = true;
                                 hit_object = object;
                             }
@@ -686,6 +694,7 @@ __global__ void standard_shared_memory_kernel(
             if (did_hit_object) {
                 int material_type = hit_object.layerd_material_types.outside;
                 int mapping_type = hit_object.mapping_type;
+                int geometry_type = hit_object.geometry_type;
 
                 if (mapping_type == RTXMappingTypeSolidColor) {
                     RTXColor color = shared_color_mapping_array[hit_object.mapping_index];
@@ -693,10 +702,53 @@ __global__ void standard_shared_memory_kernel(
                     hit_color.g = color.g;
                     hit_color.b = color.b;
                 } else if (mapping_type == RTXMappingTypeTexture) {
-                    float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], 0.1f, 0.1f);
-                    hit_color.r = color.x;
-                    hit_color.g = color.y;
-                    hit_color.b = color.z;
+                    if (geometry_type == RTXGeometryTypeStandard) {
+                        // compute barycentric coordinates
+                        float3 d1 = {
+                            hit_va.x - hit_vc.x,
+                            hit_va.y - hit_vc.y,
+                            hit_va.z - hit_vc.z
+                        };
+                        float3 d2 = {
+                            hit_vb.x - hit_vc.x,
+                            hit_vb.y - hit_vc.y,
+                            hit_vb.z - hit_vc.z
+                        };
+                        float3 d = {
+                            hit_point.x - hit_vc.x,
+                            hit_point.y - hit_vc.y,
+                            hit_point.z - hit_vc.z
+                        };
+                        float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;
+                        float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;
+                        float d2x = d1y;
+                        float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
+                        float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;
+                        float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;
+
+                        float det = d1x * d2y - d1y * d2x;
+                        float3 lambda = {
+                            (dx * d2y - dy * d2x) / det,
+                            (d1x * dy - d1y * dx) / det,
+                            0.0f
+                        };
+                        lambda.z = 1.0f - lambda.x - lambda.y;
+
+                        float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
+
+                        float x = lambda.z / div_w;
+                        float y = lambda.y / div_w;
+
+                        float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
+
+                        hit_color.r = color.x;
+                        hit_color.g = color.y;
+                        hit_color.b = color.z;
+                    } else {
+                        hit_color.r = 0.0f;
+                        hit_color.g = 0.0f;
+                        hit_color.b = 0.0f;
+                    }
                 }
 
                 if (material_type == RTXMaterialTypeLambert) {

@@ -93,12 +93,11 @@ void rtx_cuda_bind_texture(int unit_index)
 
     cudaTextureDesc desc;
     memset(&desc, 0, sizeof(cudaTextureDesc));
-    desc.normalizedCoords = 1;
+    desc.normalizedCoords = true;
     desc.readMode = cudaReadModeElementType;
     desc.filterMode = cudaFilterModePoint;
     desc.addressMode[0] = cudaAddressModeWrap;
     desc.addressMode[1] = cudaAddressModeWrap;
-    desc.readMode = cudaReadModeElementType;
     cudaError_t error = cudaCreateTextureObject(&texture_object_array[unit_index], &resource, &desc, NULL);
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA Error at cudaCreateTextureObject: %s\n", cudaGetErrorString(error));
