@@ -398,7 +398,7 @@ __global__ void standard_shared_memory_kernel(
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const RTXThreadedBVHNode* global_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
     const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
-    const cudaTextureObject_t texture_object_array, const int texture_object_array_size,
+    const cudaTextureObject_t* texture_object_array, const int texture_object_array_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -693,7 +693,7 @@ __global__ void standard_shared_memory_kernel(
                     hit_color.g = color.g;
                     hit_color.b = color.b;
                 } else if (mapping_type == RTXMappingTypeTexture) {
-                    float4 color = tex2D<float4>(texture_object_array, 0.1f, 0.1f);
+                    float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], 0.1f, 0.1f);
                     hit_color.r = color.x;
                     hit_color.g = color.y;
                     hit_color.b = color.z;
@@ -847,6 +847,7 @@ void rtx_cuda_launch_standard_kernel(
         printf("using shared memory kernel\n");
         cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
 
+        printf("%p\n", texture_object_array);
         standard_shared_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
             ray_array_size,
             gpu_face_vertex_index_array, face_vertex_index_array_size,
@@ -856,7 +857,7 @@ void rtx_cuda_launch_standard_kernel(
             gpu_threaded_bvh_array, threaded_bvh_array_size,
             gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
             gpu_color_mapping_array, color_mapping_array_size,
-            texture_object_array[0], 30,
+            texture_object_pointer, 30,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce,

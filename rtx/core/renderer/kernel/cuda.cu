@@ -8,6 +8,10 @@
 #include <float.h>
 #include <stdio.h>
 
+cudaTextureObject_t* texture_object_pointer;
+cudaTextureObject_t texture_object_array[30];
+cudaArray* texture_cuda_array[30];
+
 void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
     assert(size > 0);
@@ -67,10 +71,11 @@ void rtx_cuda_malloc_texture(int unit_index, int width, int height)
     if (error != cudaSuccess) {
         fprintf(stderr, "CUDA Error at cudaMallocArray: %s\n", cudaGetErrorString(error));
     }
+    cudaMalloc((void**)&texture_object_pointer, sizeof(cudaTextureObject_t*) * 30);
 }
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, const void* data, size_t bytes)
 {
-    cudaArray*& array = texture_cuda_array[unit_index];
+    cudaArray* array = texture_cuda_array[unit_index];
     // cudaError_t error = cudaMemcpy2D(array, sizeof(float), data, sizeof(float), width_offset, height_offset, cudaMemcpyHostToDevice);
     cudaError_t error = cudaMemcpyToArray(array, 0, 0, data, bytes, cudaMemcpyHostToDevice);
     if (error != cudaSuccess) {
@@ -79,7 +84,7 @@ void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_off
 }
 void rtx_cuda_bind_texture(int unit_index)
 {
-    cudaArray*& array = texture_cuda_array[unit_index];
+    cudaArray* array = texture_cuda_array[unit_index];
 
     cudaResourceDesc resource;
     memset(&resource, 0, sizeof(cudaResourceDesc));
@@ -94,7 +99,12 @@ void rtx_cuda_bind_texture(int unit_index)
     desc.addressMode[0] = cudaAddressModeWrap;
     desc.addressMode[1] = cudaAddressModeWrap;
     desc.readMode = cudaReadModeElementType;
-    cudaCreateTextureObject(&texture_object_array[unit_index], &resource, &desc, NULL);
+    cudaError_t error = cudaCreateTextureObject(&texture_object_array[unit_index], &resource, &desc, NULL);
+    if (error != cudaSuccess) {
+        fprintf(stderr, "CUDA Error at cudaCreateTextureObject: %s\n", cudaGetErrorString(error));
+    }
+    printf("%p\n", texture_object_array);
+    cudaMemcpy(texture_object_pointer, &texture_object_array[unit_index], sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
 }
 void rtx_cuda_free_texture(int unit_index)
 {
