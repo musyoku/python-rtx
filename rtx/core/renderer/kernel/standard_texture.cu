@@ -9,14 +9,14 @@
 #include <float.h>
 #include <stdio.h>
 
-__global__ void standard_global_memory_kernel(
-    const RTXRay* global_ray_array, const int ray_array_size,
-    const RTXFace* global_face_vertex_indices_array, const int face_vertex_index_array_size,
-    const RTXVertex* global_vertex_array, const int vertex_array_size,
+__global__ void standard_texture_memory_kernel(
+    const cudaTextureObject_t* serial_ray_array_texture_object_ptr, int ray_array_size,
+    const cudaTextureObject_t* serial_face_vertex_index_array_texture_object_ptr, const int face_vertex_index_array_size,
+    const cudaTextureObject_t* serial_vertex_array_texture_object_ptr, const int vertex_array_size,
     const RTXObject* global_object_array, const int object_array_size,
     const RTXMaterialAttributeByte* global_material_attribute_byte_array, const int material_attribute_byte_array_size,
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
-    const RTXThreadedBVHNode* global_threaded_bvh_node_array, const int threaded_bvh_node_array_size,
+    const cudaTextureObject_t* serial_threaded_bvh_node_array_texture_object_ptr, const int threaded_bvh_node_array_size,
     const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
     const cudaTextureObject_t* texture_object_array, const int texture_object_array_size,
     RTXPixel* global_render_array,
@@ -59,15 +59,20 @@ __global__ void standard_global_memory_kernel(
     __syncthreads();
 
     const float eps = 0.0000001;
-    RTXRay ray;
+    CUDARay ray;
     // RTXRay ray;
     float3 ray_direction_inv;
     float3 hit_point;
     float3 hit_face_normal;
-    RTXVertex hit_va;
-    RTXVertex hit_vb;
-    RTXVertex hit_vc;
+    float4 hit_va;
+    float4 hit_vb;
+    float4 hit_vc;
     RTXObject hit_object;
+
+    cudaTextureObject_t ray_array_texture_object = serial_ray_array_texture_object_ptr[0];
+    cudaTextureObject_t face_vertex_index_array_texture_object = serial_face_vertex_index_array_texture_object_ptr[0];
+    cudaTextureObject_t vertex_array_texture_object = serial_vertex_array_texture_object_ptr[0];
+    cudaTextureObject_t threaded_bvh_node_array_texture_object = serial_threaded_bvh_node_array_texture_object_ptr[0];
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
@@ -77,7 +82,9 @@ __global__ void standard_global_memory_kernel(
 
         // ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         // ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
-        ray = global_ray_array[ray_index];
+
+        ray.direction = tex1Dfetch<float4>(ray_array_texture_object, ray_index * 2 + 0);
+        ray.origin = tex1Dfetch<float4>(ray_array_texture_object, ray_index * 2 + 1);
 
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -101,7 +108,16 @@ __global__ void standard_global_memory_kernel(
                     }
 
                     int index = bvh.node_index_offset + bvh_current_node_index;
-                    RTXThreadedBVHNode node = global_threaded_bvh_node_array[index];
+
+                    CUDAThreadedBVHNode node;
+                    float4 attributes_float = tex1Dfetch<float4>(threaded_bvh_node_array_texture_object, index * 3 + 0);
+                    int4* attributes_integer_ptr = reinterpret_cast<int4*>(&attributes_float);
+                    node.hit_node_index = attributes_integer_ptr->x;
+                    node.miss_node_index = attributes_integer_ptr->y;
+                    node.assigned_face_index_start = attributes_integer_ptr->z;
+                    node.assigned_face_index_end = attributes_integer_ptr->w;
+                    node.aabb_max = tex1Dfetch<float4>(threaded_bvh_node_array_texture_object, index * 3 + 1);
+                    node.aabb_min = tex1Dfetch<float4>(threaded_bvh_node_array_texture_object, index * 3 + 2);
 
                     bool is_inner_node = node.assigned_face_index_start == -1;
                     if (is_inner_node) {
@@ -145,11 +161,11 @@ __global__ void standard_global_memory_kernel(
                             for (int m = 0; m < num_assigned_faces; m++) {
                                 int index = node.assigned_face_index_start + m + object.face_index_offset;
 
-                                const RTXFace face = global_face_vertex_indices_array[index];
+                                const int4 face = tex1Dfetch<int4>(face_vertex_index_array_texture_object, index);
 
-                                const RTXVertex va = global_vertex_array[face.a + object.vertex_index_offset];
-                                const RTXVertex vb = global_vertex_array[face.b + object.vertex_index_offset];
-                                const RTXVertex vc = global_vertex_array[face.c + object.vertex_index_offset];
+                                const float4 va = tex1Dfetch<float4>(vertex_array_texture_object, face.x + object.vertex_index_offset);
+                                const float4 vb = tex1Dfetch<float4>(vertex_array_texture_object, face.y + object.vertex_index_offset);
+                                const float4 vc = tex1Dfetch<float4>(vertex_array_texture_object, face.z + object.vertex_index_offset);
 
                                 float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;
@@ -234,10 +250,10 @@ __global__ void standard_global_memory_kernel(
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int index = node.assigned_face_index_start + object.face_index_offset;
 
-                            const RTXFace face = global_face_vertex_indices_array[index];
+                            const int4 face = tex1Dfetch<int4>(face_vertex_index_array_texture_object, index);
 
-                            const RTXVertex center = global_vertex_array[face.a + object.vertex_index_offset];
-                            const RTXVertex radius = global_vertex_array[face.b + object.vertex_index_offset];
+                            const float4 center = tex1Dfetch<float4>(vertex_array_texture_object, face.x + object.vertex_index_offset);
+                            const float4 radius = tex1Dfetch<float4>(vertex_array_texture_object, face.y + object.vertex_index_offset);
 
                             float4 oc;
                             oc.x = ray.origin.x - center.x;

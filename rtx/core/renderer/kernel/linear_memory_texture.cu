@@ -36,7 +36,9 @@ void rtx_cuda_bind_linear_memory_texture_object(
     memset(&tex, 0, sizeof(cudaTextureDesc));
 
     tex.normalizedCoords = false;
-    tex.addressMode[0] = cudaAddressModeClamp;
+    tex.addressMode[0] = cudaAddressModeBorder;
+    tex.addressMode[1] = cudaAddressModeBorder;
+    tex.addressMode[2] = cudaAddressModeBorder;
     tex.readMode = cudaReadModeElementType;
     tex.filterMode = cudaFilterModePoint;
 

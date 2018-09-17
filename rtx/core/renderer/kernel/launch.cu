@@ -70,44 +70,59 @@ void rtx_cuda_launch_standard_kernel(
 
         assert(required_shared_memory_bytes <= dev.sharedMemPerBlock);
 
-        rtx_cuda_bind_linear_memory_texture_object(
-            &g_serial_ray_array_texture_object_cpu_ptr, 
-            &g_serial_ray_array_texture_object_gpu_ptr, 
-            gpu_ray_array, 
-            sizeof(RTXRay) * ray_array_size, 
-            cudaChannelFormatKindFloat);
-        rtx_cuda_bind_linear_memory_texture_object(
-            &g_serial_face_vertex_index_array_texture_object_cpu_ptr, 
-            &g_serial_face_vertex_index_array_texture_object_gpu_ptr, 
-            gpu_face_vertex_index_array, 
-            sizeof(RTXFace) * face_vertex_index_array_size, 
-            cudaChannelFormatKindSigned);
-        rtx_cuda_bind_linear_memory_texture_object(
-            &g_serial_vertex_array_texture_object_cpu_ptr, 
-            &g_serial_vertex_array_texture_object_gpu_ptr, 
-            gpu_vertex_array, 
-            sizeof(RTXVertex) * vertex_array_size, 
-            cudaChannelFormatKindFloat);
-        rtx_cuda_bind_linear_memory_texture_object(
-            &g_serial_threaded_bvh_node_array_texture_object_cpu_ptr, 
-            &g_serial_threaded_bvh_node_array_texture_object_gpu_ptr, 
-            gpu_threaded_bvh_node_array, 
-            sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size, 
-            cudaChannelFormatKindFloat);
         standard_global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
-            g_serial_ray_array_texture_object_gpu_ptr, ray_array_size,
-            g_serial_face_vertex_index_array_texture_object_gpu_ptr, face_vertex_index_array_size,
-            g_serial_vertex_array_texture_object_gpu_ptr, vertex_array_size,
+            gpu_ray_array, ray_array_size,
+            gpu_face_vertex_index_array, face_vertex_index_array_size,
+            gpu_vertex_array, vertex_array_size,
             gpu_object_array, object_array_size,
             gpu_material_attribute_byte_array, material_attribute_byte_array_size,
             gpu_threaded_bvh_array, threaded_bvh_array_size,
-            g_serial_threaded_bvh_node_array_texture_object_gpu_ptr, threaded_bvh_node_array_size,
+            gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
             gpu_color_mapping_array, color_mapping_array_size,
             texture_object_pointer, 30,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce,
             curand_seed);
+
+        // rtx_cuda_bind_linear_memory_texture_object(
+        //     &g_serial_ray_array_texture_object_cpu_ptr,
+        //     &g_serial_ray_array_texture_object_gpu_ptr,
+        //     gpu_ray_array,
+        //     sizeof(RTXRay) * ray_array_size,
+        //     cudaChannelFormatKindFloat);
+        // rtx_cuda_bind_linear_memory_texture_object(
+        //     &g_serial_face_vertex_index_array_texture_object_cpu_ptr,
+        //     &g_serial_face_vertex_index_array_texture_object_gpu_ptr,
+        //     gpu_face_vertex_index_array,
+        //     sizeof(RTXFace) * face_vertex_index_array_size,
+        //     cudaChannelFormatKindSigned);
+        // rtx_cuda_bind_linear_memory_texture_object(
+        //     &g_serial_vertex_array_texture_object_cpu_ptr,
+        //     &g_serial_vertex_array_texture_object_gpu_ptr,
+        //     gpu_vertex_array,
+        //     sizeof(RTXVertex) * vertex_array_size,
+        //     cudaChannelFormatKindFloat);
+        // rtx_cuda_bind_linear_memory_texture_object(
+        //     &g_serial_threaded_bvh_node_array_texture_object_cpu_ptr,
+        //     &g_serial_threaded_bvh_node_array_texture_object_gpu_ptr,
+        //     gpu_threaded_bvh_node_array,
+        //     sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size,
+        //     cudaChannelFormatKindFloat);
+        // standard_global_memory_kernel<<<num_blocks, num_threads, required_shared_memory_bytes>>>(
+        //     g_serial_ray_array_texture_object_gpu_ptr, ray_array_size,
+        //     g_serial_face_vertex_index_array_texture_object_gpu_ptr, face_vertex_index_array_size,
+        //     g_serial_vertex_array_texture_object_gpu_ptr, vertex_array_size,
+        //     gpu_object_array, object_array_size,
+        //     gpu_material_attribute_byte_array, material_attribute_byte_array_size,
+        //     gpu_threaded_bvh_array, threaded_bvh_array_size,
+        //     g_serial_threaded_bvh_node_array_texture_object_gpu_ptr, threaded_bvh_node_array_size,
+        //     gpu_color_mapping_array, color_mapping_array_size,
+        //     texture_object_pointer, 30,
+        //     gpu_render_array,
+        //     num_rays_per_thread,
+        //     max_bounce,
+        //     curand_seed);
     } else {
         printf("using shared memory kernel\n");
         cudaBindTexture(0, ray_texture, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
