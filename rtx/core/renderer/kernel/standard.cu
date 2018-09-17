@@ -18,6 +18,7 @@ __global__ void standard_global_memory_kernel(
     const RTXThreadedBVH* global_threaded_bvh_array, const int threaded_bvh_array_size,
     const int threaded_bvh_node_array_size,
     const RTXColor* global_color_mapping_array, const int color_mapping_array_size,
+    const cudaTextureObject_t* texture_object_array, const int texture_object_array_size,
     RTXPixel* global_render_array,
     const int num_rays_per_thread,
     const int max_bounce,
@@ -63,6 +64,9 @@ __global__ void standard_global_memory_kernel(
     float3 ray_direction_inv;
     float3 hit_point;
     float3 hit_face_normal;
+    float4 hit_va;
+    float4 hit_vb;
+    float4 hit_vc;
     float2 uv;
     RTXObject hit_object;
 
@@ -72,26 +76,8 @@ __global__ void standard_global_memory_kernel(
             return;
         }
 
-        // ray = global_ray_array[ray_index];
         ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
-
-        // RTXRay ray = global_ray_array[ray_index];
-        // if(ray_index < 5){
-        //     printf("ray: %d\n", ray_index);
-        //     printf("%f == %f\n", ray.direction.x, direction.x);
-        //     printf("%f == %f\n", ray.direction.y, direction.y);
-        //     printf("%f == %f\n", ray.direction.z, direction.z);
-        //     printf("%f == %f\n", ray.origin.x, origin.x);
-        //     printf("%f == %f\n", ray.origin.y, origin.y);
-        //     printf("%f == %f\n", ray.origin.z, origin.z);
-        // }
-        // assert(ray.direction.x == _ray.direction.x);
-        // assert(ray.direction.y == _ray.direction.y);
-        // assert(ray.direction.z == _ray.direction.z);
-        // assert(ray.origin.x == _ray.origin.x);
-        // assert(ray.origin.y == _ray.origin.y);
-        // assert(ray.origin.z == _ray.origin.z);
 
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -169,14 +155,10 @@ __global__ void standard_global_memory_kernel(
                                 int index = node.assigned_face_index_start + m + object.face_index_offset;
 
                                 const int4 face = tex1Dfetch(face_vertex_index_texture, index);
-                                // RTXFace face = global_face_vertex_index_array[index];
 
                                 const float4 va = tex1Dfetch(vertex_texture, face.x + object.vertex_index_offset);
                                 const float4 vb = tex1Dfetch(vertex_texture, face.y + object.vertex_index_offset);
                                 const float4 vc = tex1Dfetch(vertex_texture, face.z + object.vertex_index_offset);
-                                // RTXVector4f va = global_vertex_array[face.a];
-                                // RTXVector4f vb = global_vertex_array[face.b];
-                                // RTXVector4f vc = global_vertex_array[face.c];
 
                                 float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;
@@ -251,6 +233,10 @@ __global__ void standard_global_memory_kernel(
                                 hit_face_normal.y = s.y;
                                 hit_face_normal.z = s.z;
 
+                                hit_va = va;
+                                hit_vb = vb;
+                                hit_vc = vc;
+
                                 did_hit_object = true;
                                 hit_object = object;
                             }
@@ -301,7 +287,7 @@ __global__ void standard_global_memory_kernel(
                             hit_face_normal.x = tmp.x / norm;
                             hit_face_normal.y = tmp.y / norm;
                             hit_face_normal.z = tmp.z / norm;
-
+                            
                             did_hit_object = true;
                             hit_object = object;
                         }
@@ -320,12 +306,61 @@ __global__ void standard_global_memory_kernel(
             if (did_hit_object) {
                 int material_type = hit_object.layerd_material_types.outside;
                 int mapping_type = hit_object.mapping_type;
+                int geometry_type = hit_object.geometry_type;
 
                 if (mapping_type == RTXMappingTypeSolidColor) {
                     RTXColor color = shared_color_mapping_array[hit_object.mapping_index];
                     hit_color.r = color.r;
                     hit_color.g = color.g;
                     hit_color.b = color.b;
+                } else if (mapping_type == RTXMappingTypeTexture) {
+                    if (geometry_type == RTXGeometryTypeStandard) {
+                        // compute barycentric coordinates
+                        float3 d1 = {
+                            hit_va.x - hit_vc.x,
+                            hit_va.y - hit_vc.y,
+                            hit_va.z - hit_vc.z
+                        };
+                        float3 d2 = {
+                            hit_vb.x - hit_vc.x,
+                            hit_vb.y - hit_vc.y,
+                            hit_vb.z - hit_vc.z
+                        };
+                        float3 d = {
+                            hit_point.x - hit_vc.x,
+                            hit_point.y - hit_vc.y,
+                            hit_point.z - hit_vc.z
+                        };
+                        float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;
+                        float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;
+                        float d2x = d1y;
+                        float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
+                        float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;
+                        float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;
+
+                        float det = d1x * d2y - d1y * d2x;
+                        float3 lambda = {
+                            (dx * d2y - dy * d2x) / det,
+                            (d1x * dy - d1y * dx) / det,
+                            0.0f
+                        };
+                        lambda.z = 1.0f - lambda.x - lambda.y;
+
+                        float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
+
+                        float x = lambda.z / div_w;
+                        float y = lambda.y / div_w;
+
+                        float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
+
+                        hit_color.r = color.x;
+                        hit_color.g = color.y;
+                        hit_color.b = color.z;
+                    } else {
+                        hit_color.r = 0.0f;
+                        hit_color.g = 0.0f;
+                        hit_color.b = 0.0f;
+                    }
                 }
 
                 if (material_type == RTXMaterialTypeLambert) {
@@ -885,6 +920,7 @@ void rtx_cuda_launch_standard_kernel(
             gpu_threaded_bvh_array, threaded_bvh_array_size,
             threaded_bvh_node_array_size,
             gpu_color_mapping_array, color_mapping_array_size,
+            texture_object_pointer, 30,
             gpu_render_array,
             num_rays_per_thread,
             max_bounce,

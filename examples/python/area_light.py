@@ -126,7 +126,6 @@ for n in range(total_iterations):
     #     light_rad += math.pi / 2
 
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
-    print(np.amax(render_buffer))
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
     # display
