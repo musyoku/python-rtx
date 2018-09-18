@@ -1,9 +1,9 @@
-#include "../../header/enum.h"
-#include "../../header/struct.h"
-#include "../header/bridge.h"
-#include "../header/cuda_common.h"
-#include "../header/cuda_texture.h"
-#include "../header/standard_kernel.h"
+#include "../../../header/enum.h"
+#include "../../../header/struct.h"
+#include "../../header/bridge.h"
+#include "../../header/cuda_common.h"
+#include "../../header/cuda_texture.h"
+#include "../../header/standard_kernel.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -422,15 +422,15 @@ __global__ void standard_global_memory_kernel(
 }
 
 void rtx_cuda_launch_standard_global_memory_kernel(
-    RTXRay*& gpu_ray_array, int ray_array_size,
-    RTXFace*& gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex*& gpu_vertex_array, int vertex_array_size,
-    RTXObject*& gpu_object_array, int object_array_size,
-    RTXMaterialAttributeByte*& gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    RTXThreadedBVH*& gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    RTXThreadedBVHNode*& gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    RTXColor*& gpu_color_mapping_array, int color_mapping_array_size,
-    RTXPixel*& gpu_render_array, int render_array_size,
+    RTXRay* gpu_ray_array, int ray_array_size,
+    RTXFace* gpu_face_vertex_index_array, int face_vertex_index_array_size,
+    RTXVertex* gpu_vertex_array, int vertex_array_size,
+    RTXObject* gpu_object_array, int object_array_size,
+    RTXMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
+    RTXThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
+    RTXThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
+    RTXColor* gpu_color_mapping_array, int color_mapping_array_size,
+    RTXPixel* gpu_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,

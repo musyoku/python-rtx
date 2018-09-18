@@ -274,7 +274,9 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += sizeof(RTXColor) * _cpu_color_mapping_array.size();
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
-        rtx_cuda_launch_standard_global_memory_kernel(
+        // テクスチャメモリに直列データを入れる場合
+        // こちらの方が若干早い
+        rtx_cuda_launch_standard_texture_memory_kernel(
             _gpu_ray_array, _cpu_ray_array.size(),
             _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
             _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -290,6 +292,24 @@ void Renderer::launch_kernel()
             required_shared_memory_bytes,
             _rt_args->max_bounce(),
             curand_seed);
+
+        // グローバルメモリに直列データを入れる場合
+        // rtx_cuda_launch_standard_global_memory_kernel(
+        //     _gpu_ray_array, _cpu_ray_array.size(),
+        //     _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+        //     _gpu_vertex_array, _cpu_vertex_array.size(),
+        //     _gpu_object_array, _cpu_object_array.size(),
+        //     _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+        //     _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+        //     _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+        //     _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+        //     _gpu_render_array, _cpu_render_array.size(),
+        //     _cuda_args->num_threads(),
+        //     _cuda_args->num_blocks(),
+        //     num_rays_per_thread,
+        //     required_shared_memory_bytes,
+        //     _rt_args->max_bounce(),
+        //     curand_seed);
         return;
     }
 

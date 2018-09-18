@@ -12,6 +12,8 @@ SOURCES = $(wildcard ./external/gl3w/*.c) \
 		  $(wildcard ./core/camera/*.cpp) \
 		  $(wildcard ./core/renderer/bvh/*.cpp) \
 		  $(wildcard ./core/renderer/kernel/*.cu) \
+		  $(wildcard ./core/renderer/kernel/mcrt/*.cu) \
+		  $(wildcard ./core/renderer/kernel/next_event_estimation/*.cu) \
 		  $(wildcard ./core/renderer/*.cpp) \
 		  $(wildcard ./core/renderer/arguments/*.cpp) \
 		  pybind/rtx.cpp
@@ -40,6 +42,16 @@ $(TARGET): $(OBJS)
 ./core/renderer/kernel/%.o: ./core/renderer/kernel/%.cu
 	nvcc $(NVCCFLAGS) -c $< -o $@
 
+./core/renderer/kernel/mcrt/%.o: ./core/renderer/kernel/%.cu
+	nvcc $(NVCCFLAGS) -c $< -o $@
+
+./core/renderer/kernel/next_event_estimation/%.o: ./core/renderer/kernel/%.cu
+	nvcc $(NVCCFLAGS) -c $< -o $@
+
 .PHONY: clean
 clean:
+	rm -f $(OBJS) $(TARGET)
+
+.PHONY: clean_objects
+clean_objects:
 	rm -f $(OBJS) $(TARGET)
