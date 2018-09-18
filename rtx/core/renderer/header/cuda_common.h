@@ -1,6 +1,14 @@
 #pragma once
 #include <cuda_runtime.h>
 
+#define cudaCheckError(error)                                                                     \
+    {                                                                                             \
+        if (error != cudaSuccess) {                                                               \
+            printf("CUDA Error at %s:%d: '%s'\n", __FILE__, __LINE__, cudaGetErrorString(error)); \
+            exit(0);                                                                              \
+        }                                                                                         \
+    }
+
 typedef struct CUDARay {
     float4 direction;
     float4 origin;

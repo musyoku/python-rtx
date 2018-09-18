@@ -73,7 +73,7 @@ void rtx_cuda_malloc_texture(int unit_index, int width, int height)
     }
     cudaMalloc((void**)&texture_object_pointer, sizeof(cudaTextureObject_t*) * 30);
 }
-void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, const void* data, size_t bytes)
+void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes)
 {
     cudaArray* array = texture_cuda_array[unit_index];
     // cudaError_t error = cudaMemcpy2D(array, sizeof(float), data, sizeof(float), width_offset, height_offset, cudaMemcpyHostToDevice);
@@ -110,4 +110,11 @@ void rtx_cuda_free_texture(int unit_index)
     cudaArray* array = texture_cuda_array[unit_index];
     cudaFreeArray(array);
     array = NULL;
+}
+
+size_t rtx_cuda_get_available_shared_memory_bytes()
+{
+    cudaDeviceProp dev;
+    cudaGetDeviceProperties(&dev, 0);
+    return dev.sharedMemPerBlock;
 }

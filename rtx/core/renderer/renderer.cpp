@@ -230,6 +230,71 @@ void Renderer::serialize_rays(int height, int width)
         }
     }
 }
+void Renderer::launch_kernel()
+{
+    size_t available_shared_memory_bytes = rtx_cuda_get_available_shared_memory_bytes();
+
+    int num_rays = _cpu_ray_array.size();
+    int num_rays_per_thread = num_rays / (_cuda_args->num_threads() * _cuda_args->num_blocks()) + 1;
+
+    size_t required_shared_memory_bytes;
+    required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
+    required_shared_memory_bytes += _cpu_vertex_array.bytes();
+    required_shared_memory_bytes += _cpu_object_array.bytes();
+    required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
+    required_shared_memory_bytes += sizeof(RTXColor) * _cpu_color_mapping_array.size();
+
+    int curand_seed = _total_frames;
+
+    if (required_shared_memory_bytes <= available_shared_memory_bytes) {
+        rtx_cuda_launch_standard_shared_memory_kernel(
+            _gpu_ray_array, _cpu_ray_array.size(),
+            _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+            _gpu_vertex_array, _cpu_vertex_array.size(),
+            _gpu_object_array, _cpu_object_array.size(),
+            _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+            _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+            _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+            _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_render_array, _cpu_render_array.size(),
+            _cuda_args->num_threads(),
+            _cuda_args->num_blocks(),
+            num_rays_per_thread,
+            required_shared_memory_bytes,
+            _rt_args->max_bounce(),
+            curand_seed);
+        return;
+    }
+    required_shared_memory_bytes = 0;
+    required_shared_memory_bytes += _cpu_object_array.bytes();
+    required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
+    required_shared_memory_bytes += sizeof(RTXColor) * _cpu_color_mapping_array.size();
+
+    if (required_shared_memory_bytes <= available_shared_memory_bytes) {
+        rtx_cuda_launch_standard_global_memory_kernel(
+            _gpu_ray_array, _cpu_ray_array.size(),
+            _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+            _gpu_vertex_array, _cpu_vertex_array.size(),
+            _gpu_object_array, _cpu_object_array.size(),
+            _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+            _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+            _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+            _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_render_array, _cpu_render_array.size(),
+            _cuda_args->num_threads(),
+            _cuda_args->num_blocks(),
+            num_rays_per_thread,
+            required_shared_memory_bytes,
+            _rt_args->max_bounce(),
+            curand_seed);
+        return;
+    }
+
+    throw std::runtime_error("Error: Not implemented");
+}
 void Renderer::render_objects(int height, int width)
 {
     auto start = std::chrono::system_clock::now();
@@ -351,21 +416,7 @@ void Renderer::render_objects(int height, int width)
     printf("preprocessing: %lf msec\n", elapsed);
 
     start = std::chrono::system_clock::now();
-    rtx_cuda_launch_standard_kernel(
-        _gpu_ray_array, _cpu_ray_array.size(),
-        _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
-        _gpu_vertex_array, _cpu_vertex_array.size(),
-        _gpu_object_array, _cpu_object_array.size(),
-        _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
-        _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
-        _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
-        _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
-        _gpu_render_array, _cpu_render_array.size(),
-        _cuda_args->num_threads(),
-        _cuda_args->num_blocks(),
-        _rt_args->num_rays_per_pixel(),
-        _rt_args->max_bounce(),
-        _total_frames);
+    launch_kernel();
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("kernel: %lf msec\n", elapsed);
