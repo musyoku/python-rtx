@@ -4,6 +4,5 @@ namespace rtx {
 class Mapping {
 public:
     virtual int type() const = 0;
-    virtual int texture_index() const;
 };
 }

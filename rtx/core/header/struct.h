@@ -34,8 +34,13 @@ typedef struct RTXFace {
     int a; // vertex index
     int b; // vertex index
     int c; // vertex index
-    int w; // dammy
+    int w; // dammy for float4
 } RTXFace;
+
+typedef struct RTXUVCoordinate {
+    float u;
+    float v;
+} RTXUVCoordinate;
 
 typedef struct RTXRay {
     RTXVector4f direction;
@@ -64,10 +69,12 @@ typedef struct RTXObject {
     int num_material_layers;
     RTXLayeredMaterialTypes layerd_material_types;
     int material_attribute_byte_array_offset;
+    int serial_uv_coordinates_offset;
     int mapping_type;
     int mapping_index;
 } RTXObject;
 
+typedef char RTXMappingAttributeByte;
 typedef char RTXMaterialAttributeByte;
 
 typedef struct RTXEmissiveMaterialAttribute {

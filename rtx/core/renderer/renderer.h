@@ -29,6 +29,7 @@ private:
     rtx::array<RTXPixel> _cpu_render_buffer_array;
     std::vector<int> _cpu_light_sampling_table;
     std::vector<RTXColor> _cpu_color_mapping_array;
+    rtx::array<RTXUVCoordinate> _cpu_serial_uv_coordinate_array;
 
     // device
     RTXRay* _gpu_ray_array;
@@ -41,6 +42,7 @@ private:
     RTXPixel* _gpu_render_array;
     int* _gpu_light_sampling_table;
     RTXColor* _gpu_color_mapping_array;
+    RTXUVCoordinate* _gpu_serial_uv_coordinate_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;
@@ -48,7 +50,7 @@ private:
     std::shared_ptr<CUDAKernelLaunchArguments> _cuda_args;
     std::vector<std::shared_ptr<Object>> _transformed_object_array;
     std::vector<std::shared_ptr<BVH>> _geometry_bvh_array;
-    std::vector<TextureMapping*> _texture_mapping_array;
+    std::vector<TextureMapping*> _texture_mapping_ptr_array;
 
     int _prev_height;
     int _prev_width;

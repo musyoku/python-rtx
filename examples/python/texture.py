@@ -33,7 +33,14 @@ geometry.set_rotation((0, 0, math.pi / 2))
 geometry.set_position((0, 1, -3))
 material = rtx.EmissiveMaterial(1.0)
 texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
-mapping = rtx.TextureMapping(texture)
+uv_coordinates = np.array(
+    [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+    ], dtype=np.float32)
+mapping = rtx.TextureMapping(texture, uv_coordinates)
 rect_area_light = rtx.Object(geometry, material, mapping)
 scene.add(rect_area_light)
 
@@ -48,7 +55,7 @@ rt_args.max_bounce = 4
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256
-cuda_args.num_blocks = 1024
+cuda_args.num_blocks = 1
 
 renderer = rtx.Renderer()
 camera = rtx.PerspectiveCamera(

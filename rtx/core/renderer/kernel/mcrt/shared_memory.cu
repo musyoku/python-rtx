@@ -19,6 +19,7 @@ __global__ void standard_shared_memory_kernel(
     RTXThreadedBVH* global_threaded_bvh_array, int threaded_bvh_array_size,
     RTXThreadedBVHNode* global_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     RTXColor* global_color_mapping_array, int color_mapping_array_size,
+    RTXUVCoordinate* global_serial_uv_coordinate_array, int uv_coordinate_array_size,
     cudaTextureObject_t* texture_object_array, int texture_object_array_size,
     RTXPixel* global_render_array,
     int num_rays_per_thread,
@@ -86,6 +87,7 @@ __global__ void standard_shared_memory_kernel(
     RTXVertex hit_va;
     RTXVertex hit_vb;
     RTXVertex hit_vc;
+    RTXFace hit_face;
     RTXObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
@@ -94,8 +96,8 @@ __global__ void standard_shared_memory_kernel(
             return;
         }
 
-        ray.direction = tex1Dfetch(serial_ray_array_texture_ref, ray_index * 2 + 0);
-        ray.origin = tex1Dfetch(serial_ray_array_texture_ref, ray_index * 2 + 1);
+        ray.direction = tex1Dfetch(g_serial_ray_array_texture_ref, ray_index * 2 + 0);
+        ray.origin = tex1Dfetch(g_serial_ray_array_texture_ref, ray_index * 2 + 1);
 
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -244,6 +246,7 @@ __global__ void standard_shared_memory_kernel(
                                 hit_va = va;
                                 hit_vb = vb;
                                 hit_vc = vc;
+                                hit_face = face;
 
                                 did_hit_object = true;
                                 hit_object = object;
@@ -354,10 +357,20 @@ __global__ void standard_shared_memory_kernel(
                         };
                         lambda.z = 1.0f - lambda.x - lambda.y;
 
-                        float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
+                        // float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
 
-                        float x = lambda.z / div_w;
-                        float y = lambda.y / div_w;
+                        const RTXUVCoordinate uv_a = global_serial_uv_coordinate_array[hit_face.a + hit_object.serial_uv_coordinates_offset];
+                        const RTXUVCoordinate uv_b = global_serial_uv_coordinate_array[hit_face.b + hit_object.serial_uv_coordinates_offset];
+                        const RTXUVCoordinate uv_c = global_serial_uv_coordinate_array[hit_face.c + hit_object.serial_uv_coordinates_offset];
+
+                        float x = lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u;
+                        float y = lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v;
+
+                        if (thread_id == 0) {
+                            printf("lam: %f %f %f\n", lambda.x, lambda.y, lambda.z);
+                            printf("uv_a: %f %f uv_a: %f %f uv_a: %f %f\n", uv_a.u, uv_a.v, uv_b.u, uv_b.v, uv_c.u, uv_c.v);
+                            printf("face: %d %d %d\n", hit_face.a, hit_face.b, hit_face.c);
+                        }
 
                         float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
 
@@ -442,6 +455,7 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
     RTXThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
     RTXThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     RTXColor* gpu_color_mapping_array, int color_mapping_array_size,
+    RTXUVCoordinate* gpu_serial_uv_coordinate_array, int uv_coordinate_array_size,
     RTXPixel* gpu_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
@@ -462,7 +476,7 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
         assert(gpu_color_mapping_array != NULL);
     }
 
-    cudaBindTexture(0, serial_ray_array_texture_ref, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+    cudaBindTexture(0, g_serial_ray_array_texture_ref, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
 
     standard_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
@@ -473,6 +487,7 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
         gpu_threaded_bvh_array, threaded_bvh_array_size,
         gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
         gpu_color_mapping_array, color_mapping_array_size,
+        gpu_serial_uv_coordinate_array, uv_coordinate_array_size,
         texture_object_pointer, 30,
         gpu_render_array,
         num_rays_per_thread,
@@ -482,6 +497,5 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
     cudaCheckError(cudaGetLastError());
     cudaCheckError(cudaThreadSynchronize());
 
-    cudaUnbindTexture(serial_ray_array_texture_ref);
-
+    cudaUnbindTexture(g_serial_ray_array_texture_ref);
 }

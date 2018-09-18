@@ -1,15 +1,38 @@
 #include "object.h"
+#include "../header/enum.h"
 
 namespace rtx {
 namespace py = pybind11;
 Object::Object(std::shared_ptr<Geometry> geometry, std::shared_ptr<Material> material, std::shared_ptr<Mapping> mapping)
 {
+    if (mapping->type() == RTXMappingTypeTexture) {
+        switch (geometry->type()) {
+        case RTXGeometryTypeCone:
+        case RTXGeometryTypeCylinder:
+        case RTXGeometryTypeSphere:
+            throw std::runtime_error("UV Mapping for Cone, Cylinder, and Sphere is currently not supported.");
+            break;
+        default:
+            break;
+        }
+    }
     set_geometry(geometry);
     set_material(material);
     set_mapping(mapping);
 }
 Object::Object(std::shared_ptr<Geometry> geometry, std::shared_ptr<LayeredMaterial> material, std::shared_ptr<Mapping> mapping)
 {
+    if (mapping->type() == RTXMappingTypeTexture) {
+        switch (geometry->type()) {
+        case RTXGeometryTypeCone:
+        case RTXGeometryTypeCylinder:
+        case RTXGeometryTypeSphere:
+            throw std::runtime_error("UV Mapping for Cone, Cylinder, and Sphere is currently not supported.");
+            break;
+        default:
+            break;
+        }
+    }
     set_geometry(geometry);
     set_material(material);
     set_mapping(mapping);

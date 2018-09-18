@@ -1,5 +1,6 @@
 #pragma once
 #include "../class/mapping.h"
+#include "../header/array.h"
 #include "../header/glm.h"
 #include <pybind11/pybind11.h>
 

@@ -29,6 +29,7 @@ Renderer::Renderer()
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_light_sampling_table = NULL;
     _gpu_color_mapping_array = NULL;
+    _gpu_serial_uv_coordinate_array = NULL;
     _gpu_render_array = NULL;
     _total_frames = 0;
 
@@ -44,6 +45,7 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
     rtx_cuda_free((void**)&_gpu_color_mapping_array);
+    rtx_cuda_free((void**)&_gpu_serial_uv_coordinate_array);
     rtx_cuda_free((void**)&_gpu_render_array);
 
     rtx_cuda_delete_linear_memory_texture_objects();
@@ -70,64 +72,78 @@ void Renderer::serialize_objects()
 
     int total_faces = 0;
     int total_vertices = 0;
+    int total_uv_coordinates = 0;
     for (auto& object : _transformed_object_array) {
         auto& geometry = object->geometry();
+        auto& mapping = object->mapping();
         total_faces += geometry->num_faces();
         total_vertices += geometry->num_vertices();
+        if (mapping->type() == RTXMappingTypeTexture) {
+            TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
+            total_uv_coordinates += m->num_uv_coordinates();
+        }
     }
 
     _cpu_face_vertex_indices_array = rtx::array<RTXFace>(total_faces);
     _cpu_vertex_array = rtx::array<RTXVertex>(total_vertices);
     _cpu_object_array = rtx::array<RTXObject>(num_objects);
     _cpu_light_sampling_table = std::vector<int>();
+    _cpu_serial_uv_coordinate_array = rtx::array<RTXUVCoordinate>(total_uv_coordinates);
 
     // serialize vertices
     int vertex_index_offset = 0;
     int vertex_offset = 0;
-    std::vector<int> vertex_index_offset_array(num_objects);
-    std::vector<int> vertex_count_array(num_objects);
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
         geometry->serialize_vertices(_cpu_vertex_array, vertex_index_offset);
-        vertex_index_offset_array[object_index] = vertex_index_offset;
-        vertex_count_array[object_index] = geometry->num_vertices();
         vertex_index_offset += geometry->num_vertices();
     }
 
     // serialize faces
     int face_index_offset = 0;
-    std::vector<int> face_index_offset_array(num_objects);
-    std::vector<int> face_count_array(num_objects);
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
         auto& bvh = _geometry_bvh_array.at(object_index);
         bvh->serialize_faces(_cpu_face_vertex_indices_array, face_index_offset);
-        face_index_offset_array[object_index] = face_index_offset;
-        face_count_array[object_index] = geometry->num_faces();
         face_index_offset += geometry->num_faces();
     }
 
-    assert(vertex_index_offset_array.size() == num_objects);
-    assert(face_index_offset_array.size() == num_objects);
+    // serialize uv coordinate attributes
+    int serial_uv_coordinate_array_offset = 0;
+    for (int object_index = 0; object_index < num_objects; object_index++) {
+        auto& object = _transformed_object_array.at(object_index);
+        auto& mapping = object->mapping();
 
-    int total_material_bytes = 0;
+        if (mapping->type() == RTXMappingTypeTexture) {
+            TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
+            m->serialize_uv_coordinates(_cpu_serial_uv_coordinate_array, serial_uv_coordinate_array_offset);
+            serial_uv_coordinate_array_offset += m->num_uv_coordinates();
+        }
+    }
+
+    size_t total_material_attribute_bytes = 0;
     int num_geometries = 0;
     _cpu_light_sampling_table = std::vector<int>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& material = object->material();
+        auto& mapping = object->mapping();
         if (material->is_emissive()) {
             _cpu_light_sampling_table.push_back(object_index);
         }
-        total_material_bytes += material->attribute_bytes();
+        total_material_attribute_bytes += material->attribute_bytes();
     }
-    _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_bytes / sizeof(RTXMaterialAttributeByte));
+    _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_attribute_bytes);
 
     int material_attribute_byte_array_offset = 0;
+    serial_uv_coordinate_array_offset = 0;
+    vertex_index_offset = 0;
+    face_index_offset = 0;
+
     _cpu_color_mapping_array = std::vector<RTXColor>();
-    _texture_mapping_array = std::vector<TextureMapping*>();
+    _texture_mapping_ptr_array = std::vector<TextureMapping*>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& geometry = object->geometry();
@@ -135,10 +151,10 @@ void Renderer::serialize_objects()
         auto& mapping = object->mapping();
 
         RTXObject cuda_object;
-        cuda_object.num_faces = face_count_array[object_index];
-        cuda_object.face_index_offset = face_index_offset_array[object_index];
-        cuda_object.num_vertices = vertex_count_array[object_index];
-        cuda_object.vertex_index_offset = vertex_index_offset_array[object_index];
+        cuda_object.num_faces = geometry->num_faces();
+        cuda_object.face_index_offset = face_index_offset;
+        cuda_object.num_vertices = geometry->num_vertices();
+        cuda_object.vertex_index_offset = vertex_index_offset;
         cuda_object.geometry_type = geometry->type();
         cuda_object.num_material_layers = material->num_layers();
         cuda_object.layerd_material_types = material->types();
@@ -153,14 +169,19 @@ void Renderer::serialize_objects()
             cuda_object.mapping_index = _cpu_color_mapping_array.size() - 1;
         } else if (mapping->type() == RTXMappingTypeTexture) {
             TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
-            _texture_mapping_array.push_back(m);
-            cuda_object.mapping_index = _texture_mapping_array.size() - 1;
+            _texture_mapping_ptr_array.push_back(m);
+            cuda_object.mapping_index = _texture_mapping_ptr_array.size() - 1;
+            cuda_object.serial_uv_coordinates_offset = serial_uv_coordinate_array_offset;
+            serial_uv_coordinate_array_offset += m->num_uv_coordinates();
         }
 
         _cpu_object_array[object_index] = cuda_object;
 
         material->serialize_attributes(_cpu_material_attribute_byte_array, material_attribute_byte_array_offset);
-        material_attribute_byte_array_offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
+        material_attribute_byte_array_offset += material->attribute_bytes();
+
+        face_index_offset += geometry->num_faces();
+        vertex_index_offset += geometry->num_vertices();
     }
 }
 void Renderer::construct_bvh()
@@ -258,6 +279,7 @@ void Renderer::launch_kernel()
             _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
@@ -285,6 +307,7 @@ void Renderer::launch_kernel()
             _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
@@ -387,14 +410,18 @@ void Renderer::render_objects(int height, int width)
             rtx_cuda_free((void**)&_gpu_color_mapping_array);
             rtx_cuda_malloc((void**)&_gpu_color_mapping_array, sizeof(RTXColor) * _cpu_color_mapping_array.size());
         }
-        if (_texture_mapping_array.size() > 0) {
-            for (int mapping_index = 0; mapping_index < (int)_texture_mapping_array.size(); mapping_index++) {
-                TextureMapping* mapping = _texture_mapping_array[mapping_index];
+        if (_texture_mapping_ptr_array.size() > 0) {
+            for (int mapping_index = 0; mapping_index < (int)_texture_mapping_ptr_array.size(); mapping_index++) {
+                TextureMapping* mapping = _texture_mapping_ptr_array[mapping_index];
                 rtx_cuda_malloc_texture(mapping_index, mapping->width(), mapping->height());
-                rtx_cuda_memcpy_to_texture(mapping_index, 0, mapping->width(), mapping->pointer(), mapping->bytes());
-                // rtx_cuda_memcpy_to_texture(mapping_index, mapping->width(), mapping->height(), mapping->pointer(), mapping->bytes());
+                rtx_cuda_memcpy_to_texture(mapping_index, 0, mapping->width(), mapping->data(), mapping->bytes());
+                // rtx_cuda_memcpy_to_texture(mapping_index, mapping->width(), mapping->height(), mapping->data(), mapping->bytes());
                 rtx_cuda_bind_texture(mapping_index);
             }
+        }
+        if (_cpu_serial_uv_coordinate_array.size() > 0) {
+            rtx_cuda_free((void**)&_gpu_serial_uv_coordinate_array);
+            rtx_cuda_malloc((void**)&_gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.bytes());
         }
     }
     if (should_transfer_to_gpu) {
@@ -407,6 +434,9 @@ void Renderer::render_objects(int height, int width)
         }
         if (_cpu_color_mapping_array.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_color_mapping_array, (void*)_cpu_color_mapping_array.data(), sizeof(RTXColor) * _cpu_color_mapping_array.size());
+        }
+        if (_cpu_serial_uv_coordinate_array.size() > 0) {
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_serial_uv_coordinate_array, (void*)_cpu_serial_uv_coordinate_array.data(), _cpu_serial_uv_coordinate_array.bytes());
         }
     }
 

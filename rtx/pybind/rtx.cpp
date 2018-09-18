@@ -62,7 +62,7 @@ PYBIND11_MODULE(rtx, module)
     py::class_<SolidColorMapping, Mapping, std::shared_ptr<SolidColorMapping>>(module, "SolidColorMapping")
         .def(py::init<py::tuple>(), py::arg("color"));
     py::class_<TextureMapping, Mapping, std::shared_ptr<TextureMapping>>(module, "TextureMapping")
-        .def(py::init<py::array_t<float, py::array::c_style>>(), py::arg("texture"));
+        .def(py::init<py::array_t<float, py::array::c_style>, py::array_t<float, py::array::c_style>>(), py::arg("texture"), py::arg("uv_coordinates"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

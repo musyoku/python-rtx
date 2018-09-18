@@ -8,15 +8,20 @@ namespace rtx {
 class TextureMapping : public Mapping {
 private:
     rtx::array<RTXPixel> _texture;
+    rtx::array<RTXUVCoordinate> _uv_coordinates;
     int _width;
     int _height;
 
 public:
-    TextureMapping(pybind11::array_t<float, pybind11::array::c_style> texture);
-    int type() const override;
+    TextureMapping(
+        pybind11::array_t<float, pybind11::array::c_style> texture,
+        pybind11::array_t<float, pybind11::array::c_style> uv_coordinates);
     int bytes();
     int width();
     int height();
-    RTXPixel* pointer();
+    int num_uv_coordinates();
+    int type() const override;
+    void serialize_uv_coordinates(rtx::array<RTXUVCoordinate>& array, int offset) const;
+    RTXPixel* data();
 };
 }

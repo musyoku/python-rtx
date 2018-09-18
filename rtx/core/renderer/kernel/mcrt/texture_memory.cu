@@ -68,6 +68,7 @@ __global__ void standard_texture_memory_kernel(
     float4 hit_va;
     float4 hit_vb;
     float4 hit_vc;
+    int4 hit_face;
     RTXObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
@@ -79,8 +80,8 @@ __global__ void standard_texture_memory_kernel(
         // ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         // ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
 
-        ray.direction = tex1Dfetch(serial_ray_array_texture_ref, ray_index * 2 + 0);
-        ray.origin = tex1Dfetch(serial_ray_array_texture_ref, ray_index * 2 + 1);
+        ray.direction = tex1Dfetch(g_serial_ray_array_texture_ref, ray_index * 2 + 0);
+        ray.origin = tex1Dfetch(g_serial_ray_array_texture_ref, ray_index * 2 + 1);
 
         ray_direction_inv.x = 1.0f / ray.direction.x;
         ray_direction_inv.y = 1.0f / ray.direction.y;
@@ -106,14 +107,14 @@ __global__ void standard_texture_memory_kernel(
                     int index = bvh.node_index_offset + bvh_current_node_index;
 
                     CUDAThreadedBVHNode node;
-                    float4 attributes_float = tex1Dfetch(serial_threaded_bvh_node_array_texture_ref, index * 3 + 0);
+                    float4 attributes_float = tex1Dfetch(g_serial_threaded_bvh_node_array_texture_ref, index * 3 + 0);
                     int4* attributes_integer_ptr = reinterpret_cast<int4*>(&attributes_float);
                     node.hit_node_index = attributes_integer_ptr->x;
                     node.miss_node_index = attributes_integer_ptr->y;
                     node.assigned_face_index_start = attributes_integer_ptr->z;
                     node.assigned_face_index_end = attributes_integer_ptr->w;
-                    node.aabb_max = tex1Dfetch(serial_threaded_bvh_node_array_texture_ref, index * 3 + 1);
-                    node.aabb_min = tex1Dfetch(serial_threaded_bvh_node_array_texture_ref, index * 3 + 2);
+                    node.aabb_max = tex1Dfetch(g_serial_threaded_bvh_node_array_texture_ref, index * 3 + 1);
+                    node.aabb_min = tex1Dfetch(g_serial_threaded_bvh_node_array_texture_ref, index * 3 + 2);
 
                     bool is_inner_node = node.assigned_face_index_start == -1;
                     if (is_inner_node) {
@@ -157,11 +158,11 @@ __global__ void standard_texture_memory_kernel(
                             for (int m = 0; m < num_assigned_faces; m++) {
                                 int index = node.assigned_face_index_start + m + object.face_index_offset;
 
-                                const int4 face = tex1Dfetch(serial_face_vertex_index_array_texture_ref, index);
+                                const int4 face = tex1Dfetch(g_serial_face_vertex_index_array_texture_ref, index);
 
-                                const float4 va = tex1Dfetch(serial_vertex_array_texture_ref, face.x + object.vertex_index_offset);
-                                const float4 vb = tex1Dfetch(serial_vertex_array_texture_ref, face.y + object.vertex_index_offset);
-                                const float4 vc = tex1Dfetch(serial_vertex_array_texture_ref, face.z + object.vertex_index_offset);
+                                const float4 va = tex1Dfetch(g_serial_vertex_array_texture_ref, face.x + object.vertex_index_offset);
+                                const float4 vb = tex1Dfetch(g_serial_vertex_array_texture_ref, face.y + object.vertex_index_offset);
+                                const float4 vc = tex1Dfetch(g_serial_vertex_array_texture_ref, face.z + object.vertex_index_offset);
 
                                 float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;
@@ -239,6 +240,7 @@ __global__ void standard_texture_memory_kernel(
                                 hit_va = va;
                                 hit_vb = vb;
                                 hit_vc = vc;
+                                hit_face = face;
 
                                 did_hit_object = true;
                                 hit_object = object;
@@ -246,10 +248,10 @@ __global__ void standard_texture_memory_kernel(
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int index = node.assigned_face_index_start + object.face_index_offset;
 
-                            const int4 face = tex1Dfetch(serial_face_vertex_index_array_texture_ref, index);
+                            const int4 face = tex1Dfetch(g_serial_face_vertex_index_array_texture_ref, index);
 
-                            const float4 center = tex1Dfetch(serial_vertex_array_texture_ref, face.x + object.vertex_index_offset);
-                            const float4 radius = tex1Dfetch(serial_vertex_array_texture_ref, face.y + object.vertex_index_offset);
+                            const float4 center = tex1Dfetch(g_serial_vertex_array_texture_ref, face.x + object.vertex_index_offset);
+                            const float4 radius = tex1Dfetch(g_serial_vertex_array_texture_ref, face.y + object.vertex_index_offset);
 
                             float4 oc;
                             oc.x = ray.origin.x - center.x;
@@ -350,10 +352,14 @@ __global__ void standard_texture_memory_kernel(
                         };
                         lambda.z = 1.0f - lambda.x - lambda.y;
 
-                        float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
+                        // float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
 
-                        float x = lambda.z / div_w;
-                        float y = lambda.y / div_w;
+                        const float2 uv_a = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.x + hit_object.serial_uv_coordinates_offset);
+                        const float2 uv_b = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.y + hit_object.serial_uv_coordinates_offset);
+                        const float2 uv_c = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.z + hit_object.serial_uv_coordinates_offset);
+
+                        float x = lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x;
+                        float y = lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y;
 
                         float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
 
@@ -441,6 +447,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     RTXThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
     RTXThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     RTXColor* gpu_color_mapping_array, int color_mapping_array_size,
+    RTXUVCoordinate* gpu_serial_uv_coordinate_array, int uv_coordinate_array_size,
     RTXPixel* gpu_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
@@ -460,11 +467,15 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     if (color_mapping_array_size > 0) {
         assert(gpu_color_mapping_array != NULL);
     }
+    if (uv_coordinate_array_size > 0) {
+        assert(gpu_serial_uv_coordinate_array != NULL);
+    }
 
-    cudaBindTexture(0, serial_ray_array_texture_ref, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
-    cudaBindTexture(0, serial_face_vertex_index_array_texture_ref, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
-    cudaBindTexture(0, serial_vertex_array_texture_ref, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
-    cudaBindTexture(0, serial_threaded_bvh_node_array_texture_ref, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+    cudaBindTexture(0, g_serial_ray_array_texture_ref, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(RTXRay) * ray_array_size);
+    cudaBindTexture(0, g_serial_face_vertex_index_array_texture_ref, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
+    cudaBindTexture(0, g_serial_vertex_array_texture_ref, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
+    cudaBindTexture(0, g_serial_threaded_bvh_node_array_texture_ref, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
+    cudaBindTexture(0, g_serial_uv_coordinate_array_texture_ref, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXUVCoordinate) * uv_coordinate_array_size);
 
     standard_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
@@ -484,8 +495,9 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     cudaCheckError(cudaGetLastError());
     cudaCheckError(cudaThreadSynchronize());
 
-    cudaUnbindTexture(serial_ray_array_texture_ref);
-    cudaUnbindTexture(serial_face_vertex_index_array_texture_ref);
-    cudaUnbindTexture(serial_vertex_array_texture_ref);
-    cudaUnbindTexture(serial_threaded_bvh_node_array_texture_ref);
+    cudaUnbindTexture(g_serial_ray_array_texture_ref);
+    cudaUnbindTexture(g_serial_face_vertex_index_array_texture_ref);
+    cudaUnbindTexture(g_serial_vertex_array_texture_ref);
+    cudaUnbindTexture(g_serial_threaded_bvh_node_array_texture_ref);
+    cudaUnbindTexture(g_serial_uv_coordinate_array_texture_ref);
 }
