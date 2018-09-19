@@ -1,9 +1,11 @@
 #pragma once
 #include <cuda_runtime.h>
 
-extern cudaTextureObject_t* texture_object_pointer;
-extern cudaTextureObject_t texture_object_array[30];
-extern cudaArray* texture_cuda_array[30];
+#define RTX_CUDA_MAX_TEXTURE_UNIT 50
+
+extern cudaTextureObject_t* g_gpu_mapping_texture_object_array;
+extern cudaTextureObject_t g_cpu_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNIT];
+extern cudaArray* g_gpu_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNIT];
 
 texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serial_ray_array_texture_ref;
 texture<int4, cudaTextureType1D, cudaReadModeElementType> g_serial_face_vertex_index_array_texture_ref;

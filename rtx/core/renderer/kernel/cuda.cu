@@ -8,54 +8,36 @@
 #include <float.h>
 #include <stdio.h>
 
-cudaTextureObject_t* texture_object_pointer;
-cudaTextureObject_t texture_object_array[30];
-cudaArray* texture_cuda_array[30];
+cudaTextureObject_t* g_gpu_mapping_texture_object_array;
+cudaTextureObject_t g_cpu_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNIT];
+cudaArray* g_gpu_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNIT];
 
 void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
     assert(size > 0);
-    cudaError_t error = cudaMalloc(gpu_array, size);
-    // printf("malloc %p\n", *gpu_array);
-    cudaError_t status = cudaGetLastError();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
-    }
+    cudaCheckError(cudaMalloc(gpu_array, size));
+    cudaCheckError(cudaGetLastError());
 }
 void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size)
 {
     printf("cudaMalloc] %p\n", &gpu_array);
     assert(size > 0);
-    cudaError_t error = cudaMalloc(&gpu_array, size);
-    // printf("malloc %p\n", *gpu_array);
-    cudaError_t status = cudaGetLastError();
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMalloc: %s\n", cudaGetErrorString(error));
-    }
+    cudaCheckError(cudaMalloc(&gpu_array, size));
+    cudaCheckError(cudaGetLastError());
 }
 void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size)
 {
-    cudaError_t error = cudaMemcpy(gpu_array, cpu_array, size, cudaMemcpyHostToDevice);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyHostToDevice: %s\n", cudaGetErrorString(error));
-    }
+    cudaCheckError(cudaMemcpy(gpu_array, cpu_array, size, cudaMemcpyHostToDevice));
 }
 void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t size)
 {
-    cudaError_t error = cudaMemcpy(cpu_array, gpu_array, size, cudaMemcpyDeviceToHost);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyDeviceToHost: %s\n", cudaGetErrorString(error));
-    }
+    cudaCheckError(cudaMemcpy(cpu_array, gpu_array, size, cudaMemcpyDeviceToHost));
 }
-void rtx_cuda_free(void** array)
+void rtx_cuda_free(void** array_ref)
 {
-    if (*array != NULL) {
-        // printf("free %p\n", *array);
-        cudaError_t error = cudaFree(*array);
-        if (error != cudaSuccess) {
-            fprintf(stderr, "CUDA Error at cudaFree: %s\n", cudaGetErrorString(error));
-        }
-        *array = NULL;
+    if (*array_ref != NULL) {
+        cudaCheckError(cudaFree(*array_ref));
+        *array_ref = NULL;
     }
 }
 void rtx_cuda_device_reset()
@@ -65,50 +47,39 @@ void rtx_cuda_device_reset()
 void rtx_cuda_malloc_texture(int unit_index, int width, int height)
 {
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<float4>();
-
-    cudaArray*& array = texture_cuda_array[unit_index];
-    cudaError_t error = cudaMallocArray(&array, &desc, width, height);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMallocArray: %s\n", cudaGetErrorString(error));
-    }
-    cudaMalloc((void**)&texture_object_pointer, sizeof(cudaTextureObject_t*) * 30);
+    cudaArray** array = &g_gpu_mapping_texture_cudaArray_ptr_array[unit_index];
+    cudaCheckError(cudaMallocArray(array, &desc, width, height));
+    printf("%p\n", *array);
+    cudaCheckError(cudaMalloc((void**)&g_gpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNIT));
 }
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes)
 {
-    cudaArray* array = texture_cuda_array[unit_index];
-    // cudaError_t error = cudaMemcpy2D(array, sizeof(float), data, sizeof(float), width_offset, height_offset, cudaMemcpyHostToDevice);
-    cudaError_t error = cudaMemcpyToArray(array, 0, 0, data, bytes, cudaMemcpyHostToDevice);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaMemcpyToArray: %s\n", cudaGetErrorString(error));
-    }
+    cudaArray* array = g_gpu_mapping_texture_cudaArray_ptr_array[unit_index];
+    cudaCheckError(cudaMemcpyToArray(array, 0, 0, data, bytes, cudaMemcpyHostToDevice));
 }
 void rtx_cuda_bind_texture(int unit_index)
 {
-    cudaArray* array = texture_cuda_array[unit_index];
-
+    cudaArray* array = g_gpu_mapping_texture_cudaArray_ptr_array[unit_index];
     cudaResourceDesc resource;
     memset(&resource, 0, sizeof(cudaResourceDesc));
     resource.resType = cudaResourceTypeArray;
     resource.res.array.array = array;
+    printf("%p\n", array);
 
-    cudaTextureDesc desc;
-    memset(&desc, 0, sizeof(cudaTextureDesc));
-    desc.normalizedCoords = true;
-    desc.readMode = cudaReadModeElementType;
-    desc.filterMode = cudaFilterModePoint;
-    desc.addressMode[0] = cudaAddressModeWrap;
-    desc.addressMode[1] = cudaAddressModeWrap;
-    cudaError_t error = cudaCreateTextureObject(&texture_object_array[unit_index], &resource, &desc, NULL);
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA Error at cudaCreateTextureObject: %s\n", cudaGetErrorString(error));
-    }
-    printf("%p\n", texture_object_array);
-    cudaMemcpy(texture_object_pointer, &texture_object_array[unit_index], sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
+    cudaTextureDesc tex;
+    memset(&tex, 0, sizeof(cudaTextureDesc));
+    tex.normalizedCoords = true;
+    tex.readMode = cudaReadModeElementType;
+    tex.filterMode = cudaFilterModeLinear;
+    tex.addressMode[0] = cudaAddressModeWrap;
+    tex.addressMode[1] = cudaAddressModeWrap;
+    cudaCheckError(cudaCreateTextureObject(&g_cpu_mapping_texture_object_array[unit_index], &resource, &tex, NULL));
+    cudaCheckError(cudaMemcpy(g_gpu_mapping_texture_object_array, g_cpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNIT, cudaMemcpyHostToDevice));
 }
 void rtx_cuda_free_texture(int unit_index)
 {
-    cudaArray* array = texture_cuda_array[unit_index];
-    cudaFreeArray(array);
+    cudaArray* array = g_gpu_mapping_texture_cudaArray_ptr_array[unit_index];
+    cudaCheckError(cudaFreeArray(array));
     array = NULL;
 }
 

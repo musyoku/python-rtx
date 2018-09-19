@@ -19,7 +19,7 @@ __global__ void standard_global_memory_kernel(
     RTXThreadedBVH* global_serial_threaded_bvh_array, int threaded_bvh_array_size,
     RTXThreadedBVHNode* global_serial_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     RTXColor* global_serial_color_mapping_array, int color_mapping_array_size,
-    cudaTextureObject_t* texture_object_array, int texture_object_array_size,
+    cudaTextureObject_t* g_cpu_texture_object_array, int g_cpu_texture_object_array_size,
     RTXPixel* global_serial_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -344,7 +344,7 @@ __global__ void standard_global_memory_kernel(
                         float x = lambda.z;
                         float y = lambda.y;
 
-                        float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
+                        float4 color = tex2D<float4>(g_cpu_texture_object_array[hit_object.mapping_index], x, y);
 
                         hit_color.r = color.x;
                         hit_color.g = color.y;
@@ -458,12 +458,11 @@ void rtx_cuda_launch_standard_global_memory_kernel(
         gpu_threaded_bvh_array, threaded_bvh_array_size,
         gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
         gpu_color_mapping_array, color_mapping_array_size,
-        texture_object_pointer, 30,
+        g_gpu_mapping_texture_object_array, 30,
         gpu_render_array,
         num_rays_per_thread,
         max_bounce,
         curand_seed);
 
-    cudaCheckError(cudaGetLastError());
     cudaCheckError(cudaThreadSynchronize());
 }

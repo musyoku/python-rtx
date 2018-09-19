@@ -32,8 +32,6 @@ Renderer::Renderer()
     _gpu_serial_uv_coordinate_array = NULL;
     _gpu_render_array = NULL;
     _total_frames = 0;
-
-    rtx_cuda_allocate_linear_memory_texture_objects();
 }
 Renderer::~Renderer()
 {
@@ -47,8 +45,6 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_color_mapping_array);
     rtx_cuda_free((void**)&_gpu_serial_uv_coordinate_array);
     rtx_cuda_free((void**)&_gpu_render_array);
-
-    rtx_cuda_delete_linear_memory_texture_objects();
 }
 void Renderer::transform_objects_to_view_space()
 {

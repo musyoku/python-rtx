@@ -20,7 +20,7 @@ __global__ void standard_shared_memory_kernel(
     RTXThreadedBVHNode* global_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     RTXColor* global_color_mapping_array, int color_mapping_array_size,
     RTXUVCoordinate* global_serial_uv_coordinate_array, int uv_coordinate_array_size,
-    cudaTextureObject_t* texture_object_array, int texture_object_array_size,
+    cudaTextureObject_t* g_cpu_texture_object_array, int g_cpu_texture_object_array_size,
     RTXPixel* global_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -366,13 +366,7 @@ __global__ void standard_shared_memory_kernel(
                         float x = lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u;
                         float y = lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v;
 
-                        if (thread_id == 0) {
-                            printf("lam: %f %f %f\n", lambda.x, lambda.y, lambda.z);
-                            printf("uv_a: %f %f uv_a: %f %f uv_a: %f %f\n", uv_a.u, uv_a.v, uv_b.u, uv_b.v, uv_c.u, uv_c.v);
-                            printf("face: %d %d %d\n", hit_face.a, hit_face.b, hit_face.c);
-                        }
-
-                        float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
+                        float4 color = tex2D<float4>(g_cpu_texture_object_array[hit_object.mapping_index], x, y);
 
                         hit_color.r = color.x;
                         hit_color.g = color.y;
@@ -488,13 +482,12 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
         gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
         gpu_color_mapping_array, color_mapping_array_size,
         gpu_serial_uv_coordinate_array, uv_coordinate_array_size,
-        texture_object_pointer, 30,
+        g_gpu_mapping_texture_object_array, 30,
         gpu_render_array,
         num_rays_per_thread,
         max_bounce,
         curand_seed);
 
-    cudaCheckError(cudaGetLastError());
     cudaCheckError(cudaThreadSynchronize());
 
     cudaUnbindTexture(g_serial_ray_array_texture_ref);

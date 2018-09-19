@@ -10,79 +10,116 @@ import rtx
 
 scene = rtx.Scene()
 
-# floor
-geometry = rtx.PlainGeometry(100, 100)
-geometry.set_position((0, 0, 0))
-geometry.set_rotation((-math.pi / 2, 0, 0))
+box_width = 6
+box_height = 6
+
+# 1
+geometry = rtx.PlainGeometry(box_width, box_height)
+geometry.set_rotation((0, 0, 0))
+geometry.set_position((0, 0, -box_width / 2))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
-floor = rtx.Object(geometry, material, mapping)
-scene.add(floor)
-
-# place ball
-geometry = rtx.SphereGeometry(0.5)
-geometry.set_position((0, 0.5, 0))
-material = rtx.LambertMaterial(0.6)
-mapping = rtx.SolidColorMapping((0, 1, 1))
-sphere = rtx.Object(geometry, material, mapping)
-scene.add(sphere)
-
-# place light
-geometry = rtx.PlainGeometry(2.0, 2.0)
-geometry.set_rotation((0, 0, math.pi / 2))
-geometry.set_position((0, 1, -3))
-material = rtx.EmissiveMaterial(1.0)
-texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
+texture = np.array(Image.open("thinking.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(
     [
-        [0, 0],
-        [1, 0],
         [0, 1],
         [1, 1],
+        [0, 0],
+        [1, 0],
     ], dtype=np.float32)
 mapping = rtx.TextureMapping(texture, uv_coordinates)
-rect_area_light = rtx.Object(geometry, material, mapping)
-scene.add(rect_area_light)
+wall = rtx.Object(geometry, material, mapping)
+scene.add(wall)
 
-print("#triangles", scene.num_triangles())
+# 2
+geometry = rtx.PlainGeometry(box_width, box_height)
+geometry.set_rotation((0, -math.pi / 2, 0))
+geometry.set_position((box_width / 2, 0, 0))
+material = rtx.EmissiveMaterial(0.8)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.TextureMapping(texture, uv_coordinates)
+wall = rtx.Object(geometry, material, mapping)
+scene.add(wall)
 
-screen_width = 384
-screen_height = 256
+# 3
+geometry = rtx.PlainGeometry(box_width, box_height)
+geometry.set_rotation((0, math.pi, 0))
+geometry.set_position((0, 0, box_width / 2))
+material = rtx.LambertMaterial(0.6)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+wall = rtx.Object(geometry, material, mapping)
+scene.add(wall)
+
+# 4
+geometry = rtx.PlainGeometry(box_width, box_height)
+geometry.set_rotation((0, math.pi / 2, 0))
+geometry.set_position((-box_width / 2, 0, 0))
+material = rtx.LambertMaterial(0.6)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.TextureMapping(texture, uv_coordinates)
+wall = rtx.Object(geometry, material, mapping)
+scene.add(wall)
+
+# ceil
+geometry = rtx.PlainGeometry(box_width, box_width)
+geometry.set_rotation((math.pi / 2, 0, 0))
+geometry.set_position((0, box_height / 2, 0))
+material = rtx.LambertMaterial(0.6)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+ceil = rtx.Object(geometry, material, mapping)
+scene.add(ceil)
+
+# floor
+geometry = rtx.PlainGeometry(box_width, box_width)
+geometry.set_rotation((-math.pi / 2, 0, 0))
+geometry.set_position((0, -box_height / 2, 0))
+material = rtx.LambertMaterial(0.6)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+ceil = rtx.Object(geometry, material, mapping)
+scene.add(ceil)
+
+# place bunny
+faces, vertices = gm.load("../geometries/bunny")
+bottom = np.amin(vertices, axis=0)
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+geometry.set_position((0, -box_height / 2 - bottom[2] * 2.5, 0))
+geometry.set_scale((3, 3, 3))
+material = rtx.LambertMaterial(0.6)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+bunny = rtx.Object(geometry, material, mapping)
+scene.add(bunny)
+
+screen_width = 768
+screen_height = 512
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 64
-rt_args.max_bounce = 4
+rt_args.num_rays_per_pixel = 128
+rt_args.max_bounce = 5
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256
-cuda_args.num_blocks = 1
+cuda_args.num_blocks = 1024
 
 renderer = rtx.Renderer()
+
 camera = rtx.PerspectiveCamera(
-    eye=(-3, 3, 3),
-    center=(0, 0.5, -0.25),
+    eye=(0, -0.5, 6),
+    center=(0, -0.5, 0),
     up=(0, 1, 0),
-    fov_rad=math.pi / 4,
+    fov_rad=math.pi / 3,
     aspect_ratio=screen_width / screen_height,
     z_near=0.01,
     z_far=100)
 
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-# renderer.render(scene, camera, rt_args, render_buffer)
-light_rad = 0
-radius = 5.5
-start = time.time()
-
-total_iterations = 1000
+total_iterations = 30
 for n in range(total_iterations):
-    # if n % 10 == 0:
-    #     geometry.set_rotation((math.pi / 4, 0, light_rad))
-    #     light_rad += math.pi / 2
-
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
-    print(np.amax(render_buffer))
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
-    # display
-    plt.imshow(pixels, interpolation="none")
-    plt.pause(1e-8)
+
+    # plt.imshow(pixels, interpolation="none")
+    # plt.pause(1e-8)
+    
+image = Image.fromarray(np.uint8(pixels * 255))
+image.save("result.png")

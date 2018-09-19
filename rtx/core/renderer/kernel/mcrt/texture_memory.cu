@@ -19,7 +19,7 @@ __global__ void standard_texture_memory_kernel(
     RTXThreadedBVH* global_threaded_bvh_array, int threaded_bvh_array_size,
     int threaded_bvh_node_array_size,
     RTXColor* global_color_mapping_array, int color_mapping_array_size,
-    cudaTextureObject_t* texture_object_array, int texture_object_array_size,
+    cudaTextureObject_t* gpu_texture_object_array, int g_cpu_mapping_texture_object_array_size,
     RTXPixel* global_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -358,10 +358,10 @@ __global__ void standard_texture_memory_kernel(
                         const float2 uv_b = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.y + hit_object.serial_uv_coordinates_offset);
                         const float2 uv_c = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.z + hit_object.serial_uv_coordinates_offset);
 
-                        float x = lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x;
-                        float y = lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y;
+                        float x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);
+                        float y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);
 
-                        float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);
+                        float4 color = tex2D<float4>(gpu_texture_object_array[hit_object.mapping_index], x, y);
 
                         hit_color.r = color.x;
                         hit_color.g = color.y;
@@ -475,7 +475,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     cudaBindTexture(0, g_serial_face_vertex_index_array_texture_ref, gpu_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(RTXFace) * face_vertex_index_array_size);
     cudaBindTexture(0, g_serial_vertex_array_texture_ref, gpu_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
     cudaBindTexture(0, g_serial_threaded_bvh_node_array_texture_ref, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXThreadedBVHNode) * threaded_bvh_node_array_size);
-    cudaBindTexture(0, g_serial_uv_coordinate_array_texture_ref, gpu_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(RTXUVCoordinate) * uv_coordinate_array_size);
+    cudaBindTexture(0, g_serial_uv_coordinate_array_texture_ref, gpu_serial_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(RTXUVCoordinate) * uv_coordinate_array_size);
 
     standard_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
@@ -486,13 +486,12 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
         gpu_threaded_bvh_array, threaded_bvh_array_size,
         threaded_bvh_node_array_size,
         gpu_color_mapping_array, color_mapping_array_size,
-        texture_object_pointer, 30,
+        g_gpu_mapping_texture_object_array, 30,
         gpu_render_array,
         num_rays_per_thread,
         max_bounce,
         curand_seed);
 
-    cudaCheckError(cudaGetLastError());
     cudaCheckError(cudaThreadSynchronize());
 
     cudaUnbindTexture(g_serial_ray_array_texture_ref);
