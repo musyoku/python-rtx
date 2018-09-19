@@ -3,6 +3,7 @@
 
 #define THREADED_BVH_TERMINAL_NODE -1
 #define THREADED_BVH_INNER_NODE -1
+#define RTX_CUDA_MAX_TEXTURE_UNITS 50
 
 void rtx_cuda_malloc(void** gpu_array, size_t size);
 void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size);
@@ -17,6 +18,7 @@ void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_off
 void rtx_cuda_bind_texture(int unit_index);
 
 size_t rtx_cuda_get_available_shared_memory_bytes();
+size_t rtx_cuda_get_cudaTextureObject_t_bytes();
 
 void rtx_cuda_launch_standard_texture_memory_kernel(
     rtxRay* gpu_ray_array, int ray_array_size,

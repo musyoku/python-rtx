@@ -1,6 +1,6 @@
 #pragma once
 
-#define rtx_cuda_inline_intersect_triangle_or_continue(va, vb, vc, s, t, min_distance) \
+#define rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, s, t, min_distance) \
     {                                                                                  \
         float3 edge_ba = {                                                             \
             vb.x - va.x,                                                               \
@@ -59,7 +59,7 @@
         }                                                                              \
     }
 
-#define rtx_cuda_inline_intersect_sphere_or_continue(center, radius, t, min_distance)                                              \
+#define rtx_cuda_kernel_intersect_sphere_or_continue(center, radius, t, min_distance)                                              \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -86,7 +86,7 @@
         }                                                                                                                          \
     }
 
-#define rtx_cuda_inline_bvh_traversal_one_step_or_continue(node, ray_direction_inv, bvh_current_node_index)                    \
+#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(node, ray_direction_inv, bvh_current_node_index)                    \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -121,7 +121,7 @@
         }                                                                                                                      \
     }
 
-#define rtx_cuda_inline_fetch_hit_color(hit_object, hit_color, texture_object_array)                                                                                                                       \
+#define rtx_cuda_kernel_fetch_hit_color(hit_object, hit_color, texture_object_array)                                                                                                                       \
     {                                                                                                                                                                                                      \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
@@ -176,7 +176,7 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_inline_update_ray_direction(ray, hit_point, hit_face_normal, path_weight, curand_state)                                  \
+#define rtx_cuda_kernel_update_ray_direction(ray, hit_point, hit_face_normal, path_weight, curand_state)                                  \
     {                                                                                                                                     \
         float4 path = {                                                                                                                   \
             hit_point.x - ray.origin.x,                                                                                                   \

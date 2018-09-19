@@ -262,6 +262,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
     required_shared_memory_bytes += sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size();
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * RTX_CUDA_MAX_TEXTURE_UNITS;
 
     int curand_seed = _total_frames;
 
@@ -290,6 +291,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size();
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * RTX_CUDA_MAX_TEXTURE_UNITS;
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合

@@ -9,8 +9,8 @@
 #include <stdio.h>
 
 cudaTextureObject_t* g_gpu_mapping_texture_object_array;
-cudaTextureObject_t g_cpu_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNIT];
-cudaArray* g_gpu_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNIT];
+cudaTextureObject_t g_cpu_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNITS];
+cudaArray* g_gpu_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNITS];
 
 void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
@@ -50,7 +50,7 @@ void rtx_cuda_malloc_texture(int unit_index, int width, int height)
     cudaArray** array = &g_gpu_mapping_texture_cudaArray_ptr_array[unit_index];
     cudaCheckError(cudaMallocArray(array, &desc, width, height));
     printf("%p\n", *array);
-    cudaCheckError(cudaMalloc((void**)&g_gpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNIT));
+    cudaCheckError(cudaMalloc((void**)&g_gpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS));
 }
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes)
 {
@@ -74,7 +74,7 @@ void rtx_cuda_bind_texture(int unit_index)
     tex.addressMode[0] = cudaAddressModeWrap;
     tex.addressMode[1] = cudaAddressModeWrap;
     cudaCheckError(cudaCreateTextureObject(&g_cpu_mapping_texture_object_array[unit_index], &resource, &tex, NULL));
-    cudaCheckError(cudaMemcpy(g_gpu_mapping_texture_object_array, g_cpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNIT, cudaMemcpyHostToDevice));
+    cudaCheckError(cudaMemcpy(g_gpu_mapping_texture_object_array, g_cpu_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS, cudaMemcpyHostToDevice));
 }
 void rtx_cuda_free_texture(int unit_index)
 {
@@ -82,10 +82,12 @@ void rtx_cuda_free_texture(int unit_index)
     cudaCheckError(cudaFreeArray(array));
     array = NULL;
 }
-
 size_t rtx_cuda_get_available_shared_memory_bytes()
 {
     cudaDeviceProp dev;
     cudaGetDeviceProperties(&dev, 0);
     return dev.sharedMemPerBlock;
+}
+size_t rtx_cuda_get_cudaTextureObject_t_bytes(){
+    return sizeof(cudaTextureObject_t);
 }
