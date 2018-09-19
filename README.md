@@ -9,13 +9,13 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
 - [x] Monte Carlo Ray Tracing
 - [x] Area Lights
+- [x] Texture
 - [ ] Next Event Estimation
-- [ ] Texture
 - [ ] Subsurface Scattering
 
  Current status:
 
- ![https://thumbs.gfycat.com/JoyfulVainGardensnake-size_restricted.gif](https://thumbs.gfycat.com/JoyfulVainGardensnake-size_restricted.gif)
+ ![https://user-images.githubusercontent.com/15250418/45746037-3ac7ce00-bc3d-11e8-8e9d-0e8ad8d512f4.png](https://user-images.githubusercontent.com/15250418/45746037-3ac7ce00-bc3d-11e8-8e9d-0e8ad8d512f4.png)
 
 
 # Requirements
