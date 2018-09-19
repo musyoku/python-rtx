@@ -44,8 +44,8 @@ public:
     BVH(std::shared_ptr<Geometry>& geometry);
     std::shared_ptr<bvh::Node> _root;
     int num_nodes();
-    void serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serialization_offset);
-    void serialize_faces(rtx::array<RTXFace>& buffer, int serialization_offset);
+    void serialize_nodes(rtx::array<rtxThreadedBVHNode>& node_array, int serialization_offset);
+    void serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int serialization_offset);
     void collect_leaves(std::vector<std::shared_ptr<bvh::Node>>& leaves);
 };
 }

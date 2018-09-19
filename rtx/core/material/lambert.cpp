@@ -18,13 +18,13 @@ int LambertMaterial::type() const
 }
 int LambertMaterial::attribute_bytes() const
 {
-    return sizeof(RTXLambertMaterialAttribute);
+    return sizeof(rtxLambertMaterialAttribute);
 }
-void LambertMaterial::serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const
+void LambertMaterial::serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const
 {
-    RTXLambertMaterialAttribute attr;
+    rtxLambertMaterialAttribute attr;
     attr.albedo = _albedo;
-    RTXMaterialAttributeByte* pointer = array.data();
-    std::memcpy(&pointer[offset], &attr, sizeof(RTXLambertMaterialAttribute));
+    rtxMaterialAttributeByte* pointer = array.data();
+    std::memcpy(&pointer[offset], &attr, sizeof(rtxLambertMaterialAttribute));
 }
 }

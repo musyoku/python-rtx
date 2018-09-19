@@ -1,86 +1,86 @@
 #pragma once
 
-typedef struct RTXVector4f {
+typedef struct rtxVector4f {
     float x;
     float y;
     float z;
     float w;
-} RTXVector4f;
+} rtxVector4f;
 
-typedef struct RTXColor {
+typedef struct rtxRGBAColor {
     float r;
     float g;
     float b;
     float a;
-} RTXColor;
+} rtxRGBAColor;
 
-typedef struct RTXThreadedBVHNode {
+typedef struct rtxThreadedBVHNode {
     int hit_node_index;
     int miss_node_index;
     int assigned_face_index_start;
     int assigned_face_index_end;
-    RTXVector4f aabb_max;
-    RTXVector4f aabb_min;
-} RTXThreadedBVHNode;
+    rtxVector4f aabb_max;
+    rtxVector4f aabb_min;
+} rtxThreadedBVHNode;
 
-typedef struct RTXThreadedBVH {
+typedef struct rtxThreadedBVH {
     int num_nodes;
-    int node_index_offset; // offset of the node from the start of the serialzied node array
-} RTXThreadedBVH;
+    int serial_node_index_offset; // offset of the node from the start of the serialzied node array
+} rtxThreadedBVH;
 
-typedef RTXVector4f RTXVertex;
+typedef rtxVector4f RTXVertex;
 
-typedef struct RTXFace {
-    int a; // vertex index
-    int b; // vertex index
-    int c; // vertex index
+typedef struct rtxFaceVertexIndex {
+    int a;
+    int b;
+    int c;
     int w; // dammy for float4
-} RTXFace;
+} rtxFaceVertexIndex;
 
-typedef struct RTXUVCoordinate {
+typedef struct rtxUVCoordinate {
     float u;
     float v;
-} RTXUVCoordinate;
+} rtxUVCoordinate;
 
-typedef struct RTXRay {
-    RTXVector4f direction;
-    RTXVector4f origin;
-} RTXRay;
+typedef struct rtxRay {
+    rtxVector4f direction;
+    rtxVector4f origin;
+} rtxRay;
 
-typedef struct RTXPixel {
+typedef struct rtxRGBAPixel {
     float r;
     float g;
     float b;
     float a;
-} RTXPixel;
+} rtxRGBAPixel;
 
-typedef struct RTXLayeredMaterialTypes {
+typedef struct rtxLayeredMaterialTypes {
     int outside;
     int middle;
     int inside;
-} RTXLayeredMaterialTypes;
+} rtxLayeredMaterialTypes;
 
-typedef struct RTXObject {
+typedef struct rtxObject {
     int num_faces;
-    int face_index_offset; // offset of the face from the start of the serialzied face array
+    int serialized_face_index_offset; // offset of the face from the start of the serialzied face array
     int num_vertices;
-    int vertex_index_offset; // offset of the vertex from the start of the serialzied face array
+    int serialized_vertex_index_offset; // offset of the vertex from the start of the serialzied face array
     int geometry_type;
     int num_material_layers;
-    RTXLayeredMaterialTypes layerd_material_types;
+    rtxLayeredMaterialTypes layerd_material_types;
     int material_attribute_byte_array_offset;
-    int serial_uv_coordinates_offset;
+    int serialized_uv_coordinates_offset;
     int mapping_type;
     int mapping_index;
-} RTXObject;
+} rtxObject;
 
 typedef char RTXMappingAttributeByte;
-typedef char RTXMaterialAttributeByte;
+typedef char rtxMaterialAttributeByte;
 
-typedef struct RTXEmissiveMaterialAttribute {
+typedef struct rtxEmissiveMaterialAttribute {
     float brightness;
-} RTXEmissiveMaterialAttribute;
+} rtxEmissiveMaterialAttribute;
 
-typedef struct RTXLambertMaterialAttribute {
+typedef struct rtxLambertMaterialAttribute {
     float albedo;
-} RTXLambertMaterialAttribute;
+} rtxLambertMaterialAttribute;

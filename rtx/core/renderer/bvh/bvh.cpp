@@ -336,14 +336,14 @@ int BVH::num_nodes()
 {
     return _num_nodes;
 }
-void BVH::serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serialization_offset)
+void BVH::serialize_nodes(rtx::array<rtxThreadedBVHNode>& node_array, int serialization_offset)
 {
     std::vector<std::shared_ptr<Node>> children = { _root };
     _root->collect_children(children);
     for (auto& node : children) {
         int pos = node->_index + serialization_offset;
 
-        RTXThreadedBVHNode cuda_node;
+        rtxThreadedBVHNode cuda_node;
         cuda_node.hit_node_index = node->_hit ? node->_hit->_index : -1;
         cuda_node.miss_node_index = node->_miss ? node->_miss->_index : -1;
         cuda_node.assigned_face_index_start = node->_assigned_face_index_start;
@@ -361,7 +361,7 @@ void BVH::serialize_nodes(rtx::array<RTXThreadedBVHNode>& node_array, int serial
         // printf("    hit: %d miss: %d left: %d right: %d\n", (node->_hit ? node->_hit->_index : -1), (node->_miss ? node->_miss->_index : -1), (node->_left ? node->_left->_index : -1), (node->_right ? node->_right->_index : -1));
     }
 }
-void BVH::serialize_faces(rtx::array<RTXFace>& buffer, int serialization_offset)
+void BVH::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int serialization_offset)
 {
     std::vector<std::shared_ptr<bvh::Node>> leaves;
     collect_leaves(leaves);

@@ -18,13 +18,13 @@ int EmissiveMaterial::type() const
 }
 int EmissiveMaterial::attribute_bytes() const
 {
-    return sizeof(RTXEmissiveMaterialAttribute);
+    return sizeof(rtxEmissiveMaterialAttribute);
 }
-void EmissiveMaterial::serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const
+void EmissiveMaterial::serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const
 {
-    RTXEmissiveMaterialAttribute attr;
+    rtxEmissiveMaterialAttribute attr;
     attr.brightness = _brightness;
-    RTXMaterialAttributeByte* pointer = array.data();
-    std::memcpy(&pointer[offset], &attr, sizeof(RTXEmissiveMaterialAttribute));
+    rtxMaterialAttributeByte* pointer = array.data();
+    std::memcpy(&pointer[offset], &attr, sizeof(rtxEmissiveMaterialAttribute));
 }
 }

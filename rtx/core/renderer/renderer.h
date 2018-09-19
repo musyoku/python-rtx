@@ -18,31 +18,31 @@ namespace rtx {
 class Renderer {
 private:
     // host
-    rtx::array<RTXRay> _cpu_ray_array;
-    rtx::array<RTXFace> _cpu_face_vertex_indices_array;
+    rtx::array<rtxRay> _cpu_ray_array;
+    rtx::array<rtxFaceVertexIndex> _cpu_face_vertex_indices_array;
     rtx::array<RTXVertex> _cpu_vertex_array;
-    rtx::array<RTXObject> _cpu_object_array;
-    rtx::array<RTXMaterialAttributeByte> _cpu_material_attribute_byte_array;
-    rtx::array<RTXThreadedBVH> _cpu_threaded_bvh_array;
-    rtx::array<RTXThreadedBVHNode> _cpu_threaded_bvh_node_array;
-    rtx::array<RTXPixel> _cpu_render_array;
-    rtx::array<RTXPixel> _cpu_render_buffer_array;
+    rtx::array<rtxObject> _cpu_object_array;
+    rtx::array<rtxMaterialAttributeByte> _cpu_material_attribute_byte_array;
+    rtx::array<rtxThreadedBVH> _cpu_threaded_bvh_array;
+    rtx::array<rtxThreadedBVHNode> _cpu_threaded_bvh_node_array;
+    rtx::array<rtxRGBAPixel> _cpu_render_array;
+    rtx::array<rtxRGBAPixel> _cpu_render_buffer_array;
     std::vector<int> _cpu_light_sampling_table;
-    std::vector<RTXColor> _cpu_color_mapping_array;
-    rtx::array<RTXUVCoordinate> _cpu_serial_uv_coordinate_array;
+    std::vector<rtxRGBAColor> _cpu_color_mapping_array;
+    rtx::array<rtxUVCoordinate> _cpu_serial_uv_coordinate_array;
 
     // device
-    RTXRay* _gpu_ray_array;
-    RTXFace* _gpu_face_vertex_indices_array;
+    rtxRay* _gpu_ray_array;
+    rtxFaceVertexIndex* _gpu_face_vertex_indices_array;
     RTXVertex* _gpu_vertex_array;
-    RTXObject* _gpu_object_array;
-    RTXMaterialAttributeByte* _gpu_material_attribute_byte_array;
-    RTXThreadedBVH* _gpu_threaded_bvh_array;
-    RTXThreadedBVHNode* _gpu_threaded_bvh_node_array;
-    RTXPixel* _gpu_render_array;
+    rtxObject* _gpu_object_array;
+    rtxMaterialAttributeByte* _gpu_material_attribute_byte_array;
+    rtxThreadedBVH* _gpu_threaded_bvh_array;
+    rtxThreadedBVHNode* _gpu_threaded_bvh_node_array;
+    rtxRGBAPixel* _gpu_render_array;
     int* _gpu_light_sampling_table;
-    RTXColor* _gpu_color_mapping_array;
-    RTXUVCoordinate* _gpu_serial_uv_coordinate_array;
+    rtxRGBAColor* _gpu_color_mapping_array;
+    rtxUVCoordinate* _gpu_serial_uv_coordinate_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;

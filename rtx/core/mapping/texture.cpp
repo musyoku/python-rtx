@@ -20,10 +20,10 @@ TextureMapping::TextureMapping(
     }
 
     auto texture = np_texture.mutable_unchecked<3>();
-    _texture = rtx::array<RTXPixel>(_height * _width);
+    _texture = rtx::array<rtxRGBAPixel>(_height * _width);
     for (int h = 0; h < _height; h++) {
         for (int w = 0; w < _width; w++) {
-            _texture[h * _width + w] = RTXPixel({ texture(h, w, 0),
+            _texture[h * _width + w] = rtxRGBAPixel({ texture(h, w, 0),
                 texture(h, w, 1),
                 texture(h, w, 2),
                 1.0f });
@@ -32,9 +32,9 @@ TextureMapping::TextureMapping(
 
     int num_attributes = np_uv_coordinates.shape(0);
     auto uv_coordinates = np_uv_coordinates.mutable_unchecked<2>();
-    _uv_coordinates = rtx::array<RTXUVCoordinate>(num_attributes);
+    _uv_coordinates = rtx::array<rtxUVCoordinate>(num_attributes);
     for (int vertex_index = 0; vertex_index < num_attributes; vertex_index++) {
-        _uv_coordinates[vertex_index] = RTXUVCoordinate({
+        _uv_coordinates[vertex_index] = rtxUVCoordinate({
             uv_coordinates(vertex_index, 0),
             uv_coordinates(vertex_index, 1),
         });
@@ -54,17 +54,17 @@ int TextureMapping::type() const
 }
 int TextureMapping::bytes()
 {
-    return sizeof(RTXPixel) * _texture.size();
+    return sizeof(rtxRGBAPixel) * _texture.size();
 }
 int TextureMapping::num_uv_coordinates()
 {
     return _uv_coordinates.size();
 }
-RTXPixel* TextureMapping::data()
+rtxRGBAPixel* TextureMapping::data()
 {
     return _texture.data();
 }
-void TextureMapping::serialize_uv_coordinates(rtx::array<RTXUVCoordinate>& array, int offset) const
+void TextureMapping::serialize_uv_coordinates(rtx::array<rtxUVCoordinate>& array, int offset) const
 {
     for (int n = 0; n < _uv_coordinates.size(); n++) {
         array[n + offset] = _uv_coordinates[n];

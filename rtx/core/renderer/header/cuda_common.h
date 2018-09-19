@@ -9,16 +9,16 @@
         }                                                                                         \
     }
 
-typedef struct CUDARay {
+typedef struct rtxCUDARay {
     float4 direction;
     float4 origin;
-} CUDARay;
+} rtxCUDARay;
 
-typedef struct CUDAThreadedBVHNode {
+typedef struct rtxCUDAThreadedBVHNode {
     int hit_node_index;
     int miss_node_index;
     int assigned_face_index_start;
     int assigned_face_index_end;
     float4 aabb_max;
     float4 aabb_min;
-} CUDAThreadedBVHNode;
+} rtxCUDAThreadedBVHNode;

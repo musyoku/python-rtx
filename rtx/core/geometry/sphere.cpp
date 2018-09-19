@@ -34,7 +34,7 @@ void SphereGeometry::serialize_vertices(rtx::array<RTXVertex>& array, int offset
     array[0 + offset] = { _center.x, _center.y, _center.z };
     array[1 + offset] = { _radius.x, _radius.y, _radius.z };
 }
-void SphereGeometry::serialize_faces(rtx::array<RTXFace>& array, int array_offset) const
+void SphereGeometry::serialize_faces(rtx::array<rtxFaceVertexIndex>& array, int array_offset) const
 {
     array[0 + array_offset] = { 0, 1, -1 };
 }

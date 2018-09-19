@@ -89,7 +89,7 @@ void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int arr
         buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z, vertex.w };
     }
 }
-void StandardGeometry::serialize_faces(rtx::array<RTXFace>& buffer, int array_offset) const
+void StandardGeometry::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int array_offset) const
 {
     for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
         auto& face = _face_vertex_indices_array[j];

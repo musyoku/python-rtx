@@ -11,16 +11,16 @@
 #include <stdio.h>
 
 __global__ void standard_global_memory_kernel(
-    RTXRay* global_serial_ray_array, int ray_array_size,
-    RTXFace* global_serial_face_vertex_indices_array, int face_vertex_index_array_size,
+    rtxRay* global_serial_ray_array, int ray_array_size,
+    rtxFaceVertexIndex* global_serial_face_vertex_indices_array, int face_vertex_index_array_size,
     RTXVertex* global_serial_vertex_array, int vertex_array_size,
-    RTXObject* global_serial_object_array, int object_array_size,
-    RTXMaterialAttributeByte* global_serial_material_attribute_byte_array, int material_attribute_byte_array_size,
-    RTXThreadedBVH* global_serial_threaded_bvh_array, int threaded_bvh_array_size,
-    RTXThreadedBVHNode* global_serial_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    RTXColor* global_serial_color_mapping_array, int color_mapping_array_size,
+    rtxObject* global_serial_object_array, int object_array_size,
+    rtxMaterialAttributeByte* global_serial_material_attribute_byte_array, int material_attribute_byte_array_size,
+    rtxThreadedBVH* global_serial_threaded_bvh_array, int threaded_bvh_array_size,
+    rtxThreadedBVHNode* global_serial_threaded_bvh_node_array, int threaded_bvh_node_array_size,
+    rtxRGBAColor* global_serial_color_mapping_array, int color_mapping_array_size,
     cudaTextureObject_t* g_cpu_texture_object_array, int g_cpu_texture_object_array_size,
-    RTXPixel* global_serial_render_array,
+    rtxRGBAPixel* global_serial_render_array,
     int num_rays_per_thread,
     int max_bounce,
     int curand_seed)
@@ -31,17 +31,17 @@ __global__ void standard_global_memory_kernel(
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
 
     int offset = 0;
-    RTXObject* shared_serial_object_array = (RTXObject*)&shared_memory[offset];
-    offset += sizeof(RTXObject) * object_array_size;
+    rtxObject* shared_serial_object_array = (rtxObject*)&shared_memory[offset];
+    offset += sizeof(rtxObject) * object_array_size;
 
-    RTXMaterialAttributeByte* shared_serial_material_attribute_byte_array = (RTXMaterialAttributeByte*)&shared_memory[offset];
-    offset += sizeof(RTXMaterialAttributeByte) * material_attribute_byte_array_size;
+    rtxMaterialAttributeByte* shared_serial_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
+    offset += sizeof(rtxMaterialAttributeByte) * material_attribute_byte_array_size;
 
-    RTXThreadedBVH* shared_serial_threaded_bvh_array = (RTXThreadedBVH*)&shared_memory[offset];
-    offset += sizeof(RTXThreadedBVH) * threaded_bvh_array_size;
+    rtxThreadedBVH* shared_serial_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
+    offset += sizeof(rtxThreadedBVH) * threaded_bvh_array_size;
 
-    RTXColor* shared_serial_color_mapping_array = (RTXColor*)&shared_memory[offset];
-    offset += sizeof(RTXColor) * color_mapping_array_size;
+    rtxRGBAColor* shared_serial_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
+    offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
 
     if (thread_id == 0) {
         for (int k = 0; k < object_array_size; k++) {
@@ -72,11 +72,11 @@ __global__ void standard_global_memory_kernel(
         RTXVertex hit_va;
         RTXVertex hit_vb;
         RTXVertex hit_vc;
-        RTXObject hit_object;
+        rtxObject hit_object;
 
         // ray.direction = tex1Dfetch(ray_texture, ray_index * 2 + 0);
         // ray.origin = tex1Dfetch(ray_texture, ray_index * 2 + 1);
-        RTXRay ray = global_serial_ray_array[ray_index];
+        rtxRay ray = global_serial_ray_array[ray_index];
 
         float3 ray_direction_inv = {
             1.0f / ray.direction.x,
@@ -84,16 +84,16 @@ __global__ void standard_global_memory_kernel(
             1.0f / ray.direction.z,
         };
 
-        RTXPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
-        RTXColor path_weight = { 1.0f, 1.0f, 1.0f, 0.0f };
+        rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
+        rtxRGBAColor path_weight = { 1.0f, 1.0f, 1.0f, 0.0f };
 
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
 
             for (int object_index = 0; object_index < object_array_size; object_index++) {
-                RTXObject object = shared_serial_object_array[object_index];
-                RTXThreadedBVH bvh = shared_serial_threaded_bvh_array[object_index];
+                rtxObject object = shared_serial_object_array[object_index];
+                rtxThreadedBVH bvh = shared_serial_threaded_bvh_array[object_index];
 
                 int bvh_current_node_index = 0;
                 for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
@@ -101,8 +101,8 @@ __global__ void standard_global_memory_kernel(
                         break;
                     }
 
-                    int index = bvh.node_index_offset + bvh_current_node_index;
-                    RTXThreadedBVHNode node = global_serial_threaded_bvh_node_array[index];
+                    int index = bvh.serial_node_index_offset + bvh_current_node_index;
+                    rtxThreadedBVHNode node = global_serial_threaded_bvh_node_array[index];
 
                     bool is_inner_node = node.assigned_face_index_start == -1;
                     if (is_inner_node) {
@@ -144,13 +144,13 @@ __global__ void standard_global_memory_kernel(
                         if (object.geometry_type == RTXGeometryTypeStandard) {
 
                             for (int m = 0; m < num_assigned_faces; m++) {
-                                int index = node.assigned_face_index_start + m + object.face_index_offset;
+                                int index = node.assigned_face_index_start + m + object.serialized_face_index_offset;
 
-                                const RTXFace face = global_serial_face_vertex_indices_array[index];
+                                const rtxFaceVertexIndex face = global_serial_face_vertex_indices_array[index];
 
-                                const RTXVertex va = global_serial_vertex_array[face.a + object.vertex_index_offset];
-                                const RTXVertex vb = global_serial_vertex_array[face.b + object.vertex_index_offset];
-                                const RTXVertex vc = global_serial_vertex_array[face.c + object.vertex_index_offset];
+                                const RTXVertex va = global_serial_vertex_array[face.a + object.serialized_vertex_index_offset];
+                                const RTXVertex vb = global_serial_vertex_array[face.b + object.serialized_vertex_index_offset];
+                                const RTXVertex vc = global_serial_vertex_array[face.c + object.serialized_vertex_index_offset];
 
                                 float3 edge_ba;
                                 edge_ba.x = vb.x - va.x;
@@ -233,12 +233,12 @@ __global__ void standard_global_memory_kernel(
                                 hit_object = object;
                             }
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
-                            int index = node.assigned_face_index_start + object.face_index_offset;
+                            int index = node.assigned_face_index_start + object.serialized_face_index_offset;
 
-                            const RTXFace face = global_serial_face_vertex_indices_array[index];
+                            const rtxFaceVertexIndex face = global_serial_face_vertex_indices_array[index];
 
-                            const RTXVertex center = global_serial_vertex_array[face.a + object.vertex_index_offset];
-                            const RTXVertex radius = global_serial_vertex_array[face.b + object.vertex_index_offset];
+                            const RTXVertex center = global_serial_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const RTXVertex radius = global_serial_vertex_array[face.b + object.serialized_vertex_index_offset];
 
                             float4 oc;
                             oc.x = ray.origin.x - center.x;
@@ -293,7 +293,7 @@ __global__ void standard_global_memory_kernel(
                 }
             }
 
-            RTXPixel hit_color;
+            rtxRGBAPixel hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
                 int material_type = hit_object.layerd_material_types.outside;
@@ -301,7 +301,7 @@ __global__ void standard_global_memory_kernel(
                 int geometry_type = hit_object.geometry_type;
 
                 if (mapping_type == RTXMappingTypeSolidColor) {
-                    RTXColor color = shared_serial_color_mapping_array[hit_object.mapping_index];
+                    rtxRGBAColor color = shared_serial_color_mapping_array[hit_object.mapping_index];
                     hit_color.r = color.r;
                     hit_color.g = color.g;
                     hit_color.b = color.b;
@@ -357,12 +357,12 @@ __global__ void standard_global_memory_kernel(
                 }
 
                 if (material_type == RTXMaterialTypeLambert) {
-                    RTXLambertMaterialAttribute attr = ((RTXLambertMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     hit_color.r *= attr.albedo;
                     hit_color.g *= attr.albedo;
                     hit_color.b *= attr.albedo;
                 } else if (material_type == RTXMaterialTypeEmissive) {
-                    RTXEmissiveMaterialAttribute attr = ((RTXEmissiveMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     did_hit_light = true;
                     hit_color.r *= attr.brightness;
                     hit_color.g *= attr.brightness;
@@ -422,15 +422,15 @@ __global__ void standard_global_memory_kernel(
 }
 
 void rtx_cuda_launch_standard_global_memory_kernel(
-    RTXRay* gpu_ray_array, int ray_array_size,
-    RTXFace* gpu_face_vertex_index_array, int face_vertex_index_array_size,
+    rtxRay* gpu_ray_array, int ray_array_size,
+    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
     RTXVertex* gpu_vertex_array, int vertex_array_size,
-    RTXObject* gpu_object_array, int object_array_size,
-    RTXMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    RTXThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    RTXThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    RTXColor* gpu_color_mapping_array, int color_mapping_array_size,
-    RTXPixel* gpu_render_array, int render_array_size,
+    rtxObject* gpu_object_array, int object_array_size,
+    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
+    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
+    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
+    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
+    rtxRGBAPixel* gpu_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,

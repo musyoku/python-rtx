@@ -12,6 +12,6 @@ public:
     float brightness() const;
     int type() const override;
     int attribute_bytes() const override;
-    void serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const override;
+    void serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const override;
 };
 }

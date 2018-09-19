@@ -120,8 +120,7 @@ render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 30
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
-    # linear -> sRGB
-    pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
+    pixels = np.clip(render_buffer, 0, 1)
 
     plt.imshow(pixels, interpolation="none")
     plt.pause(1e-8)

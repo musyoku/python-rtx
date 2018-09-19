@@ -80,11 +80,11 @@ void Renderer::serialize_objects()
         }
     }
 
-    _cpu_face_vertex_indices_array = rtx::array<RTXFace>(total_faces);
+    _cpu_face_vertex_indices_array = rtx::array<rtxFaceVertexIndex>(total_faces);
     _cpu_vertex_array = rtx::array<RTXVertex>(total_vertices);
-    _cpu_object_array = rtx::array<RTXObject>(num_objects);
+    _cpu_object_array = rtx::array<rtxObject>(num_objects);
     _cpu_light_sampling_table = std::vector<int>();
-    _cpu_serial_uv_coordinate_array = rtx::array<RTXUVCoordinate>(total_uv_coordinates);
+    _cpu_serial_uv_coordinate_array = rtx::array<rtxUVCoordinate>(total_uv_coordinates);
 
     // serialize vertices
     int vertex_index_offset = 0;
@@ -131,14 +131,14 @@ void Renderer::serialize_objects()
         }
         total_material_attribute_bytes += material->attribute_bytes();
     }
-    _cpu_material_attribute_byte_array = rtx::array<RTXMaterialAttributeByte>(total_material_attribute_bytes);
+    _cpu_material_attribute_byte_array = rtx::array<rtxMaterialAttributeByte>(total_material_attribute_bytes);
 
     int material_attribute_byte_array_offset = 0;
     serial_uv_coordinate_array_offset = 0;
     vertex_index_offset = 0;
     face_index_offset = 0;
 
-    _cpu_color_mapping_array = std::vector<RTXColor>();
+    _cpu_color_mapping_array = std::vector<rtxRGBAColor>();
     _texture_mapping_ptr_array = std::vector<TextureMapping*>();
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
@@ -146,11 +146,11 @@ void Renderer::serialize_objects()
         auto& material = object->material();
         auto& mapping = object->mapping();
 
-        RTXObject cuda_object;
+        rtxObject cuda_object;
         cuda_object.num_faces = geometry->num_faces();
-        cuda_object.face_index_offset = face_index_offset;
+        cuda_object.serialized_face_index_offset = face_index_offset;
         cuda_object.num_vertices = geometry->num_vertices();
-        cuda_object.vertex_index_offset = vertex_index_offset;
+        cuda_object.serialized_vertex_index_offset = vertex_index_offset;
         cuda_object.geometry_type = geometry->type();
         cuda_object.num_material_layers = material->num_layers();
         cuda_object.layerd_material_types = material->types();
@@ -161,13 +161,13 @@ void Renderer::serialize_objects()
         if (mapping->type() == RTXMappingTypeSolidColor) {
             SolidColorMapping* m = static_cast<SolidColorMapping*>(mapping.get());
             auto color = m->color();
-            _cpu_color_mapping_array.emplace_back(RTXColor({ color.r, color.g, color.b, color.a }));
+            _cpu_color_mapping_array.emplace_back(rtxRGBAColor({ color.r, color.g, color.b, color.a }));
             cuda_object.mapping_index = _cpu_color_mapping_array.size() - 1;
         } else if (mapping->type() == RTXMappingTypeTexture) {
             TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
             _texture_mapping_ptr_array.push_back(m);
             cuda_object.mapping_index = _texture_mapping_ptr_array.size() - 1;
-            cuda_object.serial_uv_coordinates_offset = serial_uv_coordinate_array_offset;
+            cuda_object.serialized_uv_coordinates_offset = serial_uv_coordinate_array_offset;
             serial_uv_coordinate_array_offset += m->num_uv_coordinates();
         }
 
@@ -200,15 +200,15 @@ void Renderer::construct_bvh()
         total_nodes += bvh->num_nodes();
     }
 
-    _cpu_threaded_bvh_array = rtx::array<RTXThreadedBVH>(num_objects);
-    _cpu_threaded_bvh_node_array = rtx::array<RTXThreadedBVHNode>(total_nodes);
+    _cpu_threaded_bvh_array = rtx::array<rtxThreadedBVH>(num_objects);
+    _cpu_threaded_bvh_node_array = rtx::array<rtxThreadedBVHNode>(total_nodes);
 
     int node_index_offset = 0;
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& bvh = _geometry_bvh_array[object_index];
 
-        RTXThreadedBVH cuda_bvh;
-        cuda_bvh.node_index_offset = node_index_offset;
+        rtxThreadedBVH cuda_bvh;
+        cuda_bvh.serial_node_index_offset = node_index_offset;
         cuda_bvh.num_nodes = bvh->num_nodes();
         _cpu_threaded_bvh_array[object_index] = cuda_bvh;
 
@@ -220,7 +220,7 @@ void Renderer::serialize_rays(int height, int width)
 {
     int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     int num_rays = height * width * num_rays_per_pixel;
-    _cpu_ray_array = rtx::array<RTXRay>(num_rays);
+    _cpu_ray_array = rtx::array<rtxRay>(num_rays);
     std::default_random_engine generator;
     std::uniform_real_distribution<float> supersampling_noise(0.0, 1.0);
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -234,7 +234,7 @@ void Renderer::serialize_rays(int height, int width)
             for (int x = 0; x < width; x++) {
                 for (int m = 0; m < num_rays_per_pixel; m++) {
                     int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
-                    RTXRay ray;
+                    rtxRay ray;
                     ray.direction.x = 2.0f * float(x + supersampling_noise(generator)) / float(width) - 1.0f;
                     ray.direction.y = -(2.0f * float(y + supersampling_noise(generator)) / float(height) - 1.0f) / aspect_ratio;
                     ray.direction.z = -origin.z;
@@ -261,7 +261,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
-    required_shared_memory_bytes += sizeof(RTXColor) * _cpu_color_mapping_array.size();
+    required_shared_memory_bytes += sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size();
 
     int curand_seed = _total_frames;
 
@@ -289,7 +289,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_object_array.bytes();
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
-    required_shared_memory_bytes += sizeof(RTXColor) * _cpu_color_mapping_array.size();
+    required_shared_memory_bytes += sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size();
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合
@@ -404,7 +404,7 @@ void Renderer::render_objects(int height, int width)
         }
         if (_cpu_color_mapping_array.size() > 0) {
             rtx_cuda_free((void**)&_gpu_color_mapping_array);
-            rtx_cuda_malloc((void**)&_gpu_color_mapping_array, sizeof(RTXColor) * _cpu_color_mapping_array.size());
+            rtx_cuda_malloc((void**)&_gpu_color_mapping_array, sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size());
         }
         if (_texture_mapping_ptr_array.size() > 0) {
             for (int mapping_index = 0; mapping_index < (int)_texture_mapping_ptr_array.size(); mapping_index++) {
@@ -429,7 +429,7 @@ void Renderer::render_objects(int height, int width)
             rtx_cuda_memcpy_host_to_device((void*)_gpu_light_sampling_table, (void*)_cpu_light_sampling_table.data(), sizeof(int) * _cpu_light_sampling_table.size());
         }
         if (_cpu_color_mapping_array.size() > 0) {
-            rtx_cuda_memcpy_host_to_device((void*)_gpu_color_mapping_array, (void*)_cpu_color_mapping_array.data(), sizeof(RTXColor) * _cpu_color_mapping_array.size());
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_color_mapping_array, (void*)_cpu_color_mapping_array.data(), sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size());
         }
         if (_cpu_serial_uv_coordinate_array.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_serial_uv_coordinate_array, (void*)_cpu_serial_uv_coordinate_array.data(), _cpu_serial_uv_coordinate_array.bytes());
@@ -442,11 +442,11 @@ void Renderer::render_objects(int height, int width)
     // レイ
     // Ray
     if (should_update_ray) {
-        _cpu_render_array = rtx::array<RTXPixel>(num_rays);
+        _cpu_render_array = rtx::array<rtxRGBAPixel>(num_rays);
         for (int n = 0; n < num_rays; n++) {
             _cpu_render_array[n] = { -1.0f, -1.0f, -1.0f, -1.0f };
         }
-        _cpu_render_buffer_array = rtx::array<RTXPixel>(height * width * 3);
+        _cpu_render_buffer_array = rtx::array<rtxRGBAPixel>(height * width * 3);
         serialize_rays(height, width);
         rtx_cuda_free((void**)&_gpu_ray_array);
         rtx_cuda_free((void**)&_gpu_render_array);
@@ -479,7 +479,7 @@ void Renderer::render_objects(int height, int width)
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            RTXPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
+            rtxRGBAPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
             if (_total_frames == 1) {
                 pixel_buffer.r = 0.0;
                 pixel_buffer.g = 0.0;
@@ -487,7 +487,7 @@ void Renderer::render_objects(int height, int width)
             }
             for (int m = 0; m < num_rays_per_pixel; m++) {
                 int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
-                RTXPixel pixel = _cpu_render_array[index];
+                rtxRGBAPixel pixel = _cpu_render_array[index];
                 pixel_buffer.r += pixel.r / float(num_rays_per_pixel);
                 pixel_buffer.g += pixel.g / float(num_rays_per_pixel);
                 pixel_buffer.b += pixel.b / float(num_rays_per_pixel);
@@ -516,7 +516,7 @@ void Renderer::render(
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            RTXPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
+            rtxRGBAPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
             pixel(y, x, 0) = pixel_buffer.r / _total_frames;
             pixel(y, x, 1) = pixel_buffer.g / _total_frames;
             pixel(y, x, 2) = pixel_buffer.b / _total_frames;
@@ -549,10 +549,10 @@ void Renderer::render(
     int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            RTXPixel sum = { 0.0f, 0.0f, 0.0f };
+            rtxRGBAPixel sum = { 0.0f, 0.0f, 0.0f };
             for (int m = 0; m < num_rays_per_pixel; m++) {
                 int index = y * width * num_rays_per_pixel + x * num_rays_per_pixel + m;
-                RTXPixel pixel = _cpu_render_array[index];
+                rtxRGBAPixel pixel = _cpu_render_array[index];
                 sum.r += pixel.r;
                 sum.g += pixel.g;
                 sum.b += pixel.b;

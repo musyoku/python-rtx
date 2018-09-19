@@ -29,9 +29,9 @@ int LayeredMaterial::num_layers()
 {
     return _material_array.size();
 }
-RTXLayeredMaterialTypes LayeredMaterial::types()
+rtxLayeredMaterialTypes LayeredMaterial::types()
 {
-    RTXLayeredMaterialTypes types;
+    rtxLayeredMaterialTypes types;
     types.outside = -1;
     types.middle = -1;
     types.inside = -1;
@@ -56,12 +56,12 @@ RTXLayeredMaterialTypes LayeredMaterial::types()
 
     throw std::runtime_error("invalid layered material");
 }
-void LayeredMaterial::serialize_attributes(rtx::array<RTXMaterialAttributeByte>& array, int offset) const
+void LayeredMaterial::serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const
 {
     for (auto& material : _material_array) {
         assert(offset < array.size());
         material->serialize_attributes(array, offset);
-        offset += material->attribute_bytes() / sizeof(RTXMaterialAttributeByte);
+        offset += material->attribute_bytes() / sizeof(rtxMaterialAttributeByte);
     }
 }
 bool LayeredMaterial::is_emissive()

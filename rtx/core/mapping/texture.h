@@ -7,8 +7,8 @@
 namespace rtx {
 class TextureMapping : public Mapping {
 private:
-    rtx::array<RTXPixel> _texture;
-    rtx::array<RTXUVCoordinate> _uv_coordinates;
+    rtx::array<rtxRGBAPixel> _texture;
+    rtx::array<rtxUVCoordinate> _uv_coordinates;
     int _width;
     int _height;
 
@@ -21,7 +21,7 @@ public:
     int height();
     int num_uv_coordinates();
     int type() const override;
-    void serialize_uv_coordinates(rtx::array<RTXUVCoordinate>& array, int offset) const;
-    RTXPixel* data();
+    void serialize_uv_coordinates(rtx::array<rtxUVCoordinate>& array, int offset) const;
+    rtxRGBAPixel* data();
 };
 }
