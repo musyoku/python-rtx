@@ -19,7 +19,15 @@ geometry.set_rotation((0, 0, 0))
 geometry.set_position((0, 0, -box_width / 2))
 material = rtx.LambertMaterial(0.6)
 mapping = rtx.SolidColorMapping((1, 1, 1))
-texture = np.array(Image.open("thinking.png"), dtype=np.float32) / 255
+wall = rtx.Object(geometry, material, mapping)
+scene.add(wall)
+
+# 2
+geometry = rtx.PlainGeometry(box_width, box_height)
+geometry.set_rotation((0, -math.pi / 2, 0))
+geometry.set_position((box_width / 2, 0, 0))
+material = rtx.EmissiveMaterial(1.0)
+texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(
     [
         [0, 1],
@@ -31,22 +39,11 @@ mapping = rtx.TextureMapping(texture, uv_coordinates)
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
-# 2
-geometry = rtx.PlainGeometry(box_width, box_height)
-geometry.set_rotation((0, -math.pi / 2, 0))
-geometry.set_position((box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(0.8)
-mapping = rtx.SolidColorMapping((1, 1, 1))
-mapping = rtx.TextureMapping(texture, uv_coordinates)
-wall = rtx.Object(geometry, material, mapping)
-scene.add(wall)
-
 # 3
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi, 0))
 geometry.set_position((0, 0, box_width / 2))
 material = rtx.LambertMaterial(0.6)
-mapping = rtx.SolidColorMapping((1, 1, 1))
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
 
@@ -54,8 +51,16 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_width / 2, 0, 0))
-material = rtx.LambertMaterial(0.6)
+material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
+texture = np.array(Image.open("texture_2.png"), dtype=np.float32) / 255
+uv_coordinates = np.array(
+    [
+        [0, 1],
+        [1, 1],
+        [0, 0],
+        [1, 0],
+    ], dtype=np.float32)
 mapping = rtx.TextureMapping(texture, uv_coordinates)
 wall = rtx.Object(geometry, material, mapping)
 scene.add(wall)
@@ -118,8 +123,8 @@ for n in range(total_iterations):
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
 
-    # plt.imshow(pixels, interpolation="none")
-    # plt.pause(1e-8)
+    plt.imshow(pixels, interpolation="none")
+    plt.pause(1e-8)
     
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

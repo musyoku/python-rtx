@@ -391,6 +391,7 @@ __global__ void standard_texture_memory_kernel(
                 pixel.r += hit_color.r * path_weight.r;
                 pixel.g += hit_color.g * path_weight.g;
                 pixel.b += hit_color.b * path_weight.b;
+                break;
             }
 
             if (did_hit_object) {
