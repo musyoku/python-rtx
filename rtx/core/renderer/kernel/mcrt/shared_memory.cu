@@ -2,6 +2,7 @@
 #include "../../../header/struct.h"
 #include "../../header/bridge.h"
 #include "../../header/cuda_common.h"
+#include "../../header/cuda_functions.h"
 #include "../../header/cuda_texture.h"
 #include "../../header/standard_kernel.h"
 #include <assert.h>
@@ -12,83 +13,83 @@
 
 __global__ void standard_shared_memory_kernel(
     int ray_array_size,
-    rtxFaceVertexIndex* global_face_vertex_indices_array, int face_vertex_index_array_size,
-    RTXVertex* global_vertex_array, int vertex_array_size,
+    rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
+    RTXVertex* global_serialized_vertex_array, int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* global_threaded_bvh_node_array, int threaded_bvh_node_array_size,
+    rtxThreadedBVHNode* global_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* global_serialized_uv_coordinate_array, int uv_coordinate_array_size,
-    cudaTextureObject_t* g_cpu_texture_object_array, int g_cpu_texture_object_array_size,
+    cudaTextureObject_t* global_serialized_mapping_texture_object_array,
     rtxRGBAPixel* global_serialized_render_array,
     int num_rays_per_thread,
     int max_bounce,
     int curand_seed)
 {
-    extern __shared__ unsigned char shared_memory[];
-    int thread_id = threadIdx.x;
-    curandStatePhilox4_32_10_t state;
-    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &state);
+    extern __shared__ char shared_memory[];
+    curandStatePhilox4_32_10_t curand_state;
+    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
 
+    // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
     rtxFaceVertexIndex* shared_face_vertex_indices_array = (rtxFaceVertexIndex*)&shared_memory[offset];
-    offset += sizeof(rtxFaceVertexIndex) / sizeof(unsigned char) * face_vertex_index_array_size;
+    offset += sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size;
 
     RTXVertex* shared_vertex_array = (RTXVertex*)&shared_memory[offset];
-    offset += sizeof(RTXVertex) / sizeof(unsigned char) * vertex_array_size;
+    offset += sizeof(RTXVertex) * vertex_array_size;
 
-    rtxObject* shared_object_array = (rtxObject*)&shared_memory[offset];
-    offset += sizeof(rtxObject) / sizeof(unsigned char) * object_array_size;
+    rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
+    offset += sizeof(rtxObject) * object_array_size;
 
-    rtxMaterialAttributeByte* shared_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
-    offset += sizeof(rtxMaterialAttributeByte) / sizeof(unsigned char) * material_attribute_byte_array_size;
+    rtxMaterialAttributeByte* shared_serialized_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
+    offset += sizeof(rtxMaterialAttributeByte) * material_attribute_byte_array_size;
 
-    rtxThreadedBVH* shared_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
-    offset += sizeof(rtxThreadedBVH) / sizeof(unsigned char) * threaded_bvh_array_size;
+    rtxThreadedBVH* shared_serialized_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
+    offset += sizeof(rtxThreadedBVH) * threaded_bvh_array_size;
 
-    rtxThreadedBVHNode* shared_threaded_bvh_node_array = (rtxThreadedBVHNode*)&shared_memory[offset];
-    offset += sizeof(rtxThreadedBVHNode) / sizeof(unsigned char) * threaded_bvh_node_array_size;
+    rtxThreadedBVHNode* shared_serialized_threaded_bvh_node_array = (rtxThreadedBVHNode*)&shared_memory[offset];
+    offset += sizeof(rtxThreadedBVHNode) * threaded_bvh_node_array_size;
 
-    rtxRGBAColor* shared_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
-    offset += sizeof(rtxRGBAColor) / sizeof(unsigned char) * color_mapping_array_size;
+    rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
+    offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
 
-    if (thread_id == 0) {
-        for (int k = 0; k < face_vertex_index_array_size; k++) {
-            shared_face_vertex_indices_array[k] = global_face_vertex_indices_array[k];
+    rtxUVCoordinate* shared_serialized_uv_coordinate_array = (rtxUVCoordinate*)&shared_memory[offset];
+    offset += sizeof(rtxUVCoordinate) * uv_coordinate_array_size;
+
+    cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
+    offset += sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS;
+
+    if (threadIdx.x == 0) {
+        for (int m = 0; m < face_vertex_index_array_size; m++) {
+            shared_face_vertex_indices_array[m] = global_serialized_face_vertex_indices_array[m];
         }
-        for (int k = 0; k < vertex_array_size; k++) {
-            shared_vertex_array[k] = global_vertex_array[k];
+        for (int m = 0; m < vertex_array_size; m++) {
+            shared_vertex_array[m] = global_serialized_vertex_array[m];
         }
-        for (int k = 0; k < object_array_size; k++) {
-            shared_object_array[k] = global_serialized_object_array[k];
+        for (int m = 0; m < object_array_size; m++) {
+            shared_serialized_object_array[m] = global_serialized_object_array[m];
         }
-        for (int k = 0; k < material_attribute_byte_array_size; k++) {
-            shared_material_attribute_byte_array[k] = global_serialized_material_attribute_byte_array[k];
+        for (int m = 0; m < material_attribute_byte_array_size; m++) {
+            shared_serialized_material_attribute_byte_array[m] = global_serialized_material_attribute_byte_array[m];
         }
-        for (int k = 0; k < threaded_bvh_array_size; k++) {
-            shared_threaded_bvh_array[k] = global_serialized_threaded_bvh_array[k];
+        for (int m = 0; m < threaded_bvh_array_size; m++) {
+            shared_serialized_threaded_bvh_array[m] = global_serialized_threaded_bvh_array[m];
         }
-        for (int k = 0; k < threaded_bvh_node_array_size; k++) {
-            shared_threaded_bvh_node_array[k] = global_threaded_bvh_node_array[k];
+        for (int m = 0; m < threaded_bvh_node_array_size; m++) {
+            shared_serialized_threaded_bvh_node_array[m] = global_serialized_threaded_bvh_node_array[m];
         }
-        for (int k = 0; k < color_mapping_array_size; k++) {
-            shared_color_mapping_array[k] = global_serialized_color_mapping_array[k];
+        for (int m = 0; m < color_mapping_array_size; m++) {
+            shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
+        }
+        for (int m = 0; m < uv_coordinate_array_size; m++) {
+            shared_serialized_uv_coordinate_array[m] = global_serialized_uv_coordinate_array[m];
+        }
+        for (int m = 0; m < RTX_CUDA_MAX_TEXTURE_UNITS; m++) {
+            shared_serialized_texture_object_array[m] = global_serialized_mapping_texture_object_array[m];
         }
     }
     __syncthreads();
-
-    const float eps = 0.0000001;
-    rtxCUDARay ray;
-    // rtxRay ray;
-    float3 ray_direction_inv;
-    float3 hit_point;
-    float3 hit_face_normal;
-    RTXVertex hit_va;
-    RTXVertex hit_vb;
-    RTXVertex hit_vc;
-    rtxFaceVertexIndex hit_face;
-    rtxObject hit_object;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
@@ -96,68 +97,64 @@ __global__ void standard_shared_memory_kernel(
             return;
         }
 
+        rtxCUDARay ray;
+        float3 hit_point;
+        float3 hit_face_normal;
+        RTXVertex hit_va;
+        RTXVertex hit_vb;
+        RTXVertex hit_vc;
+        rtxFaceVertexIndex hit_face;
+        rtxObject hit_object;
+
         ray.direction = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 0);
         ray.origin = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 1);
 
-        ray_direction_inv.x = 1.0f / ray.direction.x;
-        ray_direction_inv.y = 1.0f / ray.direction.y;
-        ray_direction_inv.z = 1.0f / ray.direction.z;
+        float3 ray_direction_inv = {
+            1.0f / ray.direction.x,
+            1.0f / ray.direction.y,
+            1.0f / ray.direction.z,
+        };
 
+        // 出力する画素
         rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+        // 光輸送経路のウェイト
         rtxRGBAPixel path_weight = { 1.0f, 1.0f, 1.0f };
 
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
 
+            // シーン上の全オブジェクトについて
             for (int object_index = 0; object_index < object_array_size; object_index++) {
-                rtxObject object = shared_object_array[object_index];
-                rtxThreadedBVH bvh = shared_threaded_bvh_array[object_index];
+                rtxObject object = shared_serialized_object_array[object_index];
 
+                // 各ジオメトリのThreaded BVH
+                rtxThreadedBVH bvh = shared_serialized_threaded_bvh_array[object_index];
+
+                // BVHの各ノードを遷移していく
                 int bvh_current_node_index = 0;
                 for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
                     if (bvh_current_node_index == THREADED_BVH_TERMINAL_NODE) {
+                        // 終端ノードならこのオブジェクトにはヒットしていない
                         break;
                     }
 
-                    rtxThreadedBVHNode node = shared_threaded_bvh_node_array[bvh.serial_node_index_offset + bvh_current_node_index];
+                    rtxThreadedBVHNode node = shared_serialized_threaded_bvh_node_array[bvh.serial_node_index_offset + bvh_current_node_index];
 
                     bool is_inner_node = node.assigned_face_index_start == -1;
                     if (is_inner_node) {
+                        // 中間ノードの場合AABBとの衝突判定を行う
+                        // 詳細は以下参照
+                        // An Efficient and Robust Ray–Box Intersection Algorithm
                         // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                        float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;
-                        float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;
-                        float tmp_tmin = ((ray_direction_inv.y < 0 ? node.aabb_max.y : node.aabb_min.y) - ray.origin.y) * ray_direction_inv.y;
-                        float tmp_tmax = ((ray_direction_inv.y < 0 ? node.aabb_min.y : node.aabb_max.y) - ray.origin.y) * ray_direction_inv.y;
-
-                        if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                            bvh_current_node_index = node.miss_node_index;
-                            continue;
-                        }
-                        if (tmp_tmin > tmin) {
-                            tmin = tmp_tmin;
-                        }
-                        if (tmp_tmax < tmax) {
-                            tmax = tmp_tmax;
-                        }
-                        tmp_tmin = ((ray_direction_inv.z < 0 ? node.aabb_max.z : node.aabb_min.z) - ray.origin.z) * ray_direction_inv.z;
-                        tmp_tmax = ((ray_direction_inv.z < 0 ? node.aabb_min.z : node.aabb_max.z) - ray.origin.z) * ray_direction_inv.z;
-                        if ((tmin > tmp_tmax) || (tmp_tmin > tmax)) {
-                            bvh_current_node_index = node.miss_node_index;
-                            continue;
-                        }
-                        if (tmp_tmin > tmin) {
-                            tmin = tmp_tmin;
-                        }
-                        if (tmp_tmax < tmax) {
-                            tmax = tmp_tmax;
-                        }
-
-                        if (tmax < 0.001) {
-                            bvh_current_node_index = node.miss_node_index;
-                            continue;
-                        }
+                        rtx_cuda_kernel_bvh_traversal_one_step_or_continue(node, ray_direction_inv, bvh_current_node_index);
                     } else {
+                        // 葉ノード
+                        // 割り当てられたジオメトリの各面との衝突判定を行う
+                        // アルゴリズムの詳細は以下
+                        // Fast Minimum Storage Ray/Triangle Intersectio
+                        // https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
                         int num_assigned_faces = node.assigned_face_index_end - node.assigned_face_index_start + 1;
                         if (object.geometry_type == RTXGeometryTypeStandard) {
 
@@ -170,78 +167,18 @@ __global__ void standard_shared_memory_kernel(
                                 const RTXVertex vb = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
                                 const RTXVertex vc = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                                float3 edge_ba;
-                                edge_ba.x = vb.x - va.x;
-                                edge_ba.y = vb.y - va.y;
-                                edge_ba.z = vb.z - va.z;
+                                float3 face_normal;
+                                float distance;
+                                rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, face_normal, distance, min_distance);
 
-                                float3 edge_ca;
-                                edge_ca.x = vc.x - va.x;
-                                edge_ca.y = vc.y - va.y;
-                                edge_ca.z = vc.z - va.z;
+                                min_distance = distance;
+                                hit_point.x = ray.origin.x + distance * ray.direction.x;
+                                hit_point.y = ray.origin.y + distance * ray.direction.y;
+                                hit_point.z = ray.origin.z + distance * ray.direction.z;
 
-                                float3 h;
-                                h.x = ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y;
-                                h.y = ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z;
-                                h.z = ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x;
-                                float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;
-                                if (f > -eps && f < eps) {
-                                    continue;
-                                }
-
-                                f = 1.0f / f;
-
-                                float3 s;
-                                s.x = ray.origin.x - va.x;
-                                s.y = ray.origin.y - va.y;
-                                s.z = ray.origin.z - va.z;
-                                float dot = s.x * h.x + s.y * h.y + s.z * h.z;
-                                float u = f * dot;
-                                if (u < 0.0f || u > 1.0f) {
-                                    continue;
-                                }
-
-                                h.x = s.y * edge_ba.z - s.z * edge_ba.y;
-                                h.y = s.z * edge_ba.x - s.x * edge_ba.z;
-                                h.z = s.x * edge_ba.y - s.y * edge_ba.x;
-                                dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z;
-                                float v = f * dot;
-                                if (v < 0.0f || u + v > 1.0f) {
-                                    continue;
-                                }
-                                s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
-                                s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
-                                s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
-
-                                float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;
-
-                                s.x = s.x / norm;
-                                s.y = s.y / norm;
-                                s.z = s.z / norm;
-
-                                dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z;
-                                if (dot > 0.0f) {
-                                    continue;
-                                }
-
-                                dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;
-                                float t = f * dot;
-
-                                if (t <= 0.001f) {
-                                    continue;
-                                }
-                                if (min_distance <= t) {
-                                    continue;
-                                }
-
-                                min_distance = t;
-                                hit_point.x = ray.origin.x + t * ray.direction.x;
-                                hit_point.y = ray.origin.y + t * ray.direction.y;
-                                hit_point.z = ray.origin.z + t * ray.direction.z;
-
-                                hit_face_normal.x = s.x;
-                                hit_face_normal.y = s.y;
-                                hit_face_normal.z = s.z;
+                                hit_face_normal.x = face_normal.x;
+                                hit_face_normal.y = face_normal.y;
+                                hit_face_normal.z = face_normal.z;
 
                                 hit_va = va;
                                 hit_vb = vb;
@@ -259,45 +196,24 @@ __global__ void standard_shared_memory_kernel(
                             const RTXVertex center = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
                             const RTXVertex radius = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
 
-                            float4 oc;
-                            oc.x = ray.origin.x - center.x;
-                            oc.y = ray.origin.y - center.y;
-                            oc.z = ray.origin.z - center.z;
+                            float distance;
+                            rtx_cuda_kernel_intersect_sphere_or_continue(center, radius, distance, min_distance);
 
-                            const float a = ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z;
-                            const float b = 2.0f * (ray.direction.x * oc.x + ray.direction.y * oc.y + ray.direction.z * oc.z);
-                            const float c = (oc.x * oc.x + oc.y * oc.y + oc.z * oc.z) - radius.x * radius.x;
-                            const float d = b * b - 4.0f * a * c;
+                            min_distance = distance;
+                            hit_point.x = ray.origin.x + distance * ray.direction.x;
+                            hit_point.y = ray.origin.y + distance * ray.direction.y;
+                            hit_point.z = ray.origin.z + distance * ray.direction.z;
 
-                            if (d <= 0) {
-                                continue;
-                            }
-                            const float root = sqrt(d);
-                            float t = (-b - root) / (2.0f * a);
-                            if (t <= 0.001f) {
-                                t = (-b + root) / (2.0f * a);
-                                if (t <= 0.001f) {
-                                    continue;
-                                }
-                            }
+                            const float3 normal = {
+                                hit_point.x - center.x,
+                                hit_point.y - center.y,
+                                hit_point.z - center.z,
+                            };
+                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
 
-                            if (min_distance <= t) {
-                                continue;
-                            }
-                            min_distance = t;
-                            hit_point.x = ray.origin.x + t * ray.direction.x;
-                            hit_point.y = ray.origin.y + t * ray.direction.y;
-                            hit_point.z = ray.origin.z + t * ray.direction.z;
-
-                            float4 tmp;
-                            tmp.x = hit_point.x - center.x;
-                            tmp.y = hit_point.y - center.y;
-                            tmp.z = hit_point.z - center.z;
-                            const float norm = sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z) + 1e-12;
-
-                            hit_face_normal.x = tmp.x / norm;
-                            hit_face_normal.y = tmp.y / norm;
-                            hit_face_normal.z = tmp.z / norm;
+                            hit_face_normal.x = normal.x / norm;
+                            hit_face_normal.y = normal.y / norm;
+                            hit_face_normal.z = normal.z / norm;
 
                             did_hit_object = true;
                             hit_object = object;
@@ -312,127 +228,29 @@ __global__ void standard_shared_memory_kernel(
                 }
             }
 
-            rtxRGBAPixel hit_color;
+            //  衝突点の色を検出
+            rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
-                int material_type = hit_object.layerd_material_types.outside;
-                int mapping_type = hit_object.mapping_type;
-                int geometry_type = hit_object.geometry_type;
-
-                if (mapping_type == RTXMappingTypeSolidColor) {
-                    rtxRGBAColor color = shared_color_mapping_array[hit_object.mapping_index];
-                    hit_color.r = color.r;
-                    hit_color.g = color.g;
-                    hit_color.b = color.b;
-                } else if (mapping_type == RTXMappingTypeTexture) {
-                    if (geometry_type == RTXGeometryTypeStandard) {
-                        // compute barycentric coordinates
-                        float3 d1 = {
-                            hit_va.x - hit_vc.x,
-                            hit_va.y - hit_vc.y,
-                            hit_va.z - hit_vc.z
-                        };
-                        float3 d2 = {
-                            hit_vb.x - hit_vc.x,
-                            hit_vb.y - hit_vc.y,
-                            hit_vb.z - hit_vc.z
-                        };
-                        float3 d = {
-                            hit_point.x - hit_vc.x,
-                            hit_point.y - hit_vc.y,
-                            hit_point.z - hit_vc.z
-                        };
-                        float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;
-                        float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;
-                        float d2x = d1y;
-                        float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
-                        float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;
-                        float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;
-
-                        float det = d1x * d2y - d1y * d2x;
-                        float3 lambda = {
-                            (dx * d2y - dy * d2x) / det,
-                            (d1x * dy - d1y * dx) / det,
-                            0.0f
-                        };
-                        lambda.z = 1.0f - lambda.x - lambda.y;
-
-                        // float div_w = 1.0f / hit_va.w * lambda.x + 1.0f / hit_vb.w * lambda.y + 1.0f / hit_vc.w * lambda.z;
-
-                        const rtxUVCoordinate uv_a = global_serialized_uv_coordinate_array[hit_face.a + hit_object.serialized_uv_coordinates_offset];
-                        const rtxUVCoordinate uv_b = global_serialized_uv_coordinate_array[hit_face.b + hit_object.serialized_uv_coordinates_offset];
-                        const rtxUVCoordinate uv_c = global_serialized_uv_coordinate_array[hit_face.c + hit_object.serialized_uv_coordinates_offset];
-
-                        float x = lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u;
-                        float y = lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v;
-
-                        float4 color = tex2D<float4>(g_cpu_texture_object_array[hit_object.mapping_index], x, y);
-
-                        hit_color.r = color.x;
-                        hit_color.g = color.y;
-                        hit_color.b = color.z;
-                    } else {
-                        hit_color.r = 0.0f;
-                        hit_color.g = 0.0f;
-                        hit_color.b = 0.0f;
-                    }
-                }
-
-                if (material_type == RTXMaterialTypeLambert) {
-                    rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                } else if (material_type == RTXMaterialTypeEmissive) {
-                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    did_hit_light = true;
-                    hit_color.r *= attr.brightness;
-                    hit_color.g *= attr.brightness;
-                    hit_color.b *= attr.brightness;
-                }
+                rtx_cuda_kernel_fetch_hit_color_in_shared_memory(
+                    hit_object,
+                    hit_face,
+                    hit_color,
+                    shared_serialized_color_mapping_array,
+                    shared_serialized_texture_object_array,
+                    shared_serialized_uv_coordinate_array);
             }
 
+            // 光源に当たった場合トレースを打ち切り
             if (did_hit_light) {
                 pixel.r += hit_color.r * path_weight.r;
                 pixel.g += hit_color.g * path_weight.g;
                 pixel.b += hit_color.b * path_weight.b;
+                break;
             }
 
             if (did_hit_object) {
-                float4 path;
-                path.x = hit_point.x - ray.origin.x;
-                path.y = hit_point.y - ray.origin.y;
-                path.z = hit_point.z - ray.origin.z;
-                float distance = sqrt(path.x * path.x + path.y * path.y + path.z * path.z);
-
-                ray.origin.x = hit_point.x;
-                ray.origin.y = hit_point.y;
-                ray.origin.z = hit_point.z;
-
-                // diffuse reflection
-                float unit_diffuese_x = curand_normal(&state);
-                float unit_diffuese_y = curand_normal(&state);
-                float unit_diffuese_z = curand_normal(&state);
-                float norm = sqrt(unit_diffuese_x * unit_diffuese_x + unit_diffuese_y * unit_diffuese_y + unit_diffuese_z * unit_diffuese_z);
-                unit_diffuese_x /= norm;
-                unit_diffuese_y /= norm;
-                unit_diffuese_z /= norm;
-
-                float cosine_term = hit_face_normal.x * unit_diffuese_x + hit_face_normal.y * unit_diffuese_y + hit_face_normal.z * unit_diffuese_z;
-                if (cosine_term < 0.0f) {
-                    unit_diffuese_x *= -1;
-                    unit_diffuese_y *= -1;
-                    unit_diffuese_z *= -1;
-                    cosine_term *= -1;
-                }
-                ray.direction.x = unit_diffuese_x;
-                ray.direction.y = unit_diffuese_y;
-                ray.direction.z = unit_diffuese_z;
-
-                ray_direction_inv.x = 1.0f / ray.direction.x;
-                ray_direction_inv.y = 1.0f / ray.direction.y;
-                ray_direction_inv.z = 1.0f / ray.direction.z;
-
-                path_weight.r *= 4.0f * hit_color.r * cosine_term;
-                path_weight.g *= 4.0f * hit_color.g * cosine_term;
-                path_weight.b *= 4.0f * hit_color.b * cosine_term;
+                rtx_cuda_kernel_update_ray_direction(ray, hit_point, hit_face_normal, path_weight, curand_state);
             }
         }
 
@@ -441,16 +259,16 @@ __global__ void standard_shared_memory_kernel(
 }
 
 void rtx_cuda_launch_standard_shared_memory_kernel(
-    rtxRay* gpu_ray_array, int ray_array_size,
-    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_vertex_array, int vertex_array_size,
-    rtxObject* gpu_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
+    rtxRay* gpu_serialized_ray_array, int ray_array_size,
+    rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
+    RTXVertex* gpu_serialized_vertex_array, int vertex_array_size,
+    rtxObject* gpu_serialized_object_array, int object_array_size,
+    rtxMaterialAttributeByte* gpu_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
+    rtxThreadedBVH* gpu_serialized_threaded_bvh_array, int threaded_bvh_array_size,
+    rtxThreadedBVHNode* gpu_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
+    rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
-    rtxRGBAPixel* gpu_render_array, int render_array_size,
+    rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
@@ -458,37 +276,23 @@ void rtx_cuda_launch_standard_shared_memory_kernel(
     int max_bounce,
     int curand_seed)
 {
-    assert(gpu_ray_array != NULL);
-    assert(gpu_face_vertex_index_array != NULL);
-    assert(gpu_vertex_array != NULL);
-    assert(gpu_object_array != NULL);
-    assert(gpu_material_attribute_byte_array != NULL);
-    assert(gpu_threaded_bvh_array != NULL);
-    assert(gpu_threaded_bvh_node_array != NULL);
-    assert(gpu_render_array != NULL);
-    if (color_mapping_array_size > 0) {
-        assert(gpu_color_mapping_array != NULL);
-    }
-
-    cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
-
+    rtx_cuda_check_kernel_arguments();
+    cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     standard_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
-        gpu_face_vertex_index_array, face_vertex_index_array_size,
-        gpu_vertex_array, vertex_array_size,
-        gpu_object_array, object_array_size,
-        gpu_material_attribute_byte_array, material_attribute_byte_array_size,
-        gpu_threaded_bvh_array, threaded_bvh_array_size,
-        gpu_threaded_bvh_node_array, threaded_bvh_node_array_size,
-        gpu_color_mapping_array, color_mapping_array_size,
+        gpu_serialized_face_vertex_index_array, face_vertex_index_array_size,
+        gpu_serialized_vertex_array, vertex_array_size,
+        gpu_serialized_object_array, object_array_size,
+        gpu_serialized_material_attribute_byte_array, material_attribute_byte_array_size,
+        gpu_serialized_threaded_bvh_array, threaded_bvh_array_size,
+        gpu_serialized_threaded_bvh_node_array, threaded_bvh_node_array_size,
+        gpu_serialized_color_mapping_array, color_mapping_array_size,
         gpu_serialized_uv_coordinate_array, uv_coordinate_array_size,
-        g_gpu_serialized_mapping_texture_object_array, 30,
-        gpu_render_array,
+        g_gpu_serialized_mapping_texture_object_array,
+        gpu_serialized_render_array,
         num_rays_per_thread,
         max_bounce,
         curand_seed);
-
     cudaCheckError(cudaThreadSynchronize());
-
     cudaUnbindTexture(g_serialized_ray_array_texture_ref);
 }

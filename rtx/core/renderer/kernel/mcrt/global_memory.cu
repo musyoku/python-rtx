@@ -19,7 +19,7 @@ __global__ void standard_global_memory_kernel(
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
     rtxThreadedBVHNode* global_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
-    cudaTextureObject_t* g_cpu_texture_object_array, int g_cpu_texture_object_array_size,
+    cudaTextureObject_t* global_serialized_mapping_texture_object_array, int global_serialized_mapping_texture_object_array_size,
     rtxRGBAPixel* global_serialized_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -344,7 +344,7 @@ __global__ void standard_global_memory_kernel(
                         float x = lambda.z;
                         float y = lambda.y;
 
-                        float4 color = tex2D<float4>(g_cpu_texture_object_array[hit_object.mapping_index], x, y);
+                        float4 color = tex2D<float4>(global_serialized_mapping_texture_object_array[hit_object.mapping_index], x, y);
 
                         hit_color.r = color.x;
                         hit_color.g = color.y;

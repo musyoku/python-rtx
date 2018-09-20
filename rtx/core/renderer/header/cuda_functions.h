@@ -122,13 +122,37 @@
         }                                                                                                                      \
     }
 
-#define rtx_cuda_kernel_fetch_hit_color(hit_object, hit_color, texture_object_array)                                                                                                                       \
+#define rtx_cuda_kernel_fetch_uv_coordinate_in_shared_memory(x, y, uv_coordinate_array)                    \
+    {                                                                                                      \
+        const rtxUVCoordinate uv_a = uv_coordinate_array[hit_face.a + hit_object.serialized_uv_coordinates_offset]; \
+        const rtxUVCoordinate uv_b = uv_coordinate_array[hit_face.b + hit_object.serialized_uv_coordinates_offset]; \
+        const rtxUVCoordinate uv_c = uv_coordinate_array[hit_face.c + hit_object.serialized_uv_coordinates_offset]; \
+        x = max(0.0f, lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u);                          \
+        y = max(0.0f, lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v);                          \
+    }
+#define rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory(x, y, uv_coordinate_array)                               \
+    {                                                                                                                  \
+        const float2 uv_a = tex1Dfetch(uv_coordinate_array, hit_face.a + hit_object.serialized_uv_coordinates_offset); \
+        const float2 uv_b = tex1Dfetch(uv_coordinate_array, hit_face.b + hit_object.serialized_uv_coordinates_offset); \
+        const float2 uv_c = tex1Dfetch(uv_coordinate_array, hit_face.c + hit_object.serialized_uv_coordinates_offset); \
+        x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                      \
+        y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                      \
+    }
+#define rtx_cuda_kernel_fetch_hit_color_in_shared_memory(hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                       \
+    {                                                                                                                                                                                           \
+        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_shared_memory, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array); \
+    }
+#define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                       \
+    {                                                                                                                                                                                            \
+        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array); \
+    }
+#define rtx_cuda_kernel_fetch_hit_color(fetch_uv_coordinates, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                             \
     {                                                                                                                                                                                                      \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
         int geometry_type = hit_object.geometry_type;                                                                                                                                                      \
         if (mapping_type == RTXMappingTypeSolidColor) {                                                                                                                                                    \
-            rtxRGBAColor color = shared_serialized_color_mapping_array[hit_object.mapping_index];                                                                                                          \
+            rtxRGBAColor color = color_mapping_array[hit_object.mapping_index];                                                                                                                            \
             hit_color.r = color.r;                                                                                                                                                                         \
             hit_color.g = color.g;                                                                                                                                                                         \
             hit_color.b = color.b;                                                                                                                                                                         \
@@ -148,11 +172,8 @@
                 float det = d1x * d2y - d1y * d2x;                                                                                                                                                         \
                 float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
                 lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
-                const float2 uv_a = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.x + hit_object.serialized_uv_coordinates_offset);                                                    \
-                const float2 uv_b = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.y + hit_object.serialized_uv_coordinates_offset);                                                    \
-                const float2 uv_c = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.z + hit_object.serialized_uv_coordinates_offset);                                                    \
-                float x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                                                                                            \
-                float y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                                                                                            \
+                float x, y;                                                                                                                                                                                \
+                fetch_uv_coordinates(x, y, uv_coordinate_array);                                                                                                                                                 \
                 float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
                 hit_color.r = color.x;                                                                                                                                                                     \
                 hit_color.g = color.y;                                                                                                                                                                     \
@@ -229,6 +250,6 @@
             assert(gpu_serialized_color_mapping_array != NULL);            \
         }                                                                  \
         if (uv_coordinate_array_size > 0) {                                \
-            assert(gpu_serialized_serialized_uv_coordinate_array != NULL); \
+            assert(gpu_serialized_uv_coordinate_array != NULL); \
         }                                                                  \
     }

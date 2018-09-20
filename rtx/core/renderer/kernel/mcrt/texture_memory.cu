@@ -20,7 +20,7 @@ __global__ void standard_texture_memory_kernel(
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
     int threaded_bvh_node_array_size,
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
-    cudaTextureObject_t* global_serialized_texture_object_array, int g_cpu_serialized_mapping_texture_object_array_size,
+    cudaTextureObject_t* global_serialized_mapping_texture_object_array,
     rtxRGBAPixel* global_serialized_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -62,7 +62,7 @@ __global__ void standard_texture_memory_kernel(
             shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
         }
         for (int m = 0; m < RTX_CUDA_MAX_TEXTURE_UNITS; m++) {
-            shared_serialized_texture_object_array[m] = global_serialized_texture_object_array[m];
+            shared_serialized_texture_object_array[m] = global_serialized_mapping_texture_object_array[m];
         }
     }
     __syncthreads();
@@ -78,7 +78,7 @@ __global__ void standard_texture_memory_kernel(
         float4 hit_va;
         float4 hit_vb;
         float4 hit_vc;
-        int4 hit_face;
+        rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
 
         ray.direction = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 0);
@@ -170,7 +170,7 @@ __global__ void standard_texture_memory_kernel(
                                 hit_va = va;
                                 hit_vb = vb;
                                 hit_vc = vc;
-                                hit_face = face;
+                                hit_face = rtxFaceVertexIndex({ face.x, face.y, face.z, face.w });
 
                                 did_hit_object = true;
                                 hit_object = object;
@@ -219,7 +219,13 @@ __global__ void standard_texture_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
-                rtx_cuda_kernel_fetch_hit_color(hit_object, hit_color, shared_serialized_texture_object_array);
+                rtx_cuda_kernel_fetch_hit_color_in_texture_memory(
+                    hit_object,
+                    hit_face,
+                    hit_color,
+                    shared_serialized_color_mapping_array,
+                    shared_serialized_texture_object_array,
+                    g_serialized_uv_coordinate_array_texture_ref);
             }
 
             // 光源に当たった場合トレースを打ち切り
@@ -248,7 +254,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     rtxThreadedBVH* gpu_serialized_threaded_bvh_array, int threaded_bvh_array_size,
     rtxThreadedBVHNode* gpu_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
-    rtxUVCoordinate* gpu_serialized_serialized_uv_coordinate_array, int uv_coordinate_array_size,
+    rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
     rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
     int num_threads,
     int num_blocks,
@@ -263,7 +269,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     cudaBindTexture(0, g_serialized_face_vertex_index_array_texture_ref, gpu_serialized_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size);
     cudaBindTexture(0, g_serialized_vertex_array_texture_ref, gpu_serialized_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
     cudaBindTexture(0, g_serialized_threaded_bvh_node_array_texture_ref, gpu_serialized_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(rtxThreadedBVHNode) * threaded_bvh_node_array_size);
-    cudaBindTexture(0, g_serialized_uv_coordinate_array_texture_ref, gpu_serialized_serialized_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(rtxUVCoordinate) * uv_coordinate_array_size);
+    cudaBindTexture(0, g_serialized_uv_coordinate_array_texture_ref, gpu_serialized_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(rtxUVCoordinate) * uv_coordinate_array_size);
 
     standard_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
@@ -274,7 +280,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
         gpu_serialized_threaded_bvh_array, threaded_bvh_array_size,
         threaded_bvh_node_array_size,
         gpu_serialized_color_mapping_array, color_mapping_array_size,
-        g_gpu_serialized_mapping_texture_object_array, 30,
+        g_gpu_serialized_mapping_texture_object_array,
         gpu_serialized_render_array,
         num_rays_per_thread,
         max_bounce,
