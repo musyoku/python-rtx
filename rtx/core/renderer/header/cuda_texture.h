@@ -1,12 +1,12 @@
 #pragma once
 #include <cuda_runtime.h>
 
-extern cudaTextureObject_t* g_gpu_mapping_texture_object_array;
-extern cudaTextureObject_t g_cpu_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNITS];
-extern cudaArray* g_gpu_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNITS];
+extern cudaTextureObject_t* g_gpu_serialized_mapping_texture_object_array;
+extern cudaTextureObject_t g_cpu_serialized_mapping_texture_object_array[RTX_CUDA_MAX_TEXTURE_UNITS];
+extern cudaArray* g_gpu_serialized_mapping_texture_cudaArray_ptr_array[RTX_CUDA_MAX_TEXTURE_UNITS];
 
-texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serial_ray_array_texture_ref;
-texture<int4, cudaTextureType1D, cudaReadModeElementType> g_serial_face_vertex_index_array_texture_ref;
-texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serial_vertex_array_texture_ref;
-texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serial_threaded_bvh_node_array_texture_ref;
-texture<float2, cudaTextureType1D, cudaReadModeElementType> g_serial_uv_coordinate_array_texture_ref;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serialized_ray_array_texture_ref;
+texture<int4, cudaTextureType1D, cudaReadModeElementType> g_serialized_face_vertex_index_array_texture_ref;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serialized_vertex_array_texture_ref;
+texture<float4, cudaTextureType1D, cudaReadModeElementType> g_serialized_threaded_bvh_node_array_texture_ref;
+texture<float2, cudaTextureType1D, cudaReadModeElementType> g_serialized_uv_coordinate_array_texture_ref;

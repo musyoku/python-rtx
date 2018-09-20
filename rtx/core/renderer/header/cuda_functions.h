@@ -2,6 +2,7 @@
 
 #define rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, s, t, min_distance) \
     {                                                                                  \
+        const float eps = 0.000001;                                                    \
         float3 edge_ba = {                                                             \
             vb.x - va.x,                                                               \
             vb.y - va.y,                                                               \
@@ -127,7 +128,7 @@
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
         int geometry_type = hit_object.geometry_type;                                                                                                                                                      \
         if (mapping_type == RTXMappingTypeSolidColor) {                                                                                                                                                    \
-            rtxRGBAColor color = shared_serial_color_mapping_array[hit_object.mapping_index];                                                                                                              \
+            rtxRGBAColor color = shared_serialized_color_mapping_array[hit_object.mapping_index];                                                                                                          \
             hit_color.r = color.r;                                                                                                                                                                         \
             hit_color.g = color.g;                                                                                                                                                                         \
             hit_color.b = color.b;                                                                                                                                                                         \
@@ -147,9 +148,9 @@
                 float det = d1x * d2y - d1y * d2x;                                                                                                                                                         \
                 float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
                 lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
-                const float2 uv_a = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.x + hit_object.serialized_uv_coordinates_offset);                                                        \
-                const float2 uv_b = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.y + hit_object.serialized_uv_coordinates_offset);                                                        \
-                const float2 uv_c = tex1Dfetch(g_serial_uv_coordinate_array_texture_ref, hit_face.z + hit_object.serialized_uv_coordinates_offset);                                                        \
+                const float2 uv_a = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.x + hit_object.serialized_uv_coordinates_offset);                                                    \
+                const float2 uv_b = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.y + hit_object.serialized_uv_coordinates_offset);                                                    \
+                const float2 uv_c = tex1Dfetch(g_serialized_uv_coordinate_array_texture_ref, hit_face.z + hit_object.serialized_uv_coordinates_offset);                                                    \
                 float x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                                                                                            \
                 float y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                                                                                            \
                 float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
@@ -163,12 +164,12 @@
             }                                                                                                                                                                                              \
         }                                                                                                                                                                                                  \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
-            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                           \
+            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                       \
             hit_color.r *= attr.albedo;                                                                                                                                                                    \
             hit_color.g *= attr.albedo;                                                                                                                                                                    \
             hit_color.b *= attr.albedo;                                                                                                                                                                    \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
-            rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serial_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                         \
+            rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                     \
             did_hit_light = true;                                                                                                                                                                          \
             hit_color.r *= attr.brightness;                                                                                                                                                                \
             hit_color.g *= attr.brightness;                                                                                                                                                                \
@@ -214,20 +215,20 @@
         path_weight.b *= 4.0 * hit_color.b * cosine_term;                                                                                 \
     };
 
-#define rtx_cuda_check_kernel_arguments()                   \
-    {                                                       \
-        assert(gpu_ray_array != NULL);                      \
-        assert(gpu_face_vertex_index_array != NULL);        \
-        assert(gpu_vertex_array != NULL);                   \
-        assert(gpu_object_array != NULL);                   \
-        assert(gpu_material_attribute_byte_array != NULL);  \
-        assert(gpu_threaded_bvh_array != NULL);             \
-        assert(gpu_threaded_bvh_node_array != NULL);        \
-        assert(gpu_render_array != NULL);                   \
-        if (color_mapping_array_size > 0) {                 \
-            assert(gpu_color_mapping_array != NULL);        \
-        }                                                   \
-        if (uv_coordinate_array_size > 0) {                 \
-            assert(gpu_serial_uv_coordinate_array != NULL); \
-        }                                                   \
+#define rtx_cuda_check_kernel_arguments()                                  \
+    {                                                                      \
+        assert(gpu_serialized_ray_array != NULL);                          \
+        assert(gpu_serialized_face_vertex_index_array != NULL);            \
+        assert(gpu_serialized_vertex_array != NULL);                       \
+        assert(gpu_serialized_object_array != NULL);                       \
+        assert(gpu_serialized_material_attribute_byte_array != NULL);      \
+        assert(gpu_serialized_threaded_bvh_array != NULL);                 \
+        assert(gpu_serialized_threaded_bvh_node_array != NULL);            \
+        assert(gpu_serialized_render_array != NULL);                       \
+        if (color_mapping_array_size > 0) {                                \
+            assert(gpu_serialized_color_mapping_array != NULL);            \
+        }                                                                  \
+        if (uv_coordinate_array_size > 0) {                                \
+            assert(gpu_serialized_serialized_uv_coordinate_array != NULL); \
+        }                                                                  \
     }

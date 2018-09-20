@@ -29,7 +29,7 @@ private:
     rtx::array<rtxRGBAPixel> _cpu_render_buffer_array;
     std::vector<int> _cpu_light_sampling_table;
     std::vector<rtxRGBAColor> _cpu_color_mapping_array;
-    rtx::array<rtxUVCoordinate> _cpu_serial_uv_coordinate_array;
+    rtx::array<rtxUVCoordinate> _cpu_serialized_uv_coordinate_array;
 
     // device
     rtxRay* _gpu_ray_array;
@@ -42,7 +42,7 @@ private:
     rtxRGBAPixel* _gpu_render_array;
     int* _gpu_light_sampling_table;
     rtxRGBAColor* _gpu_color_mapping_array;
-    rtxUVCoordinate* _gpu_serial_uv_coordinate_array;
+    rtxUVCoordinate* _gpu_serialized_uv_coordinate_array;
 
     std::shared_ptr<Scene> _scene;
     std::shared_ptr<Camera> _camera;

@@ -29,7 +29,7 @@ Renderer::Renderer()
     _gpu_threaded_bvh_node_array = NULL;
     _gpu_light_sampling_table = NULL;
     _gpu_color_mapping_array = NULL;
-    _gpu_serial_uv_coordinate_array = NULL;
+    _gpu_serialized_uv_coordinate_array = NULL;
     _gpu_render_array = NULL;
     _total_frames = 0;
 }
@@ -43,7 +43,7 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_threaded_bvh_array);
     rtx_cuda_free((void**)&_gpu_threaded_bvh_node_array);
     rtx_cuda_free((void**)&_gpu_color_mapping_array);
-    rtx_cuda_free((void**)&_gpu_serial_uv_coordinate_array);
+    rtx_cuda_free((void**)&_gpu_serialized_uv_coordinate_array);
     rtx_cuda_free((void**)&_gpu_render_array);
 }
 void Renderer::transform_objects_to_view_space()
@@ -84,7 +84,7 @@ void Renderer::serialize_objects()
     _cpu_vertex_array = rtx::array<RTXVertex>(total_vertices);
     _cpu_object_array = rtx::array<rtxObject>(num_objects);
     _cpu_light_sampling_table = std::vector<int>();
-    _cpu_serial_uv_coordinate_array = rtx::array<rtxUVCoordinate>(total_uv_coordinates);
+    _cpu_serialized_uv_coordinate_array = rtx::array<rtxUVCoordinate>(total_uv_coordinates);
 
     // serialize vertices
     int vertex_index_offset = 0;
@@ -114,7 +114,7 @@ void Renderer::serialize_objects()
 
         if (mapping->type() == RTXMappingTypeTexture) {
             TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
-            m->serialize_uv_coordinates(_cpu_serial_uv_coordinate_array, serial_uv_coordinate_array_offset);
+            m->serialize_uv_coordinates(_cpu_serialized_uv_coordinate_array, serial_uv_coordinate_array_offset);
             serial_uv_coordinate_array_offset += m->num_uv_coordinates();
         }
     }
@@ -276,7 +276,7 @@ void Renderer::launch_kernel()
             _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
-            _gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.size(),
+            _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
@@ -305,7 +305,7 @@ void Renderer::launch_kernel()
             _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
-            _gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.size(),
+            _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
@@ -417,9 +417,9 @@ void Renderer::render_objects(int height, int width)
                 rtx_cuda_bind_texture(mapping_index);
             }
         }
-        if (_cpu_serial_uv_coordinate_array.size() > 0) {
-            rtx_cuda_free((void**)&_gpu_serial_uv_coordinate_array);
-            rtx_cuda_malloc((void**)&_gpu_serial_uv_coordinate_array, _cpu_serial_uv_coordinate_array.bytes());
+        if (_cpu_serialized_uv_coordinate_array.size() > 0) {
+            rtx_cuda_free((void**)&_gpu_serialized_uv_coordinate_array);
+            rtx_cuda_malloc((void**)&_gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.bytes());
         }
     }
     if (should_transfer_to_gpu) {
@@ -433,8 +433,8 @@ void Renderer::render_objects(int height, int width)
         if (_cpu_color_mapping_array.size() > 0) {
             rtx_cuda_memcpy_host_to_device((void*)_gpu_color_mapping_array, (void*)_cpu_color_mapping_array.data(), sizeof(rtxRGBAColor) * _cpu_color_mapping_array.size());
         }
-        if (_cpu_serial_uv_coordinate_array.size() > 0) {
-            rtx_cuda_memcpy_host_to_device((void*)_gpu_serial_uv_coordinate_array, (void*)_cpu_serial_uv_coordinate_array.data(), _cpu_serial_uv_coordinate_array.bytes());
+        if (_cpu_serialized_uv_coordinate_array.size() > 0) {
+            rtx_cuda_memcpy_host_to_device((void*)_gpu_serialized_uv_coordinate_array, (void*)_cpu_serialized_uv_coordinate_array.data(), _cpu_serialized_uv_coordinate_array.bytes());
         }
     }
 
