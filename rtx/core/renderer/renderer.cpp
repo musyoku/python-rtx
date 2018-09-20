@@ -75,7 +75,7 @@ void Renderer::serialize_geometries()
     }
 
     _cpu_face_vertex_indices_array = rtx::array<rtxFaceVertexIndex>(total_faces);
-    _cpu_vertex_array = rtx::array<RTXVertex>(total_vertices);
+    _cpu_vertex_array = rtx::array<rtxVertex>(total_vertices);
     _cpu_object_array = rtx::array<rtxObject>(num_objects);
 
     int vertex_index_offset = 0;
@@ -359,7 +359,7 @@ void Renderer::launch_kernel()
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合
-        // こちらの方が若干早い
+        // こっちの方が若干早い
         rtx_cuda_launch_standard_texture_memory_kernel(
             _gpu_ray_array, _cpu_ray_array.size(),
             _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
@@ -388,6 +388,7 @@ void Renderer::launch_kernel()
         //     _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
         //     _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
         //     _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+        //     _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
         //     _gpu_render_array, _cpu_render_array.size(),
         //     _cuda_args->num_threads(),
         //     _cuda_args->num_blocks(),

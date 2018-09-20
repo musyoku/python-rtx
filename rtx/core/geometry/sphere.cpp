@@ -29,7 +29,7 @@ int SphereGeometry::num_vertices() const
     // center + radius
     return 2;
 }
-void SphereGeometry::serialize_vertices(rtx::array<RTXVertex>& array, int offset) const
+void SphereGeometry::serialize_vertices(rtx::array<rtxVertex>& array, int offset) const
 {
     array[0 + offset] = { _center.x, _center.y, _center.z };
     array[1 + offset] = { _radius.x, _radius.y, _radius.z };

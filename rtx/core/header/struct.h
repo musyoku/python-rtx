@@ -28,7 +28,7 @@ typedef struct rtxThreadedBVH {
     int serial_node_index_offset; // offset of the node from the start of the serialzied node array
 } rtxThreadedBVH;
 
-typedef rtxVector4f RTXVertex;
+typedef rtxVector4f rtxVertex;
 
 typedef struct rtxFaceVertexIndex {
     int a;

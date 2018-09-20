@@ -36,7 +36,7 @@ public:
     void add_face(glm::vec3i face);
     void add_vertex(glm::vec3f vertex);
     void set_bvh_max_triangles_per_node(int bvh_max_triangles_per_node);
-    void serialize_vertices(rtx::array<RTXVertex>& array, int offset) const override;
+    void serialize_vertices(rtx::array<rtxVertex>& array, int offset) const override;
     void serialize_faces(rtx::array<rtxFaceVertexIndex>& array, int array_offset) const override;
     std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const override;
     int bvh_max_triangles_per_node() const override;

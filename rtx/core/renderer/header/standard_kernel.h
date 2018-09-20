@@ -21,7 +21,7 @@ __global__ void standard_texture_memory_kernel(
 __global__ void standard_global_memory_kernel(
     rtxRay* global_ray_array, int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
-    RTXVertex* global_serialized_vertex_array, int vertex_array_size,
+    rtxVertex* global_serialized_vertex_array, int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
@@ -36,7 +36,7 @@ __global__ void standard_global_memory_kernel(
 __global__ void standard_shared_memory_kernel(
     int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
-    RTXVertex* global_serialized_vertex_array, int vertex_array_size,
+    rtxVertex* global_serialized_vertex_array, int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,

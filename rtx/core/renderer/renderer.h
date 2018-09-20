@@ -20,7 +20,7 @@ private:
     // host
     rtx::array<rtxRay> _cpu_ray_array;
     rtx::array<rtxFaceVertexIndex> _cpu_face_vertex_indices_array;
-    rtx::array<RTXVertex> _cpu_vertex_array;
+    rtx::array<rtxVertex> _cpu_vertex_array;
     rtx::array<rtxObject> _cpu_object_array;
     rtx::array<rtxMaterialAttributeByte> _cpu_material_attribute_byte_array;
     rtx::array<rtxThreadedBVH> _cpu_threaded_bvh_array;
@@ -34,7 +34,7 @@ private:
     // device
     rtxRay* _gpu_ray_array;
     rtxFaceVertexIndex* _gpu_face_vertex_indices_array;
-    RTXVertex* _gpu_vertex_array;
+    rtxVertex* _gpu_vertex_array;
     rtxObject* _gpu_object_array;
     rtxMaterialAttributeByte* _gpu_material_attribute_byte_array;
     rtxThreadedBVH* _gpu_threaded_bvh_array;

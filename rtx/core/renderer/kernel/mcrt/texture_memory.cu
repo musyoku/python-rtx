@@ -147,7 +147,6 @@ __global__ void standard_texture_memory_kernel(
 
                             for (int m = 0; m < num_assigned_faces; m++) {
                                 int serialized_face_index = node.assigned_face_index_start + m + object.serialized_face_index_offset;
-
                                 const int4 face = tex1Dfetch(g_serialized_face_vertex_index_array_texture_ref, serialized_face_index);
 
                                 const float4 va = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
@@ -170,14 +169,16 @@ __global__ void standard_texture_memory_kernel(
                                 hit_va = va;
                                 hit_vb = vb;
                                 hit_vc = vc;
-                                hit_face = rtxFaceVertexIndex({ face.x, face.y, face.z, face.w });
+
+                                hit_face.a = face.x;
+                                hit_face.b = face.y;
+                                hit_face.c = face.z;
 
                                 did_hit_object = true;
                                 hit_object = object;
                             }
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int serialized_array_index = node.assigned_face_index_start + object.serialized_face_index_offset;
-
                             const int4 face = tex1Dfetch(g_serialized_face_vertex_index_array_texture_ref, serialized_array_index);
 
                             const float4 center = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
@@ -223,6 +224,7 @@ __global__ void standard_texture_memory_kernel(
                     hit_object,
                     hit_face,
                     hit_color,
+                    shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
                     g_serialized_uv_coordinate_array_texture_ref);
@@ -248,7 +250,7 @@ __global__ void standard_texture_memory_kernel(
 void rtx_cuda_launch_standard_texture_memory_kernel(
     rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_serialized_vertex_array, int vertex_array_size,
+    rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
     rtxObject* gpu_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* gpu_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* gpu_serialized_threaded_bvh_array, int threaded_bvh_array_size,
@@ -267,7 +269,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
 
     cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     cudaBindTexture(0, g_serialized_face_vertex_index_array_texture_ref, gpu_serialized_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size);
-    cudaBindTexture(0, g_serialized_vertex_array_texture_ref, gpu_serialized_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(RTXVertex) * vertex_array_size);
+    cudaBindTexture(0, g_serialized_vertex_array_texture_ref, gpu_serialized_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(rtxVertex) * vertex_array_size);
     cudaBindTexture(0, g_serialized_threaded_bvh_node_array_texture_ref, gpu_serialized_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(rtxThreadedBVHNode) * threaded_bvh_node_array_size);
     cudaBindTexture(0, g_serialized_uv_coordinate_array_texture_ref, gpu_serialized_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(rtxUVCoordinate) * uv_coordinate_array_size);
 

@@ -20,72 +20,26 @@ void rtx_cuda_bind_texture(int unit_index);
 size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();
 
-void rtx_cuda_launch_standard_texture_memory_kernel(
-    rtxRay* gpu_ray_array, int ray_array_size,
-    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_vertex_array, int vertex_array_size,
-    rtxObject* gpu_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
-    rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
-    rtxRGBAPixel* gpu_render_array, int render_array_size,
-    int num_threads,
-    int num_blocks,
-    int num_rays_per_thread,
-    size_t shared_memory_bytes,
-    int max_bounce,
+// 引数が同じ関数を3作るのでプリプロセッサで行う
+#define rtx_cuda_define_standard_launcher_function(name)                                                              \
+void rtx_cuda_launch_standard_##name(                                                             \
+    rtxRay* gpu_ray_array, int ray_array_size,                                                           \
+    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,                   \
+    rtxVertex* gpu_vertex_array, int vertex_array_size,                                                  \
+    rtxObject* gpu_object_array, int object_array_size,                                                  \
+    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size, \
+    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,                                 \
+    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,                   \
+    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,                                 \
+    rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,                   \
+    rtxRGBAPixel* gpu_render_array, int render_array_size,                                               \
+    int num_threads,                                                                                     \
+    int num_blocks,                                                                                      \
+    int num_rays_per_thread,                                                                             \
+    size_t shared_memory_bytes,                                                                          \
+    int max_bounce,                                                                                      \
     int curand_seed);
 
-void rtx_cuda_launch_standard_global_memory_kernel(
-    rtxRay* gpu_ray_array, int ray_array_size,
-    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_vertex_array, int vertex_array_size,
-    rtxObject* gpu_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
-    rtxRGBAPixel* gpu_render_array, int render_array_size,
-    int num_threads,
-    int num_blocks,
-    int num_rays_per_thread,
-    size_t shared_memory_bytes,
-    int max_bounce,
-    int curand_seed);
-
-void rtx_cuda_launch_standard_shared_memory_kernel(
-    rtxRay* gpu_ray_array, int ray_array_size,
-    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_vertex_array, int vertex_array_size,
-    rtxObject* gpu_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
-    rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
-    rtxRGBAPixel* gpu_render_array, int render_array_size,
-    int num_threads,
-    int num_blocks,
-    int num_rays_per_thread,
-    size_t shared_memory_bytes,
-    int max_bounce,
-    int curand_seed);
-
-void rtx_cuda_launch_next_event_estimation_kernel(
-    rtxRay* gpu_ray_array, int ray_array_size,
-    rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_vertex_array, int vertex_array_size,
-    rtxObject* gpu_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    int* gpu_light_sampling_table, int light_sampling_table_size,
-    rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,
-    rtxRGBAPixel* gpu_render_array, int render_array_size,
-    int num_threads,
-    int num_blocks,
-    int num_rays_per_pixel,
-    int max_bounce,
-    int curand_seed);
+rtx_cuda_define_standard_launcher_function(texture_memory_kernel)
+rtx_cuda_define_standard_launcher_function(shared_memory_kernel)
+rtx_cuda_define_standard_launcher_function(global_memory_kernel)

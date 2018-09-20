@@ -29,7 +29,7 @@ public:
     virtual int type() const = 0;
     virtual int num_faces() const = 0;
     virtual int num_vertices() const = 0;
-    virtual void serialize_vertices(rtx::array<RTXVertex>& array, int offset) const = 0;
+    virtual void serialize_vertices(rtx::array<rtxVertex>& array, int offset) const = 0;
     virtual void serialize_faces(rtx::array<rtxFaceVertexIndex>& array, int array_offset) const = 0;
     virtual std::shared_ptr<Geometry> transoform(glm::mat4& transformation_matrix) const = 0;
 };

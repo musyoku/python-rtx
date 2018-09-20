@@ -14,7 +14,7 @@
 __global__ void standard_shared_memory_kernel(
     int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
-    RTXVertex* global_serialized_vertex_array, int vertex_array_size,
+    rtxVertex* global_serialized_vertex_array, int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
@@ -36,8 +36,8 @@ __global__ void standard_shared_memory_kernel(
     rtxFaceVertexIndex* shared_face_vertex_indices_array = (rtxFaceVertexIndex*)&shared_memory[offset];
     offset += sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size;
 
-    RTXVertex* shared_vertex_array = (RTXVertex*)&shared_memory[offset];
-    offset += sizeof(RTXVertex) * vertex_array_size;
+    rtxVertex* shared_vertex_array = (rtxVertex*)&shared_memory[offset];
+    offset += sizeof(rtxVertex) * vertex_array_size;
 
     rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
     offset += sizeof(rtxObject) * object_array_size;
@@ -100,9 +100,9 @@ __global__ void standard_shared_memory_kernel(
         rtxCUDARay ray;
         float3 hit_point;
         float3 hit_face_normal;
-        RTXVertex hit_va;
-        RTXVertex hit_vb;
-        RTXVertex hit_vc;
+        rtxVertex hit_va;
+        rtxVertex hit_vb;
+        rtxVertex hit_vc;
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
 
@@ -160,12 +160,11 @@ __global__ void standard_shared_memory_kernel(
 
                             for (int m = 0; m < num_assigned_faces; m++) {
                                 int index = node.assigned_face_index_start + m + object.serialized_face_index_offset;
-
                                 const rtxFaceVertexIndex face = shared_face_vertex_indices_array[index];
 
-                                const RTXVertex va = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
-                                const RTXVertex vb = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
-                                const RTXVertex vc = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
+                                const rtxVertex va = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
+                                const rtxVertex vb = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
+                                const rtxVertex vc = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
                                 float3 face_normal;
                                 float distance;
@@ -190,11 +189,10 @@ __global__ void standard_shared_memory_kernel(
                             }
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int index = node.assigned_face_index_start + object.serialized_face_index_offset;
-
                             const rtxFaceVertexIndex face = shared_face_vertex_indices_array[index];
 
-                            const RTXVertex center = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
-                            const RTXVertex radius = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex center = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex radius = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
 
                             float distance;
                             rtx_cuda_kernel_intersect_sphere_or_continue(center, radius, distance, min_distance);
@@ -232,10 +230,11 @@ __global__ void standard_shared_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
-                rtx_cuda_kernel_fetch_hit_color_in_shared_memory(
+                rtx_cuda_kernel_fetch_hit_color_in_linear_memory(
                     hit_object,
                     hit_face,
                     hit_color,
+                    shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
                     shared_serialized_uv_coordinate_array);
@@ -261,7 +260,7 @@ __global__ void standard_shared_memory_kernel(
 void rtx_cuda_launch_standard_shared_memory_kernel(
     rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
-    RTXVertex* gpu_serialized_vertex_array, int vertex_array_size,
+    rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
     rtxObject* gpu_serialized_object_array, int object_array_size,
     rtxMaterialAttributeByte* gpu_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
     rtxThreadedBVH* gpu_serialized_threaded_bvh_array, int threaded_bvh_array_size,

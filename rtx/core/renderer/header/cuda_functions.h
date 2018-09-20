@@ -122,13 +122,13 @@
         }                                                                                                                      \
     }
 
-#define rtx_cuda_kernel_fetch_uv_coordinate_in_shared_memory(x, y, uv_coordinate_array)                    \
-    {                                                                                                      \
+#define rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory(x, y, uv_coordinate_array)                                 \
+    {                                                                                                               \
         const rtxUVCoordinate uv_a = uv_coordinate_array[hit_face.a + hit_object.serialized_uv_coordinates_offset]; \
         const rtxUVCoordinate uv_b = uv_coordinate_array[hit_face.b + hit_object.serialized_uv_coordinates_offset]; \
         const rtxUVCoordinate uv_c = uv_coordinate_array[hit_face.c + hit_object.serialized_uv_coordinates_offset]; \
-        x = max(0.0f, lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u);                          \
-        y = max(0.0f, lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v);                          \
+        x = max(0.0f, lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u);                                   \
+        y = max(0.0f, lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v);                                   \
     }
 #define rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory(x, y, uv_coordinate_array)                               \
     {                                                                                                                  \
@@ -138,15 +138,51 @@
         x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                      \
         y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                      \
     }
-#define rtx_cuda_kernel_fetch_hit_color_in_shared_memory(hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                       \
-    {                                                                                                                                                                                           \
-        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_shared_memory, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array); \
+#define rtx_cuda_kernel_fetch_hit_color_in_linear_memory(                                 \
+    hit_object,                                                                           \
+    hit_face,                                                                             \
+    hit_color,                                                                            \
+    material_attribute_byte_array,                                                        \
+    color_mapping_array,                                                                  \
+    texture_object_array,                                                                 \
+    uv_coordinate_array)                                                                  \
+    {                                                                                     \
+        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
+            hit_object,                                                                   \
+            hit_face,                                                                     \
+            hit_color,                                                                    \
+            material_attribute_byte_array,                                                \
+            color_mapping_array,                                                          \
+            texture_object_array,                                                         \
+            uv_coordinate_array);                                                         \
     }
-#define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                       \
-    {                                                                                                                                                                                            \
-        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array); \
+#define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(                                     \
+    hit_object,                                                                                \
+    hit_face,                                                                                  \
+    hit_color,                                                                                 \
+    material_attribute_byte_array,                                                             \
+    color_mapping_array,                                                                       \
+    texture_object_array,                                                                      \
+    uv_coordinate_array)                                                                       \
+    {                                                                                          \
+        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
+            hit_object,                                                                        \
+            hit_face,                                                                          \
+            hit_color,                                                                         \
+            material_attribute_byte_array,                                                     \
+            color_mapping_array,                                                               \
+            texture_object_array,                                                              \
+            uv_coordinate_array);                                                              \
     }
-#define rtx_cuda_kernel_fetch_hit_color(fetch_uv_coordinates, hit_object, hit_face, hit_color, color_mapping_array, texture_object_array, uv_coordinate_array)                                             \
+#define rtx_cuda_kernel_fetch_hit_color(                                                                                                                                                                   \
+    fetch_uv_coordinates,                                                                                                                                                                                  \
+    hit_object,                                                                                                                                                                                            \
+    hit_face,                                                                                                                                                                                              \
+    hit_color,                                                                                                                                                                                             \
+    material_attribute_byte_array,                                                                                                                                                                         \
+    color_mapping_array,                                                                                                                                                                                   \
+    texture_object_array,                                                                                                                                                                                  \
+    uv_coordinate_array)                                                                                                                                                                                   \
     {                                                                                                                                                                                                      \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
@@ -173,7 +209,7 @@
                 float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
                 lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
                 float x, y;                                                                                                                                                                                \
-                fetch_uv_coordinates(x, y, uv_coordinate_array);                                                                                                                                                 \
+                fetch_uv_coordinates(x, y, uv_coordinate_array);                                                                                                                                           \
                 float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
                 hit_color.r = color.x;                                                                                                                                                                     \
                 hit_color.g = color.y;                                                                                                                                                                     \
@@ -185,12 +221,12 @@
             }                                                                                                                                                                                              \
         }                                                                                                                                                                                                  \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
-            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                       \
+            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
             hit_color.r *= attr.albedo;                                                                                                                                                                    \
             hit_color.g *= attr.albedo;                                                                                                                                                                    \
             hit_color.b *= attr.albedo;                                                                                                                                                                    \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
-            rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                     \
+            rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
             hit_color.r *= attr.brightness;                                                                                                                                                                \
             hit_color.g *= attr.brightness;                                                                                                                                                                \
@@ -236,20 +272,20 @@
         path_weight.b *= 4.0 * hit_color.b * cosine_term;                                                                                 \
     };
 
-#define rtx_cuda_check_kernel_arguments()                                  \
-    {                                                                      \
-        assert(gpu_serialized_ray_array != NULL);                          \
-        assert(gpu_serialized_face_vertex_index_array != NULL);            \
-        assert(gpu_serialized_vertex_array != NULL);                       \
-        assert(gpu_serialized_object_array != NULL);                       \
-        assert(gpu_serialized_material_attribute_byte_array != NULL);      \
-        assert(gpu_serialized_threaded_bvh_array != NULL);                 \
-        assert(gpu_serialized_threaded_bvh_node_array != NULL);            \
-        assert(gpu_serialized_render_array != NULL);                       \
-        if (color_mapping_array_size > 0) {                                \
-            assert(gpu_serialized_color_mapping_array != NULL);            \
-        }                                                                  \
-        if (uv_coordinate_array_size > 0) {                                \
-            assert(gpu_serialized_uv_coordinate_array != NULL); \
-        }                                                                  \
+#define rtx_cuda_check_kernel_arguments()                             \
+    {                                                                 \
+        assert(gpu_serialized_ray_array != NULL);                     \
+        assert(gpu_serialized_face_vertex_index_array != NULL);       \
+        assert(gpu_serialized_vertex_array != NULL);                  \
+        assert(gpu_serialized_object_array != NULL);                  \
+        assert(gpu_serialized_material_attribute_byte_array != NULL); \
+        assert(gpu_serialized_threaded_bvh_array != NULL);            \
+        assert(gpu_serialized_threaded_bvh_node_array != NULL);       \
+        assert(gpu_serialized_render_array != NULL);                  \
+        if (color_mapping_array_size > 0) {                           \
+            assert(gpu_serialized_color_mapping_array != NULL);       \
+        }                                                             \
+        if (uv_coordinate_array_size > 0) {                           \
+            assert(gpu_serialized_uv_coordinate_array != NULL);       \
+        }                                                             \
     }

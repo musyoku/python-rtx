@@ -82,7 +82,7 @@ int StandardGeometry::num_vertices() const
 {
     return _vertex_array.size();
 }
-void StandardGeometry::serialize_vertices(rtx::array<RTXVertex>& buffer, int array_offset) const
+void StandardGeometry::serialize_vertices(rtx::array<rtxVertex>& buffer, int array_offset) const
 {
     for (int j = 0; j < _vertex_array.size(); j++) {
         auto& vertex = _vertex_array[j];
