@@ -20,7 +20,7 @@ __global__ void standard_texture_memory_kernel(
     rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
     int threaded_bvh_node_array_size,
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
-    cudaTextureObject_t* global_texture_object_array, int g_cpu_serialized_mapping_texture_object_array_size,
+    cudaTextureObject_t* global_serialized_texture_object_array, int g_cpu_serialized_mapping_texture_object_array_size,
     rtxRGBAPixel* global_serialized_render_array,
     int num_rays_per_thread,
     int max_bounce,
@@ -44,25 +44,25 @@ __global__ void standard_texture_memory_kernel(
     rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
     offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
 
-    cudaTextureObject_t* shared_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
+    cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
     offset += sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS;
 
-    // ブロック内のどれか1スレッドが共有メモリに内容をコピー
+    // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー
     if (threadIdx.x == 0) {
-        for (int k = 0; k < object_array_size; k++) {
-            shared_serialized_object_array[k] = global_serialized_object_array[k];
+        for (int m = 0; m < object_array_size; m++) {
+            shared_serialized_object_array[m] = global_serialized_object_array[m];
         }
-        for (int k = 0; k < material_attribute_byte_array_size; k++) {
-            shared_serialized_material_attribute_byte_array[k] = global_serialized_material_attribute_byte_array[k];
+        for (int m = 0; m < material_attribute_byte_array_size; m++) {
+            shared_serialized_material_attribute_byte_array[m] = global_serialized_material_attribute_byte_array[m];
         }
-        for (int k = 0; k < threaded_bvh_array_size; k++) {
-            shared_serialized_threaded_bvh_array[k] = global_serialized_threaded_bvh_array[k];
+        for (int m = 0; m < threaded_bvh_array_size; m++) {
+            shared_serialized_threaded_bvh_array[m] = global_serialized_threaded_bvh_array[m];
         }
-        for (int k = 0; k < color_mapping_array_size; k++) {
-            shared_serialized_color_mapping_array[k] = global_serialized_color_mapping_array[k];
+        for (int m = 0; m < color_mapping_array_size; m++) {
+            shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
         }
-        for (int k = 0; k < RTX_CUDA_MAX_TEXTURE_UNITS; k++) {
-            shared_texture_object_array[k] = global_texture_object_array[k];
+        for (int m = 0; m < RTX_CUDA_MAX_TEXTURE_UNITS; m++) {
+            shared_serialized_texture_object_array[m] = global_serialized_texture_object_array[m];
         }
     }
     __syncthreads();
@@ -107,7 +107,7 @@ __global__ void standard_texture_memory_kernel(
                 // 各ジオメトリのThreaded BVH
                 rtxThreadedBVH bvh = shared_serialized_threaded_bvh_array[object_index];
 
-                // BVHの各ノードをトラバーサル
+                // BVHの各ノードを遷移していく
                 int bvh_current_node_index = 0;
                 for (int traversal = 0; traversal < bvh.num_nodes; traversal++) {
                     if (bvh_current_node_index == THREADED_BVH_TERMINAL_NODE) {
@@ -219,7 +219,7 @@ __global__ void standard_texture_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
-                rtx_cuda_kernel_fetch_hit_color(hit_object, hit_color, shared_texture_object_array);
+                rtx_cuda_kernel_fetch_hit_color(hit_object, hit_color, shared_serialized_texture_object_array);
             }
 
             // 光源に当たった場合トレースを打ち切り

@@ -27,8 +27,8 @@ private:
     rtx::array<rtxThreadedBVHNode> _cpu_threaded_bvh_node_array;
     rtx::array<rtxRGBAPixel> _cpu_render_array;
     rtx::array<rtxRGBAPixel> _cpu_render_buffer_array;
-    std::vector<int> _cpu_light_sampling_table;
-    std::vector<rtxRGBAColor> _cpu_color_mapping_array;
+    rtx::array<int> _cpu_light_sampling_table;
+    rtx::array<rtxRGBAColor> _cpu_color_mapping_array;
     rtx::array<rtxUVCoordinate> _cpu_serialized_uv_coordinate_array;
 
     // device
@@ -60,6 +60,11 @@ private:
     void transform_objects_to_view_space();
     void transform_geometries_to_view_space();
     void transform_lights_to_view_space();
+    void serialize_geometries();
+    void serialize_textures();
+    void serialize_materials();
+    void serialize_color_mappings();
+    void serialize_light_sampling_table();
     void serialize_objects();
     void serialize_rays(int height, int width);
     void render_objects(int height, int width);
