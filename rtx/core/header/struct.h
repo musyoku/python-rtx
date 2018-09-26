@@ -84,3 +84,8 @@ typedef struct rtxEmissiveMaterialAttribute {
 typedef struct rtxLambertMaterialAttribute {
     float albedo;
 } rtxLambertMaterialAttribute;
+
+typedef struct rtxOrenNayarMaterialAttribute {
+    float albedo;
+    float roughness;
+} rtxOrenNayarMaterialAttribute;

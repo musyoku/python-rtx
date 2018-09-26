@@ -30,25 +30,24 @@ __global__ void standard_texture_memory_kernel(
     extern __shared__ char shared_memory[];
     curandStatePhilox4_32_10_t curand_state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
-    
+
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
     rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
     offset += sizeof(rtxObject) * object_array_size;
-    
+
     rtxMaterialAttributeByte* shared_serialized_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
     offset += sizeof(rtxMaterialAttributeByte) * material_attribute_byte_array_size;
-    
+
     rtxThreadedBVH* shared_serialized_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
     offset += sizeof(rtxThreadedBVH) * threaded_bvh_array_size;
-    
+
     rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
     offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
-    
+
     cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
     offset += sizeof(cudaTextureObject_t) * num_active_texture_units;
-    
-    
+
     // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー
     if (threadIdx.x == 0) {
         for (int m = 0; m < object_array_size; m++) {
@@ -218,14 +217,22 @@ __global__ void standard_texture_memory_kernel(
                 }
             }
 
+            // 反射方向のサンプリング
+            float3 reflection_direction;
+            float cosine_term;
+            rtx_cuda_kernel_sample_reflection_direction(reflection_direction, cosine_term, curand_state);
+
             //  衝突点の色を検出
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
                 rtx_cuda_kernel_fetch_hit_color_in_texture_memory(
+                    hit_point,
+                    hit_face_normal,
                     hit_object,
                     hit_face,
                     hit_color,
+                    reflection_direction,
                     shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
@@ -241,7 +248,11 @@ __global__ void standard_texture_memory_kernel(
             }
 
             if (did_hit_object) {
-                rtx_cuda_kernel_update_ray_direction(ray, hit_point, hit_face_normal, path_weight, curand_state);
+                rtx_cuda_kernel_update_ray(ray,
+                    hit_point,
+                    reflection_direction,
+                    cosine_term,
+                    path_weight);
             }
         }
 
