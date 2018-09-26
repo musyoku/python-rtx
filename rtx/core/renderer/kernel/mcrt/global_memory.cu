@@ -201,26 +201,28 @@ __global__ void standard_global_memory_kernel(
             }
 
             // 反射方向のサンプリング
-            float3 reflection_direction;
+            float3 unit_reflection_direction;
             float cosine_term;
-            rtx_cuda_kernel_sample_reflection_direction(reflection_direction, cosine_term, curand_state);
+            rtx_cuda_kernel_sample_reflection_direction(unit_reflection_direction, cosine_term, curand_state);
 
 
             //  衝突点の色を検出
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             if (did_hit_object) {
-                rtx_cuda_kernel_fetch_hit_color_in_texture_memory(
+                rtx_cuda_kernel_fetch_hit_color_in_linear_memory(
                     hit_point,
                     hit_face_normal,
                     hit_object,
                     hit_face,
                     hit_color,
-                    reflection_direction,
+                    ray.direction,
+                    unit_reflection_direction,
                     shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
-                    g_serialized_uv_coordinate_array_texture_ref);
+                    global_serialized_uv_coordinate_array,
+                    did_hit_light);
             }
 
             // 光源に当たった場合トレースを打ち切り
@@ -234,7 +236,7 @@ __global__ void standard_global_memory_kernel(
             if (did_hit_object) {
                 rtx_cuda_kernel_update_ray(ray,
                     hit_point,
-                    reflection_direction,
+                    unit_reflection_direction,
                     cosine_term,
                     path_weight);
             }

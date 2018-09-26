@@ -122,7 +122,12 @@
         }                                                                                                                      \
     }
 
-#define rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory(x, y, uv_coordinate_array)                             \
+#define rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory(                                                       \
+    x,                                                                                                              \
+    y,                                                                                                              \
+    uv_coordinate_array,                                                                                            \
+    hit_face,                                                                                                       \
+    hit_object)                                                                                                     \
     {                                                                                                               \
         const rtxUVCoordinate uv_a = uv_coordinate_array[hit_face.a + hit_object.serialized_uv_coordinates_offset]; \
         const rtxUVCoordinate uv_b = uv_coordinate_array[hit_face.b + hit_object.serialized_uv_coordinates_offset]; \
@@ -130,7 +135,12 @@
         x = max(0.0f, lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u);                                   \
         y = max(0.0f, lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v);                                   \
     }
-#define rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory(x, y, uv_coordinate_array)                               \
+#define rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory(                                                         \
+    x,                                                                                                                 \
+    y,                                                                                                                 \
+    uv_coordinate_array,                                                                                               \
+    hit_face,                                                                                                          \
+    hit_object)                                                                                                        \
     {                                                                                                                  \
         const float2 uv_a = tex1Dfetch(uv_coordinate_array, hit_face.a + hit_object.serialized_uv_coordinates_offset); \
         const float2 uv_b = tex1Dfetch(uv_coordinate_array, hit_face.b + hit_object.serialized_uv_coordinates_offset); \
@@ -139,22 +149,32 @@
         y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                      \
     }
 #define rtx_cuda_kernel_fetch_hit_color_in_linear_memory(                                     \
+    hit_point,                                                                                \
+    hit_face_normal,                                                                          \
     hit_object,                                                                               \
     hit_face,                                                                                 \
     hit_color,                                                                                \
+    unit_ray_direction,                                                                       \
+    unit_reflection_direction,                                                                \
     material_attribute_byte_array,                                                            \
     color_mapping_array,                                                                      \
     texture_object_array,                                                                     \
-    uv_coordinate_array)                                                                      \
+    uv_coordinate_array,                                                                      \
+    did_hit_light)                                                                            \
     {                                                                                         \
         rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
+            hit_point,                                                                        \
+            hit_face_normal,                                                                  \
             hit_object,                                                                       \
             hit_face,                                                                         \
             hit_color,                                                                        \
+            unit_ray_direction,                                                               \
+            unit_reflection_direction,                                                        \
             material_attribute_byte_array,                                                    \
             color_mapping_array,                                                              \
             texture_object_array,                                                             \
-            uv_coordinate_array);                                                             \
+            uv_coordinate_array,                                                              \
+            did_hit_light);                                                                   \
     }
 #define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(                                     \
     hit_point,                                                                                 \
@@ -162,11 +182,13 @@
     hit_object,                                                                                \
     hit_face,                                                                                  \
     hit_color,                                                                                 \
-    reflection_direction,                                                                      \
+    unit_ray_direction,                                                                        \
+    unit_reflection_direction,                                                                 \
     material_attribute_byte_array,                                                             \
     color_mapping_array,                                                                       \
     texture_object_array,                                                                      \
-    uv_coordinate_array)                                                                       \
+    uv_coordinate_array,                                                                       \
+    did_hit_light)                                                                             \
     {                                                                                          \
         rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
             hit_point,                                                                         \
@@ -174,11 +196,13 @@
             hit_object,                                                                        \
             hit_face,                                                                          \
             hit_color,                                                                         \
-            reflection_direction,                                                              \
+            unit_ray_direction,                                                                \
+            unit_reflection_direction,                                                         \
             material_attribute_byte_array,                                                     \
             color_mapping_array,                                                               \
             texture_object_array,                                                              \
-            uv_coordinate_array);                                                              \
+            uv_coordinate_array,                                                               \
+            did_hit_light);                                                                    \
     }
 
 #define rtx_cuda_kernel_fetch_hit_color(                                                                                                                                                                   \
@@ -188,11 +212,13 @@
     hit_object,                                                                                                                                                                                            \
     hit_face,                                                                                                                                                                                              \
     hit_color,                                                                                                                                                                                             \
-    reflection_direction,                                                                                                                                                                                  \
+    unit_ray_direction,                                                                                                                                                                                    \
+    unit_reflection_direction,                                                                                                                                                                             \
     material_attribute_byte_array,                                                                                                                                                                         \
     color_mapping_array,                                                                                                                                                                                   \
     texture_object_array,                                                                                                                                                                                  \
-    uv_coordinate_array)                                                                                                                                                                                   \
+    uv_coordinate_array,                                                                                                                                                                                   \
+    did_hit_light)                                                                                                                                                                                         \
     {                                                                                                                                                                                                      \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
@@ -209,17 +235,17 @@
                 float3 d1 = { hit_va.x - hit_vc.x, hit_va.y - hit_vc.y, hit_va.z - hit_vc.z };                                                                                                             \
                 float3 d2 = { hit_vb.x - hit_vc.x, hit_vb.y - hit_vc.y, hit_vb.z - hit_vc.z };                                                                                                             \
                 float3 d = { hit_point.x - hit_vc.x, hit_point.y - hit_vc.y, hit_point.z - hit_vc.z };                                                                                                     \
-                float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;                                                                                                                                       \
-                float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;                                                                                                                                       \
-                float d2x = d1y;                                                                                                                                                                           \
-                float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;                                                                                                                                       \
-                float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;                                                                                                                                           \
-                float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;                                                                                                                                           \
-                float det = d1x * d2y - d1y * d2x;                                                                                                                                                         \
+                const float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;                                                                                                                                 \
+                const float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;                                                                                                                                 \
+                const float d2x = d1y;                                                                                                                                                                     \
+                const float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;                                                                                                                                 \
+                const float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;                                                                                                                                     \
+                const float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;                                                                                                                                     \
+                const float det = d1x * d2y - d1y * d2x;                                                                                                                                                   \
                 float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
                 lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
                 float x, y;                                                                                                                                                                                \
-                fetch_uv_coordinates(x, y, uv_coordinate_array);                                                                                                                                           \
+                fetch_uv_coordinates(x, y, uv_coordinate_array, hit_face, hit_object);                                                                                                                     \
                 float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
                 hit_color.r = color.x;                                                                                                                                                                     \
                 hit_color.g = color.y;                                                                                                                                                                     \
@@ -232,11 +258,21 @@
         }                                                                                                                                                                                                  \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
-            hit_color.r *= attr.albedo;                                                                                                                                                                    \
-            hit_color.g *= attr.albedo;                                                                                                                                                                    \
-            hit_color.b *= attr.albedo;                                                                                                                                                                    \
-        } else if (material_type == RTXMaterialTypeLambert) {                                                                                                                                              \
+            float cos_ref = hit_face_normal.x * unit_reflection_direction.x + hit_face_normal.y * unit_reflection_direction.y + hit_face_normal.z * unit_reflection_direction.z;                           \
+            hit_color.r *= attr.albedo * cos_ref;                                                                                                                                                          \
+            hit_color.g *= attr.albedo * cos_ref;                                                                                                                                                          \
+            hit_color.b *= attr.albedo * cos_ref;                                                                                                                                                          \
+        } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
             rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
+            const float squared_roughness = attr.roughness * attr.roughness;                                                                                                                               \
+            const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                              \
+            const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                                    \
+            const float cos_ray = hit_face_normal.x * unit_ray_direction.x + hit_face_normal.y * unit_ray_direction.y + hit_face_normal.z * unit_ray_direction.z;                                          \
+            const float cos_ref = hit_face_normal.x * unit_reflection_direction.x + hit_face_normal.y * unit_reflection_direction.y + hit_face_normal.z * unit_reflection_direction.z;                     \
+            const float theta_ray = acos(cos_ray);                                                                                                                                                         \
+            const float theta_ref = acos(cos_ref);                                                                                                                                                         \
+            const float sin_alpha = sin(max(theta_ray, theta_ref));                                                                                                                                        \
+            const float tan_beta = tan(min(theta_ray, theta_ref));                                                                                                                                         \
             hit_color.r *= attr.albedo;                                                                                                                                                                    \
             hit_color.g *= attr.albedo;                                                                                                                                                                    \
             hit_color.b *= attr.albedo;                                                                                                                                                                    \
@@ -249,45 +285,45 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_kernel_sample_reflection_direction(                                                                                      \
-    direction,                                                                                                                            \
-    cosine_term,                                                                                                                          \
-    curand_state)                                                                                                                         \
-    {                                                                                                                                     \
-        float3 unit_diffuse = {                                                                                                           \
-            curand_normal(&curand_state),                                                                                                 \
-            curand_normal(&curand_state),                                                                                                 \
-            curand_normal(&curand_state),                                                                                                 \
-        };                                                                                                                                \
-        float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);           \
-        unit_diffuse.x /= norm;                                                                                                           \
-        unit_diffuse.y /= norm;                                                                                                           \
-        unit_diffuse.z /= norm;                                                                                                           \
+#define rtx_cuda_kernel_sample_reflection_direction(                                                                                \
+    direction,                                                                                                                      \
+    cosine_term,                                                                                                                    \
+    curand_state)                                                                                                                   \
+    {                                                                                                                               \
+        float3 unit_diffuse = {                                                                                                     \
+            curand_normal(&curand_state),                                                                                           \
+            curand_normal(&curand_state),                                                                                           \
+            curand_normal(&curand_state),                                                                                           \
+        };                                                                                                                          \
+        float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);     \
+        unit_diffuse.x /= norm;                                                                                                     \
+        unit_diffuse.y /= norm;                                                                                                     \
+        unit_diffuse.z /= norm;                                                                                                     \
         cosine_term = hit_face_normal.x * unit_diffuse.x + hit_face_normal.y * unit_diffuse.y + hit_face_normal.z * unit_diffuse.z; \
-        if (cosine_term < 0.0f) {                                                                                                         \
-            unit_diffuse.x *= -1;                                                                                                         \
-            unit_diffuse.y *= -1;                                                                                                         \
-            unit_diffuse.z *= -1;                                                                                                         \
-            cosine_term *= -1;                                                                                                            \
-        }                                                                                                                                 \
-        direction.x = unit_diffuse.x;                                                                                                     \
-        direction.y = unit_diffuse.y;                                                                                                     \
-        direction.z = unit_diffuse.z;                                                                                                     \
+        if (cosine_term < 0.0f) {                                                                                                   \
+            unit_diffuse.x *= -1;                                                                                                   \
+            unit_diffuse.y *= -1;                                                                                                   \
+            unit_diffuse.z *= -1;                                                                                                   \
+            cosine_term *= -1;                                                                                                      \
+        }                                                                                                                           \
+        direction.x = unit_diffuse.x;                                                                                               \
+        direction.y = unit_diffuse.y;                                                                                               \
+        direction.z = unit_diffuse.z;                                                                                               \
     }
 
 #define rtx_cuda_kernel_update_ray(                       \
     ray,                                                  \
     hit_point,                                            \
-    reflection_direction,                                 \
+    unit_reflection_direction,                            \
     cosine_term,                                          \
     path_weight)                                          \
     {                                                     \
         ray.origin.x = hit_point.x;                       \
         ray.origin.y = hit_point.y;                       \
         ray.origin.z = hit_point.z;                       \
-        ray.direction.x = reflection_direction.x;         \
-        ray.direction.y = reflection_direction.y;         \
-        ray.direction.z = reflection_direction.z;         \
+        ray.direction.x = unit_reflection_direction.x;    \
+        ray.direction.y = unit_reflection_direction.y;    \
+        ray.direction.z = unit_reflection_direction.z;    \
         ray_direction_inv.x = 1.0f / ray.direction.x;     \
         ray_direction_inv.y = 1.0f / ray.direction.y;     \
         ray_direction_inv.z = 1.0f / ray.direction.z;     \
