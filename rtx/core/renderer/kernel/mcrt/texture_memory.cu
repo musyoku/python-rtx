@@ -22,6 +22,7 @@ __global__ void standard_texture_memory_kernel(
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
     cudaTextureObject_t* global_serialized_mapping_texture_object_array,
     rtxRGBAPixel* global_serialized_render_array,
+    int num_active_texture_units,
     int num_rays_per_thread,
     int max_bounce,
     int curand_seed)
@@ -29,24 +30,25 @@ __global__ void standard_texture_memory_kernel(
     extern __shared__ char shared_memory[];
     curandStatePhilox4_32_10_t curand_state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
-
+    
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
     rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
     offset += sizeof(rtxObject) * object_array_size;
-
+    
     rtxMaterialAttributeByte* shared_serialized_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
     offset += sizeof(rtxMaterialAttributeByte) * material_attribute_byte_array_size;
-
+    
     rtxThreadedBVH* shared_serialized_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
     offset += sizeof(rtxThreadedBVH) * threaded_bvh_array_size;
-
+    
     rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
     offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
-
+    
     cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
-    offset += sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS;
-
+    offset += sizeof(cudaTextureObject_t) * num_active_texture_units;
+    
+    
     // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー
     if (threadIdx.x == 0) {
         for (int m = 0; m < object_array_size; m++) {
@@ -61,7 +63,7 @@ __global__ void standard_texture_memory_kernel(
         for (int m = 0; m < color_mapping_array_size; m++) {
             shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
         }
-        for (int m = 0; m < RTX_CUDA_MAX_TEXTURE_UNITS; m++) {
+        for (int m = 0; m < num_active_texture_units; m++) {
             shared_serialized_texture_object_array[m] = global_serialized_mapping_texture_object_array[m];
         }
     }
@@ -258,6 +260,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
     rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
+    int num_active_texture_units,
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
@@ -284,6 +287,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
         gpu_serialized_color_mapping_array, color_mapping_array_size,
         g_gpu_serialized_mapping_texture_object_array,
         gpu_serialized_render_array,
+        num_active_texture_units,
         num_rays_per_thread,
         max_bounce,
         curand_seed);

@@ -23,6 +23,7 @@ __global__ void standard_global_memory_kernel(
     rtxUVCoordinate* global_serialized_uv_coordinate_array, int uv_coordinate_array_size,
     cudaTextureObject_t* global_serialized_mapping_texture_object_array,
     rtxRGBAPixel* global_serialized_render_array,
+    int num_active_texture_units,
     int num_rays_per_thread,
     int max_bounce,
     int curand_seed)
@@ -46,7 +47,7 @@ __global__ void standard_global_memory_kernel(
     offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
 
     cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
-    offset += sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS;
+    offset += sizeof(cudaTextureObject_t) * num_active_texture_units;
 
     // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー
     if (threadIdx.x == 0) {
@@ -62,7 +63,7 @@ __global__ void standard_global_memory_kernel(
         for (int m = 0; m < color_mapping_array_size; m++) {
             shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
         }
-        for (int m = 0; m < RTX_CUDA_MAX_TEXTURE_UNITS; m++) {
+        for (int m = 0; m < num_active_texture_units; m++) {
             shared_serialized_texture_object_array[m] = global_serialized_mapping_texture_object_array[m];
         }
     }
@@ -240,6 +241,7 @@ void rtx_cuda_launch_standard_global_memory_kernel(
     rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
     rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
+    int num_active_texture_units,
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
@@ -260,6 +262,7 @@ void rtx_cuda_launch_standard_global_memory_kernel(
         gpu_serialized_uv_coordinate_array, uv_coordinate_array_size,
         g_gpu_serialized_mapping_texture_object_array,
         gpu_serialized_render_array,
+        num_active_texture_units,
         num_rays_per_thread,
         max_bounce,
         curand_seed);

@@ -310,6 +310,7 @@ void Renderer::launch_kernel()
 
     int num_rays = _cpu_ray_array.size();
     int num_rays_per_thread = num_rays / (_cuda_args->num_threads() * _cuda_args->num_blocks()) + 1;
+    int num_active_texture_units = _texture_mapping_ptr_array.size();
 
     size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
@@ -320,7 +321,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
     required_shared_memory_bytes += _cpu_serialized_uv_coordinate_array.bytes();
-    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * RTX_CUDA_MAX_TEXTURE_UNITS;
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     int curand_seed = _total_frames;
 
@@ -336,6 +337,7 @@ void Renderer::launch_kernel()
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
             _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
+            num_active_texture_units,
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
             num_rays_per_thread,
@@ -349,7 +351,7 @@ void Renderer::launch_kernel()
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
-    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * RTX_CUDA_MAX_TEXTURE_UNITS;
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合
@@ -365,6 +367,7 @@ void Renderer::launch_kernel()
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
             _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
             _gpu_render_array, _cpu_render_array.size(),
+            num_active_texture_units,
             _cuda_args->num_threads(),
             _cuda_args->num_blocks(),
             num_rays_per_thread,

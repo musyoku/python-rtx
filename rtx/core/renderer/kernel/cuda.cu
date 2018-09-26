@@ -20,7 +20,6 @@ void rtx_cuda_malloc(void** gpu_array, size_t size)
 }
 void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size)
 {
-    printf("cudaMalloc] %p\n", &gpu_array);
     assert(size > 0);
     cudaCheckError(cudaMalloc(&gpu_array, size));
     cudaCheckError(cudaGetLastError());
@@ -49,7 +48,6 @@ void rtx_cuda_malloc_texture(int unit_index, int width, int height)
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<float4>();
     cudaArray** array = &g_gpu_serialized_mapping_texture_cudaArray_ptr_array[unit_index];
     cudaCheckError(cudaMallocArray(array, &desc, width, height));
-    printf("%p\n", *array);
     cudaCheckError(cudaMalloc((void**)&g_gpu_serialized_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS));
 }
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes)
@@ -64,7 +62,6 @@ void rtx_cuda_bind_texture(int unit_index)
     memset(&resource, 0, sizeof(cudaResourceDesc));
     resource.resType = cudaResourceTypeArray;
     resource.res.array.array = array;
-    printf("%p\n", array);
 
     cudaTextureDesc tex;
     memset(&tex, 0, sizeof(cudaTextureDesc));
