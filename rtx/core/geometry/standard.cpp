@@ -84,14 +84,14 @@ int StandardGeometry::num_vertices() const
 }
 void StandardGeometry::serialize_vertices(rtx::array<rtxVertex>& buffer, int array_offset) const
 {
-    for (int j = 0; j < _vertex_array.size(); j++) {
+    for (unsigned int j = 0; j < _vertex_array.size(); j++) {
         auto& vertex = _vertex_array[j];
         buffer[j + array_offset] = { vertex.x, vertex.y, vertex.z, vertex.w };
     }
 }
 void StandardGeometry::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int array_offset) const
 {
-    for (int j = 0; j < _face_vertex_indices_array.size(); j++) {
+    for (unsigned int j = 0; j < _face_vertex_indices_array.size(); j++) {
         auto& face = _face_vertex_indices_array[j];
         buffer[j + array_offset] = { face[0], face[1], face[2], -1 };
     }
@@ -104,7 +104,7 @@ std::shared_ptr<Geometry> StandardGeometry::transoform(glm::mat4& transformation
     geometry->_vertex_array.resize(_vertex_array.size());
 
 #pragma omp parallel for
-    for (int index = 0; index < _vertex_array.size(); index++) {
+    for (unsigned int index = 0; index < _vertex_array.size(); index++) {
         auto& vertex = _vertex_array[index];
         glm::vec4f v = transformation_matrix * vertex;
         geometry->_vertex_array[index] = v;

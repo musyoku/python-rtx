@@ -89,11 +89,11 @@ Node::Node(std::vector<int> assigned_face_indices,
         merge_aabb_min(_aabb_min, vc, _aabb_min);
     }
 
-    if (assigned_face_indices.size() <= geometry->bvh_max_triangles_per_node()) {
+    if ((int)assigned_face_indices.size() <= geometry->bvh_max_triangles_per_node()) {
         _is_leaf = true;
         _assigned_face_index_start = current_assigned_face_index_offset;
         _assigned_face_index_end = current_assigned_face_index_offset + assigned_face_indices.size() - 1;
-        current_assigned_face_index_offset += assigned_face_indices.size();
+        current_assigned_face_index_offset += (int)assigned_face_indices.size();
         return;
     }
     const glm::vec3f axis_length = _aabb_max - _aabb_min;
@@ -125,8 +125,6 @@ Node::Node(std::vector<int> assigned_face_indices,
     // for (auto& pair : object_center_array) {
     //     std::cout << pair.first << ": " << pair.second << std::endl;
     // }
-    float whole_surface_area = compute_surface_area(_aabb_max, _aabb_min);
-    // std::cout << "whole_surface_area: " << whole_surface_area << std::endl;
 
     glm::vec3f volume_a_max(0);
     glm::vec3f volume_a_min(0);
@@ -139,10 +137,10 @@ Node::Node(std::vector<int> assigned_face_indices,
     if (true) {
         min_cost_split_index = object_center_array.size() / 2;
     } else {
-        for (int split_index = 1; split_index <= object_center_array.size() - 1; split_index++) {
+        for (unsigned int split_index = 1; split_index <= object_center_array.size() - 1; split_index++) {
             int volume_a_num_faces = 0;
             int volume_b_num_faces = 0;
-            for (int position = 0; position < split_index; position++) {
+            for (unsigned int position = 0; position < split_index; position++) {
                 int face_index = object_center_array[position].first;
                 auto& face = geometry->_face_vertex_indices_array.at(face_index);
 
@@ -170,7 +168,7 @@ Node::Node(std::vector<int> assigned_face_indices,
                 }
                 volume_a_num_faces += 1;
             }
-            for (int position = split_index; position < object_center_array.size(); position++) {
+            for (unsigned int position = split_index; position < object_center_array.size(); position++) {
                 int face_index = object_center_array[position].first;
                 auto& face = geometry->_face_vertex_indices_array.at(face_index);
 

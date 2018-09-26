@@ -69,7 +69,6 @@ void Renderer::serialize_geometries()
     int total_vertices = 0;
     for (auto& object : _transformed_object_array) {
         auto& geometry = object->geometry();
-        auto& mapping = object->mapping();
         total_faces += geometry->num_faces();
         total_vertices += geometry->num_vertices();
     }
@@ -79,7 +78,6 @@ void Renderer::serialize_geometries()
     _cpu_object_array = rtx::array<rtxObject>(num_objects);
 
     int vertex_index_offset = 0;
-    int vertex_offset = 0;
     for (auto& object : _transformed_object_array) {
         auto& geometry = object->geometry();
         geometry->serialize_vertices(_cpu_vertex_array, vertex_index_offset);
@@ -101,7 +99,6 @@ void Renderer::serialize_textures()
     assert(num_objects > 0);
     int total_uv_coordinates = 0;
     for (auto& object : _transformed_object_array) {
-        auto& geometry = object->geometry();
         auto& mapping = object->mapping();
         if (mapping->type() == RTXMappingTypeTexture) {
             TextureMapping* m = static_cast<TextureMapping*>(mapping.get());
@@ -127,7 +124,6 @@ void Renderer::serialize_materials()
     assert(num_objects > 0);
 
     size_t total_material_attribute_bytes = 0;
-    int num_geometries = 0;
     for (auto& object : _transformed_object_array) {
         auto& material = object->material();
         total_material_attribute_bytes += material->attribute_bytes();
@@ -224,8 +220,6 @@ void Renderer::serialize_objects()
         cuda_object.mapping_index = -1;
 
         if (mapping->type() == RTXMappingTypeSolidColor) {
-            SolidColorMapping* m = static_cast<SolidColorMapping*>(mapping.get());
-            auto color = m->color();
             cuda_object.mapping_index = color_mapping_index;
             color_mapping_index++;
         } else if (mapping->type() == RTXMappingTypeTexture) {
@@ -317,7 +311,7 @@ void Renderer::launch_kernel()
     int num_rays = _cpu_ray_array.size();
     int num_rays_per_thread = num_rays / (_cuda_args->num_threads() * _cuda_args->num_blocks()) + 1;
 
-    size_t required_shared_memory_bytes;
+    size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
     required_shared_memory_bytes += _cpu_vertex_array.bytes();
     required_shared_memory_bytes += _cpu_object_array.bytes();
