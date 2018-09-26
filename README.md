@@ -1,7 +1,7 @@
 # :construction: Work in Progress :construction:
 # Python RTX
 
-![https://user-images.githubusercontent.com/15250418/46090918-a9cc9600-c1ec-11e8-8f45-04a2efb81eae.png](https://user-images.githubusercontent.com/15250418/46090918-a9cc9600-c1ec-11e8-8f45-04a2efb81eae.png)
+![https://user-images.githubusercontent.com/15250418/46092250-793a2b80-c1ef-11e8-8ebb-b7e139f73e4d.png](https://user-images.githubusercontent.com/15250418/46092250-793a2b80-c1ef-11e8-8ebb-b7e139f73e4d.png)
 
 Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
