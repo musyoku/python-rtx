@@ -259,6 +259,7 @@ __global__ void standard_shared_memory_kernel(
                 break;
             }
 
+
             if (did_hit_object) {
                 rtx_cuda_kernel_update_ray(ray,
                     hit_point,

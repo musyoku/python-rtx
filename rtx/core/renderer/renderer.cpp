@@ -295,6 +295,10 @@ void Renderer::serialize_rays(int height, int width)
                     ray.direction.x = 2.0f * float(x + supersampling_noise(generator)) / float(width) - 1.0f;
                     ray.direction.y = -(2.0f * float(y + supersampling_noise(generator)) / float(height) - 1.0f) / aspect_ratio;
                     ray.direction.z = -origin.z;
+                    const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
+                    ray.direction.x /= norm;
+                    ray.direction.y /= norm;
+                    ray.direction.z /= norm;
                     ray.origin.x = origin.x;
                     ray.origin.y = origin.y;
                     ray.origin.z = origin.z;

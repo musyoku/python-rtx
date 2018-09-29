@@ -154,8 +154,8 @@
     hit_object,                                                                               \
     hit_face,                                                                                 \
     hit_color,                                                                                \
-    unit_ray_direction,                                                                       \
-    unit_reflection_direction,                                                                \
+    unit_current_ray_direction,                                                               \
+    unit_next_ray_direction,                                                                  \
     material_attribute_byte_array,                                                            \
     color_mapping_array,                                                                      \
     texture_object_array,                                                                     \
@@ -168,8 +168,8 @@
             hit_object,                                                                       \
             hit_face,                                                                         \
             hit_color,                                                                        \
-            unit_ray_direction,                                                               \
-            unit_reflection_direction,                                                        \
+            unit_current_ray_direction,                                                       \
+            unit_next_ray_direction,                                                          \
             material_attribute_byte_array,                                                    \
             color_mapping_array,                                                              \
             texture_object_array,                                                             \
@@ -182,8 +182,8 @@
     hit_object,                                                                                \
     hit_face,                                                                                  \
     hit_color,                                                                                 \
-    unit_ray_direction,                                                                        \
-    unit_reflection_direction,                                                                 \
+    unit_current_ray_direction,                                                                \
+    unit_next_ray_direction,                                                                   \
     material_attribute_byte_array,                                                             \
     color_mapping_array,                                                                       \
     texture_object_array,                                                                      \
@@ -196,8 +196,8 @@
             hit_object,                                                                        \
             hit_face,                                                                          \
             hit_color,                                                                         \
-            unit_ray_direction,                                                                \
-            unit_reflection_direction,                                                         \
+            unit_current_ray_direction,                                                        \
+            unit_next_ray_direction,                                                           \
             material_attribute_byte_array,                                                     \
             color_mapping_array,                                                               \
             texture_object_array,                                                              \
@@ -212,8 +212,8 @@
     hit_object,                                                                                                                                                                                            \
     hit_face,                                                                                                                                                                                              \
     hit_color,                                                                                                                                                                                             \
-    unit_ray_direction,                                                                                                                                                                                    \
-    unit_reflection_direction,                                                                                                                                                                             \
+    unit_current_ray_direction,                                                                                                                                                                            \
+    unit_next_ray_direction,                                                                                                                                                                               \
     material_attribute_byte_array,                                                                                                                                                                         \
     color_mapping_array,                                                                                                                                                                                   \
     texture_object_array,                                                                                                                                                                                  \
@@ -258,24 +258,45 @@
         }                                                                                                                                                                                                  \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
-            float cos_ref = hit_face_normal.x * unit_reflection_direction.x + hit_face_normal.y * unit_reflection_direction.y + hit_face_normal.z * unit_reflection_direction.z;                           \
+            float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                                 \
             hit_color.r *= attr.albedo * cos_ref;                                                                                                                                                          \
             hit_color.g *= attr.albedo * cos_ref;                                                                                                                                                          \
             hit_color.b *= attr.albedo * cos_ref;                                                                                                                                                          \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
+            /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                                       \
             rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
             const float squared_roughness = attr.roughness * attr.roughness;                                                                                                                               \
             const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                              \
             const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                                    \
-            const float cos_ray = hit_face_normal.x * unit_ray_direction.x + hit_face_normal.y * unit_ray_direction.y + hit_face_normal.z * unit_ray_direction.z;                                          \
-            const float cos_ref = hit_face_normal.x * unit_reflection_direction.x + hit_face_normal.y * unit_reflection_direction.y + hit_face_normal.z * unit_reflection_direction.z;                     \
-            const float theta_ray = acos(cos_ray);                                                                                                                                                         \
+            const float cos_view = -(hit_face_normal.x * unit_current_ray_direction.x + hit_face_normal.y * unit_current_ray_direction.y + hit_face_normal.z * unit_current_ray_direction.z);              \
+            const float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                           \
+            const float theta_view = acos(cos_view);                                                                                                                                                       \
             const float theta_ref = acos(cos_ref);                                                                                                                                                         \
-            const float sin_alpha = sin(max(theta_ray, theta_ref));                                                                                                                                        \
-            const float tan_beta = tan(min(theta_ray, theta_ref));                                                                                                                                         \
-            hit_color.r *= attr.albedo;                                                                                                                                                                    \
-            hit_color.g *= attr.albedo;                                                                                                                                                                    \
-            hit_color.b *= attr.albedo;                                                                                                                                                                    \
+            const float sin_alpha = sin(max(theta_view, theta_ref));                                                                                                                                       \
+            const float tan_beta = tan(min(theta_view, theta_ref));                                                                                                                                        \
+            float3 cross_view = {                                                                                                                                                                          \
+                -(unit_current_ray_direction.y * hit_face_normal.z - unit_current_ray_direction.z * hit_face_normal.y),                                                                                    \
+                -(unit_current_ray_direction.z * hit_face_normal.x - unit_current_ray_direction.x * hit_face_normal.z),                                                                                    \
+                -(unit_current_ray_direction.x * hit_face_normal.y - unit_current_ray_direction.y * hit_face_normal.x),                                                                                    \
+            };                                                                                                                                                                                             \
+            float norm = sqrt(cross_view.x * cross_view.x + cross_view.y * cross_view.y + cross_view.z * cross_view.z);                                                                                    \
+            cross_view.x /= norm;                                                                                                                                                                          \
+            cross_view.y /= norm;                                                                                                                                                                          \
+            cross_view.z /= norm;                                                                                                                                                                          \
+            float3 cross_ref = {                                                                                                                                                                           \
+                unit_next_ray_direction.y * hit_face_normal.z - unit_next_ray_direction.z * hit_face_normal.y,                                                                                             \
+                unit_next_ray_direction.z * hit_face_normal.x - unit_next_ray_direction.x * hit_face_normal.z,                                                                                             \
+                unit_next_ray_direction.x * hit_face_normal.y - unit_next_ray_direction.y * hit_face_normal.x,                                                                                             \
+            };                                                                                                                                                                                             \
+            norm = sqrt(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                                \
+            cross_ref.x /= norm;                                                                                                                                                                           \
+            cross_ref.y /= norm;                                                                                                                                                                           \
+            cross_ref.z /= norm;                                                                                                                                                                           \
+            const float cos_phi = cross_view.x * cross_ref.x + cross_view.y * cross_ref.y + cross_view.z * cross_ref.z;                                                                                    \
+            const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                             \
+            hit_color.r *= coeff;                                                                                                                                                                          \
+            hit_color.g *= coeff;                                                                                                                                                                          \
+            hit_color.b *= coeff;                                                                                                                                                                          \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
             rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
@@ -314,16 +335,16 @@
 #define rtx_cuda_kernel_update_ray(                       \
     ray,                                                  \
     hit_point,                                            \
-    unit_reflection_direction,                            \
+    unit_next_ray_direction,                              \
     cosine_term,                                          \
     path_weight)                                          \
     {                                                     \
         ray.origin.x = hit_point.x;                       \
         ray.origin.y = hit_point.y;                       \
         ray.origin.z = hit_point.z;                       \
-        ray.direction.x = unit_reflection_direction.x;    \
-        ray.direction.y = unit_reflection_direction.y;    \
-        ray.direction.z = unit_reflection_direction.z;    \
+        ray.direction.x = unit_next_ray_direction.x;      \
+        ray.direction.y = unit_next_ray_direction.y;      \
+        ray.direction.z = unit_next_ray_direction.z;      \
         ray_direction_inv.x = 1.0f / ray.direction.x;     \
         ray_direction_inv.y = 1.0f / ray.direction.y;     \
         ray_direction_inv.z = 1.0f / ray.direction.z;     \
