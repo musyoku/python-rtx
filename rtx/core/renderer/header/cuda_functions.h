@@ -306,7 +306,7 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_kernel_sample_reflection_direction(                                                                                \
+#define rtx_cuda_kernel_sample_ray_direction(                                                                                \
     direction,                                                                                                                      \
     cosine_term,                                                                                                                    \
     curand_state)                                                                                                                   \

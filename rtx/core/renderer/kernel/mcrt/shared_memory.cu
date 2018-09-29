@@ -228,9 +228,9 @@ __global__ void standard_shared_memory_kernel(
             }
 
             // 反射方向のサンプリング
-            float3 unit_reflection_direction;
+            float3 unit_next_ray_direction;
             float cosine_term;
-            rtx_cuda_kernel_sample_reflection_direction(unit_reflection_direction, cosine_term, curand_state);
+            rtx_cuda_kernel_sample_ray_direction(unit_next_ray_direction, cosine_term, curand_state);
 
             //  衝突点の色を検出
             rtxRGBAColor hit_color;
@@ -243,7 +243,7 @@ __global__ void standard_shared_memory_kernel(
                     hit_face,
                     hit_color,
                     ray.direction,
-                    unit_reflection_direction,
+                    unit_next_ray_direction,
                     shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
@@ -263,7 +263,7 @@ __global__ void standard_shared_memory_kernel(
             if (did_hit_object) {
                 rtx_cuda_kernel_update_ray(ray,
                     hit_point,
-                    unit_reflection_direction,
+                    unit_next_ray_direction,
                     cosine_term,
                     path_weight);
             }
