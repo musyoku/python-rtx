@@ -1,5 +1,7 @@
 #pragma once
 
+// インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
+
 #define rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, s, t, min_distance) \
     {                                                                                  \
         const float eps = 0.000001;                                                    \
@@ -306,7 +308,100 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_kernel_sample_ray_direction(                                                                                \
+#define rtx_cuda_kernel_fetch_light_color_in_linear_memory(                                     \
+    hit_point,                                                                                  \
+    hit_object,                                                                                 \
+    hit_face,                                                                                   \
+    hit_color,                                                                                  \
+    material_attribute_byte_array,                                                              \
+    color_mapping_array,                                                                        \
+    texture_object_array,                                                                       \
+    uv_coordinate_array)                                                                        \
+    {                                                                                           \
+        rtx_cuda_kernel_fetch_light_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
+            hit_point,                                                                          \
+            hit_object,                                                                         \
+            hit_face,                                                                           \
+            hit_color,                                                                          \
+            material_attribute_byte_array,                                                      \
+            color_mapping_array,                                                                \
+            texture_object_array,                                                               \
+            uv_coordinate_array)                                                                \
+    }
+#define rtx_cuda_kernel_fetch_light_color_in_texture_memory(                                     \
+    hit_point,                                                                                   \
+    hit_object,                                                                                  \
+    hit_face,                                                                                    \
+    hit_color,                                                                                   \
+    material_attribute_byte_array,                                                               \
+    color_mapping_array,                                                                         \
+    texture_object_array,                                                                        \
+    uv_coordinate_array)                                                                         \
+    {                                                                                            \
+        rtx_cuda_kernel_fetch_light_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
+            hit_point,                                                                           \
+            hit_object,                                                                          \
+            hit_face,                                                                            \
+            hit_color,                                                                           \
+            material_attribute_byte_array,                                                       \
+            color_mapping_array,                                                                 \
+            texture_object_array,                                                                \
+            uv_coordinate_array)                                                                 \
+    }
+#define rtx_cuda_kernel_fetch_light_color(                                                                                                                                                                 \
+    fetch_uv_coordinates,                                                                                                                                                                                  \
+    hit_point,                                                                                                                                                                                             \
+    hit_object,                                                                                                                                                                                            \
+    hit_face,                                                                                                                                                                                              \
+    hit_color,                                                                                                                                                                                             \
+    material_attribute_byte_array,                                                                                                                                                                         \
+    color_mapping_array,                                                                                                                                                                                   \
+    texture_object_array,                                                                                                                                                                                  \
+    uv_coordinate_array)                                                                                                                                                                                   \
+    {                                                                                                                                                                                                      \
+        int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
+        int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
+        int geometry_type = hit_object.geometry_type;                                                                                                                                                      \
+        if (mapping_type == RTXMappingTypeSolidColor) {                                                                                                                                                    \
+            rtxRGBAColor color = color_mapping_array[hit_object.mapping_index];                                                                                                                            \
+            hit_color.r = color.r;                                                                                                                                                                         \
+            hit_color.g = color.g;                                                                                                                                                                         \
+            hit_color.b = color.b;                                                                                                                                                                         \
+        } else if (mapping_type == RTXMappingTypeTexture) {                                                                                                                                                \
+            if (geometry_type == RTXGeometryTypeStandard) {                                                                                                                                                \
+                /* 衝突位置を重心座標系で表す */                                                                                                                                              \
+                /* https://shikihuiku.wordpress.com/2017/05/23/barycentric-coordinates%E3%81%AE%E8%A8%88%E7%AE%97%E3%81%A8perspective-correction-partial-derivative%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6/*/ \
+                float3 d1 = { hit_va.x - hit_vc.x, hit_va.y - hit_vc.y, hit_va.z - hit_vc.z };                                                                                                             \
+                float3 d2 = { hit_vb.x - hit_vc.x, hit_vb.y - hit_vc.y, hit_vb.z - hit_vc.z };                                                                                                             \
+                float3 d = { hit_point.x - hit_vc.x, hit_point.y - hit_vc.y, hit_point.z - hit_vc.z };                                                                                                     \
+                const float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;                                                                                                                                 \
+                const float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;                                                                                                                                 \
+                const float d2x = d1y;                                                                                                                                                                     \
+                const float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;                                                                                                                                 \
+                const float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;                                                                                                                                     \
+                const float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;                                                                                                                                     \
+                const float det = d1x * d2y - d1y * d2x;                                                                                                                                                   \
+                float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
+                lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
+                float x, y;                                                                                                                                                                                \
+                fetch_uv_coordinates(x, y, uv_coordinate_array, hit_face, hit_object);                                                                                                                     \
+                float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
+                hit_color.r = color.x;                                                                                                                                                                     \
+                hit_color.g = color.y;                                                                                                                                                                     \
+                hit_color.b = color.z;                                                                                                                                                                     \
+            } else {                                                                                                                                                                                       \
+                hit_color.r = 0.0f;                                                                                                                                                                        \
+                hit_color.g = 0.0f;                                                                                                                                                                        \
+                hit_color.b = 0.0f;                                                                                                                                                                        \
+            }                                                                                                                                                                                              \
+        }                                                                                                                                                                                                  \
+        rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                           \
+        hit_color.r *= attr.brightness;                                                                                                                                                                    \
+        hit_color.g *= attr.brightness;                                                                                                                                                                    \
+        hit_color.b *= attr.brightness;                                                                                                                                                                    \
+    }
+
+#define rtx_cuda_kernel_sample_ray_direction(                                                                                       \
     direction,                                                                                                                      \
     cosine_term,                                                                                                                    \
     curand_state)                                                                                                                   \
