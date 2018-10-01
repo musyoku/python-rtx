@@ -3,7 +3,7 @@
 #include "../../header/struct.h"
 #include <cuda_runtime.h>
 
-__global__ void standard_texture_memory_kernel(
+__global__ void mcrt_texture_memory_kernel(
     int ray_array_size,
     int face_vertex_index_array_size,
     int vertex_array_size,
@@ -18,7 +18,7 @@ __global__ void standard_texture_memory_kernel(
     int max_bounce,
     int curand_seed);
 
-__global__ void standard_global_memory_kernel(
+__global__ void mcrt_global_memory_kernel(
     rtxRay* global_ray_array, int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
     rtxVertex* global_serialized_vertex_array, int vertex_array_size,
@@ -33,7 +33,7 @@ __global__ void standard_global_memory_kernel(
     int max_bounce,
     int curand_seed);
 
-__global__ void standard_shared_memory_kernel(
+__global__ void mcrt_shared_memory_kernel(
     int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
     rtxVertex* global_serialized_vertex_array, int vertex_array_size,

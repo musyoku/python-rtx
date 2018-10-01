@@ -68,7 +68,8 @@ private:
     void serialize_objects();
     void serialize_rays(int height, int width);
     void render_objects(int height, int width);
-    void launch_kernel();
+    void launch_mcrt_kernel();
+    void launch_nee_kernel();
 
 public:
     Renderer();

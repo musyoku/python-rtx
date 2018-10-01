@@ -4,14 +4,14 @@
 #include "../../header/cuda_common.h"
 #include "../../header/cuda_functions.h"
 #include "../../header/cuda_texture.h"
-#include "../../header/standard_kernel.h"
+#include "../../header/mcrt_kernel.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <float.h>
 #include <stdio.h>
 
-__global__ void standard_global_memory_kernel(
+__global__ void mcrt_global_memory_kernel(
     rtxRay* global_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
     rtxVertex* global_serialized_vertex_array, int vertex_array_size,
@@ -245,7 +245,7 @@ __global__ void standard_global_memory_kernel(
         global_serialized_render_array[ray_index] = pixel;
     }
 }
-void rtx_cuda_launch_standard_global_memory_kernel(
+void rtx_cuda_launch_mcrt_global_memory_kernel(
     rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
     rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
@@ -265,7 +265,7 @@ void rtx_cuda_launch_standard_global_memory_kernel(
     int curand_seed)
 {
     rtx_cuda_check_kernel_arguments();
-    standard_global_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
+    mcrt_global_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         gpu_serialized_ray_array, ray_array_size,
         gpu_serialized_face_vertex_index_array, face_vertex_index_array_size,
         gpu_serialized_vertex_array, vertex_array_size,

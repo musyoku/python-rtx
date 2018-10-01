@@ -22,4 +22,12 @@ void RayTracingArguments::set_max_bounce(int bounce)
 {
     _max_bounce = bounce;
 }
+bool RayTracingArguments::next_event_estimation_enabled()
+{
+    return _next_event_estimation_enabled;
+}
+void RayTracingArguments::set_next_event_estimation_enabled(bool enabled)
+{
+    _next_event_estimation_enabled = enabled;
+}
 }

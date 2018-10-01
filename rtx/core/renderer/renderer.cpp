@@ -308,7 +308,7 @@ void Renderer::serialize_rays(int height, int width)
         }
     }
 }
-void Renderer::launch_kernel()
+void Renderer::launch_mcrt_kernel()
 {
     size_t available_shared_memory_bytes = rtx_cuda_get_available_shared_memory_bytes();
 
@@ -330,7 +330,7 @@ void Renderer::launch_kernel()
     int curand_seed = _total_frames;
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
-        rtx_cuda_launch_standard_shared_memory_kernel(
+        rtx_cuda_launch_mcrt_shared_memory_kernel(
             _gpu_ray_array, _cpu_ray_array.size(),
             _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
             _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -360,7 +360,7 @@ void Renderer::launch_kernel()
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合
         // こっちの方が若干早い
-        rtx_cuda_launch_standard_texture_memory_kernel(
+        rtx_cuda_launch_mcrt_texture_memory_kernel(
             _gpu_ray_array, _cpu_ray_array.size(),
             _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
             _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -380,7 +380,101 @@ void Renderer::launch_kernel()
             curand_seed);
 
         // グローバルメモリに直列データを入れる場合
-        // rtx_cuda_launch_standard_global_memory_kernel(
+        // rtx_cuda_launch_mcrt_global_memory_kernel(
+        //     _gpu_ray_array, _cpu_ray_array.size(),
+        //     _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+        //     _gpu_vertex_array, _cpu_vertex_array.size(),
+        //     _gpu_object_array, _cpu_object_array.size(),
+        //     _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+        //     _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+        //     _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+        //     _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+        //     _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
+        //     _gpu_render_array, _cpu_render_array.size(),
+        //     _cuda_args->num_threads(),
+        //     _cuda_args->num_blocks(),
+        //     num_rays_per_thread,
+        //     required_shared_memory_bytes,
+        //     _rt_args->max_bounce(),
+        //     curand_seed);
+        return;
+    }
+
+    throw std::runtime_error("Error: Not implemented");
+}
+void Renderer::launch_nee_kernel()
+{
+    size_t available_shared_memory_bytes = rtx_cuda_get_available_shared_memory_bytes();
+
+    int num_rays = _cpu_ray_array.size();
+    int num_rays_per_thread = num_rays / (_cuda_args->num_threads() * _cuda_args->num_blocks()) + 1;
+    int num_active_texture_units = _texture_mapping_ptr_array.size();
+
+    size_t required_shared_memory_bytes = 0;
+    required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
+    required_shared_memory_bytes += _cpu_vertex_array.bytes();
+    required_shared_memory_bytes += _cpu_object_array.bytes();
+    required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
+    required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
+    required_shared_memory_bytes += _cpu_serialized_uv_coordinate_array.bytes();
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
+
+    int curand_seed = _total_frames;
+
+    if (required_shared_memory_bytes <= available_shared_memory_bytes) {
+        rtx_cuda_launch_nee_shared_memory_kernel(
+            _gpu_ray_array, _cpu_ray_array.size(),
+            _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+            _gpu_vertex_array, _cpu_vertex_array.size(),
+            _gpu_object_array, _cpu_object_array.size(),
+            _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+            _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+            _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+            _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
+            _gpu_render_array, _cpu_render_array.size(),
+            num_active_texture_units,
+            _cuda_args->num_threads(),
+            _cuda_args->num_blocks(),
+            num_rays_per_thread,
+            required_shared_memory_bytes,
+            _rt_args->max_bounce(),
+            curand_seed);
+        return;
+    }
+    required_shared_memory_bytes = 0;
+    required_shared_memory_bytes += _cpu_object_array.bytes();
+    required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
+    required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
+    required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
+
+    if (required_shared_memory_bytes <= available_shared_memory_bytes) {
+        // テクスチャメモリに直列データを入れる場合
+        // こっちの方が若干早い
+        rtx_cuda_launch_nee_texture_memory_kernel(
+            _gpu_ray_array, _cpu_ray_array.size(),
+            _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
+            _gpu_vertex_array, _cpu_vertex_array.size(),
+            _gpu_object_array, _cpu_object_array.size(),
+            _gpu_material_attribute_byte_array, _cpu_material_attribute_byte_array.size(),
+            _gpu_threaded_bvh_array, _cpu_threaded_bvh_array.size(),
+            _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
+            _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
+            _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
+            _gpu_render_array, _cpu_render_array.size(),
+            num_active_texture_units,
+            _cuda_args->num_threads(),
+            _cuda_args->num_blocks(),
+            num_rays_per_thread,
+            required_shared_memory_bytes,
+            _rt_args->max_bounce(),
+            curand_seed);
+
+        // グローバルメモリに直列データを入れる場合
+        // rtx_cuda_launch_nee_global_memory_kernel(
         //     _gpu_ray_array, _cpu_ray_array.size(),
         //     _gpu_face_vertex_indices_array, _cpu_face_vertex_indices_array.size(),
         //     _gpu_vertex_array, _cpu_vertex_array.size(),
@@ -521,7 +615,11 @@ void Renderer::render_objects(int height, int width)
     printf("preprocessing: %lf msec\n", elapsed);
 
     start = std::chrono::system_clock::now();
-    launch_kernel();
+    if (_rt_args->next_event_estimation_enabled()) {
+        launch_nee_kernel();
+    } else {
+        launch_mcrt_kernel();
+    }
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("kernel: %lf msec\n", elapsed);

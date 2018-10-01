@@ -4,14 +4,14 @@
 #include "../../header/cuda_common.h"
 #include "../../header/cuda_functions.h"
 #include "../../header/cuda_texture.h"
-#include "../../header/standard_kernel.h"
+#include "../../header/mcrt_kernel.h"
 #include <assert.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <float.h>
 #include <stdio.h>
 
-__global__ void standard_texture_memory_kernel(
+__global__ void mcrt_texture_memory_kernel(
     int ray_array_size,
     int face_vertex_index_array_size,
     int vertex_array_size,
@@ -262,7 +262,7 @@ __global__ void standard_texture_memory_kernel(
     }
 }
 
-void rtx_cuda_launch_standard_texture_memory_kernel(
+void rtx_cuda_launch_mcrt_texture_memory_kernel(
     rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
     rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
@@ -289,7 +289,7 @@ void rtx_cuda_launch_standard_texture_memory_kernel(
     cudaBindTexture(0, g_serialized_threaded_bvh_node_array_texture_ref, gpu_serialized_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(rtxThreadedBVHNode) * threaded_bvh_node_array_size);
     cudaBindTexture(0, g_serialized_uv_coordinate_array_texture_ref, gpu_serialized_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(rtxUVCoordinate) * uv_coordinate_array_size);
 
-    standard_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
+    mcrt_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
         face_vertex_index_array_size,
         vertex_array_size,

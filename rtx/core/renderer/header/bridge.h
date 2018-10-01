@@ -20,9 +20,9 @@ void rtx_cuda_bind_texture(int unit_index);
 size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();
 
-// 引数が同じ関数を3作るのでプリプロセッサで行う
-#define rtx_cuda_define_standard_launcher_function(name)                                                     \
-void rtx_cuda_launch_standard_##name(                                                                    \
+// 引数が同じ関数を作るのでプリプロセッサで行う
+#define rtx_cuda_define_cuda_kernel_launcher_function(name)                                                     \
+void rtx_cuda_launch_##name(                                                                    \
     rtxRay* gpu_ray_array, int ray_array_size,                                                           \
     rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,                   \
     rtxVertex* gpu_vertex_array, int vertex_array_size,                                                  \
@@ -41,6 +41,10 @@ void rtx_cuda_launch_standard_##name(                                           
     int max_bounce,                                                                                      \
     int curand_seed);
 
-rtx_cuda_define_standard_launcher_function(texture_memory_kernel)
-rtx_cuda_define_standard_launcher_function(shared_memory_kernel)
-rtx_cuda_define_standard_launcher_function(global_memory_kernel)
+rtx_cuda_define_cuda_kernel_launcher_function(mcrt_texture_memory_kernel)
+rtx_cuda_define_cuda_kernel_launcher_function(mcrt_shared_memory_kernel)
+rtx_cuda_define_cuda_kernel_launcher_function(mcrt_global_memory_kernel)
+
+rtx_cuda_define_cuda_kernel_launcher_function(nee_texture_memory_kernel)
+rtx_cuda_define_cuda_kernel_launcher_function(nee_shared_memory_kernel)
+rtx_cuda_define_cuda_kernel_launcher_function(nee_global_memory_kernel)

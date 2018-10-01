@@ -5163,7 +5163,7 @@ GLAPI void APIENTRY glGetInternalformatSampleivNV (GLenum target, GLenum interna
 #define GL_NV_path_rendering 1
 #define GL_PATH_FORMAT_SVG_NV             0x9070
 #define GL_PATH_FORMAT_PS_NV              0x9071
-#define GL_STANDARD_FONT_NAME_NV          0x9072
+#define GL_mcrt_FONT_NAME_NV          0x9072
 #define GL_SYSTEM_FONT_NAME_NV            0x9073
 #define GL_FILE_NAME_NV                   0x9074
 #define GL_PATH_STROKE_WIDTH_NV           0x9075
@@ -5302,7 +5302,7 @@ GLAPI void APIENTRY glGetInternalformatSampleivNV (GLenum target, GLenum interna
 #define GL_CONIC_CURVE_TO_NV              0x1A
 #define GL_RELATIVE_CONIC_CURVE_TO_NV     0x1B
 #define GL_FONT_NUM_GLYPH_INDICES_BIT_NV  0x20000000
-#define GL_STANDARD_FONT_FORMAT_NV        0x936C
+#define GL_mcrt_FONT_FORMAT_NV        0x936C
 #define GL_PATH_PROJECTION_NV             0x1701
 #define GL_PATH_MODELVIEW_NV              0x1700
 #define GL_PATH_MODELVIEW_STACK_DEPTH_NV  0x0BA3
