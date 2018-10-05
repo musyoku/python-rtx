@@ -95,11 +95,11 @@ mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
-screen_width = 32
-screen_height = 32
+screen_width = 96
+screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 1
+rt_args.num_rays_per_pixel = 128
 rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = True
 
@@ -127,6 +127,9 @@ for n in range(total_iterations):
 
     plt.imshow(pixels, interpolation="none")
     plt.pause(1e-8)
+
+    if n == 1:
+        time.sleep(1000)
 
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

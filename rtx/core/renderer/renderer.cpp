@@ -154,10 +154,15 @@ void Renderer::serialize_light_sampling_table()
     for (int object_index = 0; object_index < num_objects; object_index++) {
         auto& object = _transformed_object_array.at(object_index);
         auto& material = object->material();
-        if (material->is_emissive()) {
-            _cpu_light_sampling_table[table_index] = object_index;
-            table_index++;
+        if (material->is_emissive() == false) {
+            continue;
         }
+        auto& geometry = object->geometry();
+        if (geometry->type() != RTXGeometryTypeStandard) {
+            continue;
+        }
+        _cpu_light_sampling_table[table_index] = object_index;
+        table_index++;
     }
 }
 void Renderer::serialize_color_mappings()
@@ -273,6 +278,33 @@ void Renderer::construct_bvh()
         node_index_offset += bvh->num_nodes();
     }
 }
+void Renderer::compute_face_area_of_lights()
+{
+    _total_light_face_area = 0.0;
+    for (int n = 0; n < _cpu_light_sampling_table.size(); n++) {
+        int object_index = _cpu_light_sampling_table[n];
+        auto& object = _transformed_object_array.at(object_index);
+        auto& geometry = object->geometry();
+        if (geometry->type() == RTXGeometryTypeStandard) {
+            StandardGeometry* standard = static_cast<StandardGeometry*>(geometry.get());
+            for (auto& face : standard->_face_vertex_indices_array) {
+                glm::vec4f& va = standard->_vertex_array[face[0]];
+                glm::vec4f& vb = standard->_vertex_array[face[1]];
+                glm::vec4f& vc = standard->_vertex_array[face[2]];
+                glm::vec4f ba = va - vb;
+                glm::vec4f ca = vc - vb;
+                glm::vec3 cross = {
+                    ba.y * ca.z - ba.z * ca.y,
+                    ba.z * ca.x - ba.x * ca.z,
+                    ba.x * ca.y - ba.y * ca.x,
+                };
+                float norm = sqrt(cross.x * cross.x + cross.y * cross.y + cross.z * cross.z);
+                float area = norm / 2.0f;
+                _total_light_face_area += area;
+            }
+        }
+    }
+}
 void Renderer::serialize_rays(int height, int width)
 {
     int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
@@ -325,6 +357,7 @@ void Renderer::launch_mcrt_kernel()
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
     required_shared_memory_bytes += _cpu_serialized_uv_coordinate_array.bytes();
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     int curand_seed = _total_frames;
@@ -355,6 +388,7 @@ void Renderer::launch_mcrt_kernel()
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
@@ -419,6 +453,7 @@ void Renderer::launch_nee_kernel()
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
     required_shared_memory_bytes += _cpu_serialized_uv_coordinate_array.bytes();
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     int curand_seed = _total_frames;
@@ -434,6 +469,8 @@ void Renderer::launch_nee_kernel()
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
             _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
+            _gpu_light_sampling_table, _cpu_light_sampling_table.size(),
+            _total_light_face_area,
             _gpu_render_array, _cpu_render_array.size(),
             num_active_texture_units,
             _cuda_args->num_threads(),
@@ -449,6 +486,7 @@ void Renderer::launch_nee_kernel()
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
@@ -464,6 +502,8 @@ void Renderer::launch_nee_kernel()
             _gpu_threaded_bvh_node_array, _cpu_threaded_bvh_node_array.size(),
             _gpu_color_mapping_array, _cpu_color_mapping_array.size(),
             _gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.size(),
+            _gpu_light_sampling_table, _cpu_light_sampling_table.size(),
+            _total_light_face_area,
             _gpu_render_array, _cpu_render_array.size(),
             num_active_texture_units,
             _cuda_args->num_threads(),
@@ -539,6 +579,7 @@ void Renderer::render_objects(int height, int width)
 
     if (geometry_updated) {
         serialize_objects();
+        compute_face_area_of_lights();
     }
 
     if (geometry_size_changed) {
@@ -624,7 +665,11 @@ void Renderer::render_objects(int height, int width)
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("kernel: %lf msec\n", elapsed);
 
+    start = std::chrono::system_clock::now();
     rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, _cpu_render_array.bytes());
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    printf("memcpy: %lf msec\n", elapsed);
 
     _scene->set_updated(false);
     _camera->set_updated(false);
@@ -634,6 +679,7 @@ void Renderer::render_objects(int height, int width)
     }
     _total_frames++;
 
+    start = std::chrono::system_clock::now();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             rtxRGBAPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
@@ -652,6 +698,9 @@ void Renderer::render_objects(int height, int width)
             _cpu_render_buffer_array[y * width * 3 + x * 3] = pixel_buffer;
         }
     }
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    printf("reduce_sum: %lf msec\n", elapsed);
 }
 void Renderer::render(
     std::shared_ptr<Scene> scene,

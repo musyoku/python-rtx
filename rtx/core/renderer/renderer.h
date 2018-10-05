@@ -1,10 +1,10 @@
 #pragma once
 #include "../class/camera.h"
 #include "../class/scene.h"
-#include "../mapping/texture.h"
 #include "../header/array.h"
 #include "../header/glm.h"
 #include "../header/struct.h"
+#include "../mapping/texture.h"
 #include "arguments/cuda_kernel.h"
 #include "arguments/ray_tracing.h"
 #include "bvh/bvh.h"
@@ -52,6 +52,7 @@ private:
     std::vector<std::shared_ptr<BVH>> _geometry_bvh_array;
     std::vector<TextureMapping*> _texture_mapping_ptr_array;
 
+    float _total_light_face_area;
     int _prev_height;
     int _prev_width;
     int _total_frames;
@@ -67,6 +68,7 @@ private:
     void serialize_light_sampling_table();
     void serialize_objects();
     void serialize_rays(int height, int width);
+    void compute_face_area_of_lights();
     void render_objects(int height, int width);
     void launch_mcrt_kernel();
     void launch_nee_kernel();

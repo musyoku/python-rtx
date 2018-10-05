@@ -2,7 +2,7 @@
 
 // インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
 
-#define rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, s, t, min_distance) \
+#define rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
     {                                                                                  \
         const float eps = 0.000001;                                                    \
         float3 edge_ba = {                                                             \
@@ -62,7 +62,7 @@
         }                                                                              \
     }
 
-#define rtx_cuda_kernel_intersect_sphere_or_continue(center, radius, t, min_distance)                                              \
+#define rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                              \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -89,7 +89,7 @@
         }                                                                                                                          \
     }
 
-#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(node, ray_direction_inv, bvh_current_node_index)                    \
+#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                    \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -406,11 +406,7 @@
     cosine_term,                                                                                                                    \
     curand_state)                                                                                                                   \
     {                                                                                                                               \
-        float3 unit_diffuse = {                                                                                                     \
-            curand_normal(&curand_state),                                                                                           \
-            curand_normal(&curand_state),                                                                                           \
-            curand_normal(&curand_state),                                                                                           \
-        };                                                                                                                          \
+        float4 unit_diffuse = curand_normal4(&curand_state);                                                                        \
         float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);     \
         unit_diffuse.x /= norm;                                                                                                     \
         unit_diffuse.y /= norm;                                                                                                     \

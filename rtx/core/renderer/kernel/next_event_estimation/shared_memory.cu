@@ -22,6 +22,8 @@ __global__ void nee_shared_memory_kernel(
     rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* global_serialized_uv_coordinate_array, int uv_coordinate_array_size,
     cudaTextureObject_t* global_serialized_mapping_texture_object_array,
+    int* global_light_sampling_table, int light_sampling_table_size,
+    float total_light_face_area,
     rtxRGBAPixel* global_serialized_render_array,
     int num_active_texture_units,
     int num_rays_per_thread,
@@ -149,7 +151,7 @@ __global__ void nee_shared_memory_kernel(
                         // 詳細は以下参照
                         // An Efficient and Robust Ray–Box Intersection Algorithm
                         // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                        rtx_cuda_kernel_bvh_traversal_one_step_or_continue(node, ray_direction_inv, bvh_current_node_index);
+                        rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index);
                     } else {
                         // 葉ノード
                         // 割り当てられたジオメトリの各面との衝突判定を行う
@@ -169,7 +171,7 @@ __global__ void nee_shared_memory_kernel(
 
                                 float3 face_normal;
                                 float distance;
-                                rtx_cuda_kernel_intersect_triangle_or_continue(va, vb, vc, face_normal, distance, min_distance);
+                                rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, face_normal, distance, min_distance);
 
                                 min_distance = distance;
                                 hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -196,7 +198,7 @@ __global__ void nee_shared_memory_kernel(
                             const rtxVertex radius = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
 
                             float distance;
-                            rtx_cuda_kernel_intersect_sphere_or_continue(center, radius, distance, min_distance);
+                            rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, distance, min_distance);
 
                             min_distance = distance;
                             hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -259,7 +261,6 @@ __global__ void nee_shared_memory_kernel(
                 break;
             }
 
-
             if (did_hit_object) {
                 rtx_cuda_kernel_update_ray(ray,
                     hit_point,
@@ -283,6 +284,8 @@ void rtx_cuda_launch_nee_shared_memory_kernel(
     rtxThreadedBVHNode* gpu_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
     rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
     rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
+    int* gpu_light_sampling_table, int light_sampling_table_size,
+    float total_light_face_area,
     rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
     int num_active_texture_units,
     int num_threads,
@@ -305,6 +308,8 @@ void rtx_cuda_launch_nee_shared_memory_kernel(
         gpu_serialized_color_mapping_array, color_mapping_array_size,
         gpu_serialized_uv_coordinate_array, uv_coordinate_array_size,
         g_gpu_serialized_mapping_texture_object_array,
+        gpu_light_sampling_table, light_sampling_table_size,
+        total_light_face_area,
         gpu_serialized_render_array,
         num_active_texture_units,
         num_rays_per_thread,
