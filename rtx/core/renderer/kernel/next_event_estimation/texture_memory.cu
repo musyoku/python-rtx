@@ -255,9 +255,9 @@ __global__ void nee_texture_memory_kernel(
                         shared_serialized_color_mapping_array,
                         shared_serialized_texture_object_array,
                         g_serialized_uv_coordinate_array_texture_ref);
-                    pixel.r += hit_color.r * path_weight.r * total_light_face_area * g_term;
-                    pixel.g += hit_color.g * path_weight.g * total_light_face_area * g_term;
-                    pixel.b += hit_color.b * path_weight.b * total_light_face_area * g_term;
+                    pixel.r += hit_color.r * path_weight.r * total_light_face_area * g_term / M_PI;
+                    pixel.g += hit_color.g * path_weight.g * total_light_face_area * g_term / M_PI;
+                    pixel.b += hit_color.b * path_weight.b * total_light_face_area * g_term / M_PI;
 
                     if (threadIdx.x == 78 && 289024 < ray_index && ray_index <= 289152) {
                         printf("%f = %f * %f * %f * %f iter: %d thread: %d\n", pixel.r, hit_color.r, path_weight.r, total_light_face_area, g_term, iter, threadIdx.x);
