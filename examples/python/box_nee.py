@@ -99,12 +99,12 @@ screen_width = 96
 screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 512
+rt_args.num_rays_per_pixel = 128
 rt_args.max_bounce = 6
-rt_args.next_event_estimation_enabled = False
+rt_args.next_event_estimation_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
-cuda_args.num_threads = 256
+cuda_args.num_threads = 128
 cuda_args.num_blocks = 1024
 
 renderer = rtx.Renderer()
@@ -119,7 +119,7 @@ camera = rtx.PerspectiveCamera(
     z_far=100)
 
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-total_iterations = 30
+total_iterations = 6
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB

@@ -260,9 +260,10 @@ __global__ void nee_texture_memory_kernel(
                         shared_serialized_texture_object_array,
                         g_serialized_uv_coordinate_array_texture_ref);
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    pixel.r += min(brdf * hit_color.r * path_weight.r * total_light_face_area * g_term, attr.brightness);
-                    pixel.g += min(brdf * hit_color.g * path_weight.g * total_light_face_area * g_term, attr.brightness);
-                    pixel.b += min(brdf * hit_color.b * path_weight.b * total_light_face_area * g_term, attr.brightness);
+                    float coeff = brdf * sqrtf(attr.brightness) / (2.0f * M_PI);
+                    pixel.r += min(coeff * hit_color.r * path_weight.r * total_light_face_area * g_term, attr.brightness);
+                    pixel.g += min(coeff * hit_color.g * path_weight.g * total_light_face_area * g_term, attr.brightness);
+                    pixel.b += min(coeff * hit_color.b * path_weight.b * total_light_face_area * g_term, attr.brightness);
                     // pixel.r += brdf * hit_color.r * path_weight.r * total_light_face_area * g_term;
                     // pixel.g += brdf * hit_color.g * path_weight.g * total_light_face_area * g_term;
                     // pixel.b += brdf * hit_color.b * path_weight.b * total_light_face_area * g_term;
