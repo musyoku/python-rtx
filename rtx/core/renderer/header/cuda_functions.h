@@ -3,66 +3,66 @@
 // インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
 
 #define rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
-    {                                                                                  \
-        const float eps = 0.000001;                                                    \
-        float3 edge_ba = {                                                             \
-            vb.x - va.x,                                                               \
-            vb.y - va.y,                                                               \
-            vb.z - va.z,                                                               \
-        };                                                                             \
-        float3 edge_ca = {                                                             \
-            vc.x - va.x,                                                               \
-            vc.y - va.y,                                                               \
-            vc.z - va.z,                                                               \
-        };                                                                             \
-        float3 h = {                                                                   \
-            ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y,                 \
-            ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z,                 \
-            ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x,                 \
-        };                                                                             \
-        float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;                 \
-        if (f > -eps && f < eps) {                                                     \
-            continue;                                                                  \
-        }                                                                              \
-        f = 1.0f / f;                                                                  \
-        s.x = ray.origin.x - va.x;                                                     \
-        s.y = ray.origin.y - va.y;                                                     \
-        s.z = ray.origin.z - va.z;                                                     \
-        float dot = s.x * h.x + s.y * h.y + s.z * h.z;                                 \
-        float u = f * dot;                                                             \
-        if (u < 0.0f || u > 1.0f) {                                                    \
-            continue;                                                                  \
-        }                                                                              \
-        h.x = s.y * edge_ba.z - s.z * edge_ba.y;                                       \
-        h.y = s.z * edge_ba.x - s.x * edge_ba.z;                                       \
-        h.z = s.x * edge_ba.y - s.y * edge_ba.x;                                       \
-        dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z;   \
-        float v = f * dot;                                                             \
-        if (v < 0.0f || u + v > 1.0f) {                                                \
-            continue;                                                                  \
-        }                                                                              \
-        s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                           \
-        s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                           \
-        s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                           \
-        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;                 \
-        s.x = s.x / norm;                                                              \
-        s.y = s.y / norm;                                                              \
-        s.z = s.z / norm;                                                              \
-        dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z;   \
-        if (dot > 0.0f) {                                                              \
-            continue;                                                                  \
-        }                                                                              \
-        dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;                     \
-        t = f * dot;                                                                   \
-        if (t <= 0.001f) {                                                             \
-            continue;                                                                  \
-        }                                                                              \
-        if (min_distance <= t) {                                                       \
-            continue;                                                                  \
-        }                                                                              \
+    {                                                                                       \
+        const float eps = 0.000001;                                                         \
+        float3 edge_ba = {                                                                  \
+            vb.x - va.x,                                                                    \
+            vb.y - va.y,                                                                    \
+            vb.z - va.z,                                                                    \
+        };                                                                                  \
+        float3 edge_ca = {                                                                  \
+            vc.x - va.x,                                                                    \
+            vc.y - va.y,                                                                    \
+            vc.z - va.z,                                                                    \
+        };                                                                                  \
+        float3 h = {                                                                        \
+            ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y,                      \
+            ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z,                      \
+            ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x,                      \
+        };                                                                                  \
+        float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;                      \
+        if (f > -eps && f < eps) {                                                          \
+            continue;                                                                       \
+        }                                                                                   \
+        f = 1.0f / f;                                                                       \
+        s.x = ray.origin.x - va.x;                                                          \
+        s.y = ray.origin.y - va.y;                                                          \
+        s.z = ray.origin.z - va.z;                                                          \
+        float dot = s.x * h.x + s.y * h.y + s.z * h.z;                                      \
+        float u = f * dot;                                                                  \
+        if (u < 0.0f || u > 1.0f) {                                                         \
+            continue;                                                                       \
+        }                                                                                   \
+        h.x = s.y * edge_ba.z - s.z * edge_ba.y;                                            \
+        h.y = s.z * edge_ba.x - s.x * edge_ba.z;                                            \
+        h.z = s.x * edge_ba.y - s.y * edge_ba.x;                                            \
+        dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z;        \
+        float v = f * dot;                                                                  \
+        if (v < 0.0f || u + v > 1.0f) {                                                     \
+            continue;                                                                       \
+        }                                                                                   \
+        s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                                \
+        s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                                \
+        s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                                \
+        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;                      \
+        s.x = s.x / norm;                                                                   \
+        s.y = s.y / norm;                                                                   \
+        s.z = s.z / norm;                                                                   \
+        dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z;        \
+        if (dot > 0.0f) {                                                                   \
+            continue;                                                                       \
+        }                                                                                   \
+        dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;                          \
+        t = f * dot;                                                                        \
+        if (t <= 0.001f) {                                                                  \
+            continue;                                                                       \
+        }                                                                                   \
+        if (min_distance <= t) {                                                            \
+            continue;                                                                       \
+        }                                                                                   \
     }
 
-#define rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                              \
+#define rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                         \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -89,7 +89,7 @@
         }                                                                                                                          \
     }
 
-#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                    \
+#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)               \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -261,9 +261,9 @@
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
             float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                                 \
-            hit_color.r *= attr.albedo * cos_ref;                                                                                                                                                          \
-            hit_color.g *= attr.albedo * cos_ref;                                                                                                                                                          \
-            hit_color.b *= attr.albedo * cos_ref;                                                                                                                                                          \
+            hit_color.r *= attr.albedo / M_PI;                                                                                                                                                             \
+            hit_color.g *= attr.albedo / M_PI;                                                                                                                                                             \
+            hit_color.b *= attr.albedo / M_PI;                                                                                                                                                             \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
             /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                                       \
             rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
@@ -296,9 +296,9 @@
             cross_ref.z /= norm;                                                                                                                                                                           \
             const float cos_phi = cross_view.x * cross_ref.x + cross_view.y * cross_ref.y + cross_view.z * cross_ref.z;                                                                                    \
             const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                             \
-            hit_color.r *= coeff;                                                                                                                                                                          \
-            hit_color.g *= coeff;                                                                                                                                                                          \
-            hit_color.b *= coeff;                                                                                                                                                                          \
+            hit_color.r *= coeff / M_PI;                                                                                                                                                                   \
+            hit_color.g *= coeff / M_PI;                                                                                                                                                                   \
+            hit_color.b *= coeff / M_PI;                                                                                                                                                                   \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
             rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
@@ -423,25 +423,25 @@
         direction.z = unit_diffuse.z;                                                                                               \
     }
 
-#define rtx_cuda_kernel_update_ray(                       \
-    ray,                                                  \
-    hit_point,                                            \
-    unit_next_ray_direction,                              \
-    cosine_term,                                          \
-    path_weight)                                          \
-    {                                                     \
-        ray.origin.x = hit_point.x;                       \
-        ray.origin.y = hit_point.y;                       \
-        ray.origin.z = hit_point.z;                       \
-        ray.direction.x = unit_next_ray_direction.x;      \
-        ray.direction.y = unit_next_ray_direction.y;      \
-        ray.direction.z = unit_next_ray_direction.z;      \
-        ray_direction_inv.x = 1.0f / ray.direction.x;     \
-        ray_direction_inv.y = 1.0f / ray.direction.y;     \
-        ray_direction_inv.z = 1.0f / ray.direction.z;     \
-        path_weight.r *= 4.0 * hit_color.r * cosine_term; \
-        path_weight.g *= 4.0 * hit_color.g * cosine_term; \
-        path_weight.b *= 4.0 * hit_color.b * cosine_term; \
+#define rtx_cuda_kernel_update_ray(                        \
+    ray,                                                   \
+    hit_point,                                             \
+    unit_next_ray_direction,                               \
+    cosine_term,                                           \
+    path_weight)                                           \
+    {                                                      \
+        ray.origin.x = hit_point.x;                        \
+        ray.origin.y = hit_point.y;                        \
+        ray.origin.z = hit_point.z;                        \
+        ray.direction.x = unit_next_ray_direction.x;       \
+        ray.direction.y = unit_next_ray_direction.y;       \
+        ray.direction.z = unit_next_ray_direction.z;       \
+        ray_direction_inv.x = 1.0f / ray.direction.x;      \
+        ray_direction_inv.y = 1.0f / ray.direction.y;      \
+        ray_direction_inv.z = 1.0f / ray.direction.z;      \
+        path_weight.r *= M_PI * hit_color.r * cosine_term; \
+        path_weight.g *= M_PI * hit_color.g * cosine_term; \
+        path_weight.b *= M_PI * hit_color.b * cosine_term; \
     }
 
 #define rtx_cuda_check_kernel_arguments()                             \
