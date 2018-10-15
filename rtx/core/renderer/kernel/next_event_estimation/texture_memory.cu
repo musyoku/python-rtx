@@ -240,9 +240,6 @@ __global__ void nee_texture_memory_kernel(
             }
 
             if (did_hit_object == false) {
-                pixel.r = 1.0f;
-                pixel.g = 0.0f;
-                pixel.b = 0.0f;
                 break;
             }
 
@@ -266,6 +263,9 @@ __global__ void nee_texture_memory_kernel(
                     pixel.r += min(brdf * hit_color.r * path_weight.r * total_light_face_area * g_term, attr.brightness);
                     pixel.g += min(brdf * hit_color.g * path_weight.g * total_light_face_area * g_term, attr.brightness);
                     pixel.b += min(brdf * hit_color.b * path_weight.b * total_light_face_area * g_term, attr.brightness);
+                    // pixel.r += brdf * hit_color.r * path_weight.r * total_light_face_area * g_term;
+                    // pixel.g += brdf * hit_color.g * path_weight.g * total_light_face_area * g_term;
+                    // pixel.b += brdf * hit_color.b * path_weight.b * total_light_face_area * g_term;
                 }
 
                 path_weight.r = next_path_weight.r;
@@ -393,7 +393,6 @@ __global__ void nee_texture_memory_kernel(
                     dot2 *= -1.0f;
                 }
                 g_term = dot1 * dot2 / (light_distance * light_distance);
-                g_term = dot1 / (light_distance * light_distance);
 
                 if (g_term > 1 && threadIdx.x == 78 && 289024 < ray_index && ray_index <= 289152) {
                     printf("hit_point: %f, %f, %f\n", hit_point.x, hit_point.y, hit_point.z);

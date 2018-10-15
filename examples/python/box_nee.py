@@ -76,13 +76,13 @@ mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
-# geometry = rtx.PlainGeometry(box_width / 2, box_width / 2)
-# geometry.set_rotation((0, -math.pi / 2, 0))
-# geometry.set_position((box_width / 2 - 0.01, -box_height / 4, 0))
-# material = rtx.EmissiveMaterial(5.0)
-# mapping = rtx.SolidColorMapping((0, 1, 1))
-# light = rtx.Object(geometry, material, mapping)
-# scene.add(light)
+geometry = rtx.PlainGeometry(box_width / 2, box_width / 2)
+geometry.set_rotation((0, -math.pi / 2, 0))
+geometry.set_position((box_width / 2 - 0.01, -box_height / 4, 0))
+material = rtx.EmissiveMaterial(5.0)
+mapping = rtx.SolidColorMapping((0, 1, 1))
+light = rtx.Object(geometry, material, mapping)
+scene.add(light)
 
 # place bunny
 faces, vertices = gm.load("../geometries/bunny")
@@ -99,8 +99,8 @@ screen_width = 96
 screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 128
-rt_args.max_bounce = 12
+rt_args.num_rays_per_pixel = 512
+rt_args.max_bounce = 6
 rt_args.next_event_estimation_enabled = False
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
