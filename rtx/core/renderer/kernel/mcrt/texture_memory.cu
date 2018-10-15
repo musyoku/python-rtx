@@ -243,12 +243,16 @@ __global__ void mcrt_texture_memory_kernel(
 
             // 光源に当たった場合トレースを打ち切り
             if (did_hit_light) {
-                float dot = -(ray.direction.x * hit_face_normal.x
-                    + ray.direction.y * hit_face_normal.y
-                    + ray.direction.z * hit_face_normal.z);
-                pixel.r += hit_color.r * path_weight.r * dot;
-                pixel.g += hit_color.g * path_weight.g * dot;
-                pixel.b += hit_color.b * path_weight.b * dot;
+                if(bounce == 0){
+                    pixel.r += hit_color.r * path_weight.r;
+                    pixel.g += hit_color.g * path_weight.g;
+                    pixel.b += hit_color.b * path_weight.b;
+                }else{
+                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    pixel.r += hit_color.r * path_weight.r * attr.brightness;
+                    pixel.g += hit_color.g * path_weight.g * attr.brightness;
+                    pixel.b += hit_color.b * path_weight.b * attr.brightness;
+                }
                 break;
             }
 

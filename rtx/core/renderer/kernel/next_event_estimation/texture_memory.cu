@@ -316,6 +316,10 @@ __global__ void nee_texture_memory_kernel(
                 ray->direction.y = unit_next_ray_direction.y;
                 ray->direction.z = unit_next_ray_direction.z;
 
+                next_path_weight.r = path_weight.r * M_PI * hit_color.r * cosine_term;
+                next_path_weight.g = path_weight.g * M_PI * hit_color.g * cosine_term;
+                next_path_weight.b = path_weight.b * M_PI * hit_color.b * cosine_term;
+
                 int material_type = hit_object.layerd_material_types.outside;
                 if (material_type == RTXMaterialTypeLambert) {
                     rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
@@ -323,11 +327,12 @@ __global__ void nee_texture_memory_kernel(
                 } else if (material_type == RTXMaterialTypeOrenNayar) {
                     rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     brdf = attr.albedo / M_PI;
+                } else if (material_type == RTXMaterialTypeEmissive) {
+                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    next_path_weight.r *= attr.brightness;
+                    next_path_weight.g *= attr.brightness;
+                    next_path_weight.b *= attr.brightness;
                 }
-
-                next_path_weight.r = path_weight.r * M_PI * hit_color.r * cosine_term;
-                next_path_weight.g = path_weight.g * M_PI * hit_color.g * cosine_term;
-                next_path_weight.b = path_weight.b * M_PI * hit_color.b * cosine_term;
 
                 // 光源のサンプリング
                 float4 uniform4 = curand_uniform4(&curand_state_philox4);

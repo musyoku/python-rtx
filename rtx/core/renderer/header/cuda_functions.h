@@ -261,9 +261,9 @@
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
             float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                                 \
-            hit_color.r *= attr.albedo / M_PI;                                                                                                                                                             \
-            hit_color.g *= attr.albedo / M_PI;                                                                                                                                                             \
-            hit_color.b *= attr.albedo / M_PI;                                                                                                                                                             \
+            hit_color.r *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
+            hit_color.g *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
+            hit_color.b *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
             /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                                       \
             rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
@@ -302,9 +302,6 @@
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
             rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
-            hit_color.r *= attr.brightness;                                                                                                                                                                \
-            hit_color.g *= attr.brightness;                                                                                                                                                                \
-            hit_color.b *= attr.brightness;                                                                                                                                                                \
         }                                                                                                                                                                                                  \
     }
 
@@ -359,7 +356,6 @@
     texture_object_array,                                                                                                                                                                                  \
     uv_coordinate_array)                                                                                                                                                                                   \
     {                                                                                                                                                                                                      \
-        int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
         int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
         int geometry_type = hit_object.geometry_type;                                                                                                                                                      \
         if (mapping_type == RTXMappingTypeSolidColor) {                                                                                                                                                    \
