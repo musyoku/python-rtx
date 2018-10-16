@@ -393,10 +393,6 @@
                 hit_color.b = 0.0f;                                                                                                                                                                        \
             }                                                                                                                                                                                              \
         }                                                                                                                                                                                                  \
-        rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                           \
-        hit_color.r *= attr.brightness;                                                                                                                                                                    \
-        hit_color.g *= attr.brightness;                                                                                                                                                                    \
-        hit_color.b *= attr.brightness;                                                                                                                                                                    \
     }
 
 #define rtx_cuda_kernel_sample_ray_direction(                                                                                       \

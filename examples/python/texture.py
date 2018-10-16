@@ -26,7 +26,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, -math.pi / 2, 0))
 geometry.set_position((box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(1.0)
+material = rtx.EmissiveMaterial(3.0)
 texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(
     [
@@ -51,7 +51,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(1.0)
+material = rtx.EmissiveMaterial(3.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 texture = np.array(Image.open("texture_2.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(
@@ -118,7 +118,7 @@ camera = rtx.PerspectiveCamera(
     z_far=100)
 
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-total_iterations = 30
+total_iterations = 6
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     pixels = np.clip(render_buffer, 0, 1)

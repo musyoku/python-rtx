@@ -92,6 +92,8 @@ __global__ void nee_texture_memory_kernel(
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
         int hit_object_index;
+        float light_distance;
+        float dot1;
         float g_term;
         float brdf;
 
@@ -260,14 +262,14 @@ __global__ void nee_texture_memory_kernel(
                         shared_serialized_texture_object_array,
                         g_serialized_uv_coordinate_array_texture_ref);
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    float emission = sqrtf(attr.brightness) / (2.0f * M_PI);
+                    float emission = attr.brightness;
                     float inv_pdf = total_light_face_area;
-                    pixel.r += min(path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term, attr.brightness);
-                    pixel.g += min(path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term, attr.brightness);
-                    pixel.b += min(path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term, attr.brightness);
-                    // pixel.r += brdf * hit_color.r * path_weight.r * total_light_face_area * g_term;
-                    // pixel.g += brdf * hit_color.g * path_weight.g * total_light_face_area * g_term;
-                    // pixel.b += brdf * hit_color.b * path_weight.b * total_light_face_area * g_term;
+                    // pixel.r += min(path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term, attr.brightness);
+                    // pixel.g += min(path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term, attr.brightness);
+                    // pixel.b += min(path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term, attr.brightness);
+                    pixel.r += path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term;
+                    pixel.g += path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term;
+                    pixel.b += path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term;
                 }
 
                 path_weight.r = next_path_weight.r;
@@ -356,12 +358,12 @@ __global__ void nee_texture_memory_kernel(
                 shadow_ray.direction.x = random_point.x - hit_point.x;
                 shadow_ray.direction.y = random_point.y - hit_point.y;
                 shadow_ray.direction.z = random_point.z - hit_point.z;
-                const float light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
+                light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
                 shadow_ray.direction.x /= light_distance;
                 shadow_ray.direction.y /= light_distance;
                 shadow_ray.direction.z /= light_distance;
 
-                float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
+                dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
                     + shadow_ray.direction.y * unit_hit_face_normal.y
                     + shadow_ray.direction.z * unit_hit_face_normal.z;
                 if (dot1 <= 0.0f) {
@@ -388,10 +390,7 @@ __global__ void nee_texture_memory_kernel(
                 light_normal.x = light_normal.x / norm;
                 light_normal.y = light_normal.y / norm;
                 light_normal.z = light_normal.z / norm;
-                float dot2 = -(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
-                if (dot2 < 0.0f) {
-                    dot2 *= -1.0f;
-                }
+                float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
                 g_term = dot1 * dot2 / (light_distance * light_distance);
                 ray = &shadow_ray;
             }
