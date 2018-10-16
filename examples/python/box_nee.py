@@ -104,8 +104,8 @@ rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = False
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
-cuda_args.num_threads = 256
-cuda_args.num_rays_per_thread = 128
+cuda_args.num_threads = 64
+cuda_args.num_rays_per_thread = 64
 
 renderer = rtx.Renderer()
 

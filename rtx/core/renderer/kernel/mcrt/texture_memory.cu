@@ -101,7 +101,7 @@ __global__ void mcrt_texture_memory_kernel(
         // 方向
         ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
         ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;
-        ray.direction.z = -1.0f;
+        ray.direction.z = -ray_origin_z;
         // 正規化
         const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
         ray.direction.x /= norm;
@@ -111,13 +111,8 @@ __global__ void mcrt_texture_memory_kernel(
         if (camera_type == RTXCameraTypePerspective) {
             ray.origin = { 0.0f, 0.0f, ray_origin_z };
         } else {
-            ray.origin = { ray.direction.x, ray.direction.y, 1.0f };
+            ray.origin = { ray.direction.x, ray.direction.y, ray_origin_z };
         }
-
-        pixel.r += (ray.direction.x + 1.0f) / 2.0f;
-        pixel.g += (ray.direction.y + 1.0f) / 2.0f;
-
-        continue;
 
         float3 hit_point;
         float3 unit_hit_face_normal;
@@ -126,9 +121,6 @@ __global__ void mcrt_texture_memory_kernel(
         float4 hit_vc;
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
-
-        ray.direction = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 0);
-        ray.origin = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 1);
 
         float3 ray_direction_inv = {
             1.0f / ray.direction.x,
