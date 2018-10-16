@@ -268,8 +268,12 @@ void rtx_cuda_launch_mcrt_global_memory_kernel(
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
+    int num_rays_per_pixel,
     size_t shared_memory_bytes,
     int max_bounce,
+    RTXCameraType camera_type,
+    float ray_origin_z,
+    int screen_width, int screen_height,
     int curand_seed)
 {
     rtx_cuda_check_kernel_arguments();

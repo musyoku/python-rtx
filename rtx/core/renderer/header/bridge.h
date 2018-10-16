@@ -37,13 +37,17 @@ size_t rtx_cuda_get_cudaTextureObject_t_bytes();
         int num_threads,                                                                                     \
         int num_blocks,                                                                                      \
         int num_rays_per_thread,                                                                             \
+        int num_rays_per_pixel,                                                                              \
         size_t shared_memory_bytes,                                                                          \
         int max_bounce,                                                                                      \
+        RTXCameraType camera_type,                                                                           \
+        float ray_origin_z,                                                                                  \
+        int screen_width, int screen_height,                                                                 \
         int curand_seed);
 
 rtx_cuda_define_cuda_mcrt_kernel_launcher_function(texture_memory)
-rtx_cuda_define_cuda_mcrt_kernel_launcher_function(shared_memory)
-rtx_cuda_define_cuda_mcrt_kernel_launcher_function(global_memory)
+    rtx_cuda_define_cuda_mcrt_kernel_launcher_function(shared_memory)
+        rtx_cuda_define_cuda_mcrt_kernel_launcher_function(global_memory)
 
 #define rtx_cuda_define_cuda_nee_kernel_launcher_function(memory_type)                                       \
     void rtx_cuda_launch_nee_##memory_type##_kernel(                                                         \
@@ -57,16 +61,17 @@ rtx_cuda_define_cuda_mcrt_kernel_launcher_function(global_memory)
         rtxRGBAColor* gpu_color_mapping_array, int color_mapping_array_size,                                 \
         rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,                   \
         int* gpu_light_sampling_table, int light_sampling_table_size,                                        \
-        float total_light_face_area,                                                                           \
+        float total_light_face_area,                                                                         \
         rtxRGBAPixel* gpu_render_array, int render_array_size,                                               \
         int num_active_texture_units,                                                                        \
         int num_threads,                                                                                     \
         int num_blocks,                                                                                      \
         int num_rays_per_thread,                                                                             \
+        int num_rays_per_pixel,                                                                              \
         size_t shared_memory_bytes,                                                                          \
         int max_bounce,                                                                                      \
         int curand_seed);
 
-rtx_cuda_define_cuda_nee_kernel_launcher_function(texture_memory)
-rtx_cuda_define_cuda_nee_kernel_launcher_function(shared_memory)
-rtx_cuda_define_cuda_nee_kernel_launcher_function(global_memory)
+            rtx_cuda_define_cuda_nee_kernel_launcher_function(texture_memory)
+                rtx_cuda_define_cuda_nee_kernel_launcher_function(shared_memory)
+                    rtx_cuda_define_cuda_nee_kernel_launcher_function(global_memory)

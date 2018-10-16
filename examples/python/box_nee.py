@@ -95,17 +95,17 @@ mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
-screen_width = 96
-screen_height = 64
+screen_width = 768
+screen_height = 512
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 128
-rt_args.max_bounce = 6
-rt_args.next_event_estimation_enabled = True
+rt_args.max_bounce = 4
+rt_args.next_event_estimation_enabled = False
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
-cuda_args.num_threads = 128
-cuda_args.num_blocks = 1024
+cuda_args.num_threads = 256
+cuda_args.num_rays_per_thread = 128
 
 renderer = rtx.Renderer()
 
@@ -119,7 +119,7 @@ camera = rtx.PerspectiveCamera(
     z_far=100)
 
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-total_iterations = 6
+total_iterations = 30
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB

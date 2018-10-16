@@ -53,8 +53,8 @@ private:
     std::vector<TextureMapping*> _texture_mapping_ptr_array;
 
     float _total_light_face_area;
-    int _prev_height;
-    int _prev_width;
+    int _screen_height;
+    int _screen_width;
     int _total_frames;
 
     void construct_bvh();

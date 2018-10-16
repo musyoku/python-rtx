@@ -15,6 +15,6 @@ public:
     void look_at(float (&eye)[3], float (&center)[3], float (&up)[3]);
     bool updated();
     void set_updated(bool updated);
-    virtual int type() const = 0;
+    virtual RTXCameraType type() const = 0;
 };
 }

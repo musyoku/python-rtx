@@ -295,6 +295,7 @@ void rtx_cuda_launch_nee_shared_memory_kernel(
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
+    int num_rays_per_pixel,
     size_t shared_memory_bytes,
     int max_bounce,
     int curand_seed)

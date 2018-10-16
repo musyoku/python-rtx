@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 
 __global__ void mcrt_texture_memory_kernel(
-    int ray_array_size,
+    int num_rays,
     int face_vertex_index_array_size,
     int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
@@ -18,6 +18,9 @@ __global__ void mcrt_texture_memory_kernel(
     rtxRGBAPixel* global_serialized_render_array,
     int num_rays_per_thread,
     int max_bounce,
+    RTXCameraType camera_type,
+    float ray_origin_z,
+    int screen_width, int screen_height,
     int curand_seed);
 
 __global__ void mcrt_global_memory_kernel(

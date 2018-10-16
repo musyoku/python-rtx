@@ -26,7 +26,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, -math.pi / 2, 0))
 geometry.set_position((box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(3.0)
+material = rtx.EmissiveMaterial(1.0)
 texture = np.array(Image.open("texture.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(
     [
@@ -51,7 +51,7 @@ scene.add(wall)
 geometry = rtx.PlainGeometry(box_width, box_height)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(3.0)
+material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 texture = np.array(Image.open("texture_2.png"), dtype=np.float32) / 255
 uv_coordinates = np.array(

@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 __global__ void mcrt_texture_memory_kernel(
-    int ray_array_size,
+    int num_rays,
     int face_vertex_index_array_size,
     int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
@@ -24,7 +24,11 @@ __global__ void mcrt_texture_memory_kernel(
     rtxRGBAPixel* global_serialized_render_array,
     int num_active_texture_units,
     int num_rays_per_thread,
+    int num_rays_per_pixel,
     int max_bounce,
+    RTXCameraType camera_type,
+    float ray_origin_z,
+    int screen_width, int screen_height,
     int curand_seed)
 {
     extern __shared__ char shared_memory[];
@@ -68,12 +72,53 @@ __global__ void mcrt_texture_memory_kernel(
     }
     __syncthreads();
 
+    int ray_index_offset = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread;
+    int num_generated_rays_per_pixel = num_rays_per_thread * int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
+
+    int target_pixel_index = ray_index_offset / num_generated_rays_per_pixel;
+    int target_pixel_x = target_pixel_index % screen_width;
+    int target_pixel_y = target_pixel_index / screen_width;
+    float aspect_ratio = float(screen_width) / float(screen_height);
+    int render_buffer_index = ray_index_offset / num_rays_per_thread;
+
+    // 出力する画素
+    rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
+
     for (int n = 0; n < num_rays_per_thread; n++) {
-        int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
-        if (ray_index >= ray_array_size) {
+        int ray_index = ray_index_offset + n;
+        if (ray_index >= num_rays) {
             return;
         }
+        int ray_index_in_pixel = ray_index % num_generated_rays_per_pixel;
+        if (ray_index_in_pixel >= num_rays_per_pixel) {
+            return;
+        }
+
+        // レイの生成
         rtxCUDARay ray;
+        // スーパーサンプリング
+        float4 noise = curand_uniform4(&curand_state);
+        // 方向
+        ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
+        ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;
+        ray.direction.z = -1.0f;
+        // 正規化
+        const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
+        ray.direction.x /= norm;
+        ray.direction.y /= norm;
+        ray.direction.z /= norm;
+        // 始点
+        if (camera_type == RTXCameraTypePerspective) {
+            ray.origin = { 0.0f, 0.0f, ray_origin_z };
+        } else {
+            ray.origin = { ray.direction.x, ray.direction.y, 1.0f };
+        }
+
+        pixel.r += (ray.direction.x + 1.0f) / 2.0f;
+        pixel.g += (ray.direction.y + 1.0f) / 2.0f;
+
+        continue;
+
         float3 hit_point;
         float3 unit_hit_face_normal;
         float4 hit_va;
@@ -90,9 +135,6 @@ __global__ void mcrt_texture_memory_kernel(
             1.0f / ray.direction.y,
             1.0f / ray.direction.z,
         };
-
-        // 出力する画素
-        rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
 
         // 光輸送経路のウェイト
         rtxRGBAColor path_weight = { 1.0f, 1.0f, 1.0f };
@@ -267,8 +309,8 @@ __global__ void mcrt_texture_memory_kernel(
             path_weight.b *= hit_color.b * brdf * cosine_term * inv_pdf;
         }
 
-        global_serialized_render_array[ray_index] = pixel;
     }
+    global_serialized_render_array[render_buffer_index] = pixel;
 }
 
 void rtx_cuda_launch_mcrt_texture_memory_kernel(
@@ -286,8 +328,12 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
     int num_threads,
     int num_blocks,
     int num_rays_per_thread,
+    int num_rays_per_pixel,
     size_t shared_memory_bytes,
     int max_bounce,
+    RTXCameraType camera_type,
+    float ray_origin_z,
+    int screen_width, int screen_height,
     int curand_seed)
 {
     rtx_cuda_check_kernel_arguments();
@@ -311,7 +357,11 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
         gpu_serialized_render_array,
         num_active_texture_units,
         num_rays_per_thread,
+        num_rays_per_pixel,
         max_bounce,
+        camera_type,
+        ray_origin_z,
+        screen_width, screen_height,
         curand_seed);
 
     cudaCheckError(cudaThreadSynchronize());
