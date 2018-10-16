@@ -662,18 +662,18 @@ void Renderer::render_objects(int height, int width)
     int num_rays = height * width * num_rays_per_pixel;
 
     if (should_update_ray) {
-        int num_threads = _cuda_args->num_threads();
+        // int num_threads = _cuda_args->num_threads();
         int num_rays_per_thread = _cuda_args->num_rays_per_thread();
         int n = int(ceil(float(num_rays_per_pixel) / float(num_rays_per_thread)));
         int render_buffer_size = height * width * n;
         _cpu_render_array = rtx::array<rtxRGBAPixel>(render_buffer_size);
         _cpu_render_buffer_array = rtx::array<rtxRGBAPixel>(height * width * 3);
-        serialize_rays(height, width);
-        rtx_cuda_free((void**)&_gpu_ray_array);
+        // serialize_rays(height, width);
+        // rtx_cuda_free((void**)&_gpu_ray_array);
         rtx_cuda_free((void**)&_gpu_render_array);
-        rtx_cuda_malloc((void**)&_gpu_ray_array, _cpu_ray_array.bytes());
+        // rtx_cuda_malloc((void**)&_gpu_ray_array, _cpu_ray_array.bytes());
         rtx_cuda_malloc((void**)&_gpu_render_array, _cpu_render_array.bytes());
-        rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_array, (void*)_cpu_ray_array.data(), _cpu_ray_array.bytes());
+        // rtx_cuda_memcpy_host_to_device((void*)_gpu_ray_array, (void*)_cpu_ray_array.data(), _cpu_ray_array.bytes());
         _screen_height = height;
         _screen_width = width;
     }

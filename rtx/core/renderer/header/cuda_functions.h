@@ -436,7 +436,6 @@
 
 #define rtx_cuda_check_kernel_arguments()                             \
     {                                                                 \
-        assert(gpu_serialized_ray_array != NULL);                     \
         assert(gpu_serialized_face_vertex_index_array != NULL);       \
         assert(gpu_serialized_vertex_array != NULL);                  \
         assert(gpu_serialized_object_array != NULL);                  \

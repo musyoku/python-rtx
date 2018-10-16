@@ -86,9 +86,6 @@ __global__ void mcrt_texture_memory_kernel(
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = ray_index_offset + n;
-        if (ray_index >= num_rays) {
-            return;
-        }
         int ray_index_in_pixel = ray_index % num_generated_rays_per_pixel;
         if (ray_index_in_pixel >= num_rays_per_pixel) {
             return;
@@ -330,7 +327,7 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
 {
     rtx_cuda_check_kernel_arguments();
 
-    cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
+    // cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     cudaBindTexture(0, g_serialized_face_vertex_index_array_texture_ref, gpu_serialized_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size);
     cudaBindTexture(0, g_serialized_vertex_array_texture_ref, gpu_serialized_vertex_array, cudaCreateChannelDesc<float4>(), sizeof(rtxVertex) * vertex_array_size);
     cudaBindTexture(0, g_serialized_threaded_bvh_node_array_texture_ref, gpu_serialized_threaded_bvh_node_array, cudaCreateChannelDesc<float4>(), sizeof(rtxThreadedBVHNode) * threaded_bvh_node_array_size);
@@ -358,7 +355,7 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
 
     cudaCheckError(cudaThreadSynchronize());
 
-    cudaUnbindTexture(g_serialized_ray_array_texture_ref);
+    // cudaUnbindTexture(g_serialized_ray_array_texture_ref);
     cudaUnbindTexture(g_serialized_face_vertex_index_array_texture_ref);
     cudaUnbindTexture(g_serialized_vertex_array_texture_ref);
     cudaUnbindTexture(g_serialized_threaded_bvh_node_array_texture_ref);

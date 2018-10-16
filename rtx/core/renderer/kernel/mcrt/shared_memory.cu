@@ -305,7 +305,7 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
     int curand_seed)
 {
     rtx_cuda_check_kernel_arguments();
-    cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
+    // cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     mcrt_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
         gpu_serialized_face_vertex_index_array, face_vertex_index_array_size,
@@ -323,5 +323,5 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
         max_bounce,
         curand_seed);
     cudaCheckError(cudaThreadSynchronize());
-    cudaUnbindTexture(g_serialized_ray_array_texture_ref);
+    // cudaUnbindTexture(g_serialized_ray_array_texture_ref);
 }
