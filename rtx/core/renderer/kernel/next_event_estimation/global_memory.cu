@@ -78,7 +78,7 @@ __global__ void nee_global_memory_kernel(
         }
         rtxRay ray = global_serialized_ray_array[ray_index];
         float3 hit_point;
-        float3 hit_face_normal;
+        float3 unit_hit_face_normal;
         rtxVertex hit_va;
         rtxVertex hit_vb;
         rtxVertex hit_vc;
@@ -151,9 +151,9 @@ __global__ void nee_global_memory_kernel(
                                 hit_point.y = ray.origin.y + distance * ray.direction.y;
                                 hit_point.z = ray.origin.z + distance * ray.direction.z;
 
-                                hit_face_normal.x = face_normal.x;
-                                hit_face_normal.y = face_normal.y;
-                                hit_face_normal.z = face_normal.z;
+                                unit_hit_face_normal.x = face_normal.x;
+                                unit_hit_face_normal.y = face_normal.y;
+                                unit_hit_face_normal.z = face_normal.z;
 
                                 hit_va = va;
                                 hit_vb = vb;
@@ -185,9 +185,9 @@ __global__ void nee_global_memory_kernel(
                             };
                             const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
 
-                            hit_face_normal.x = normal.x / norm;
-                            hit_face_normal.y = normal.y / norm;
-                            hit_face_normal.z = normal.z / norm;
+                            unit_hit_face_normal.x = normal.x / norm;
+                            unit_hit_face_normal.y = normal.y / norm;
+                            unit_hit_face_normal.z = normal.z / norm;
 
                             did_hit_object = true;
                             hit_object = object;
@@ -205,15 +205,20 @@ __global__ void nee_global_memory_kernel(
             // 反射方向のサンプリング
             float3 unit_next_ray_direction;
             float cosine_term;
-            rtx_cuda_kernel_sample_ray_direction(unit_next_ray_direction, cosine_term, curand_state);
+            rtx_cuda_kernel_sample_ray_direction(
+                unit_hit_face_normal,
+                unit_next_ray_direction,
+                cosine_term,
+                curand_state);
 
             //  衝突点の色を検出
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
+            float brdf = 0.0f;
             if (did_hit_object) {
                 rtx_cuda_kernel_fetch_hit_color_in_linear_memory(
                     hit_point,
-                    hit_face_normal,
+                    unit_hit_face_normal,
                     hit_object,
                     hit_face,
                     hit_color,
@@ -223,6 +228,7 @@ __global__ void nee_global_memory_kernel(
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
                     global_serialized_uv_coordinate_array,
+                    brdf,
                     did_hit_light);
             }
 
@@ -237,9 +243,7 @@ __global__ void nee_global_memory_kernel(
             if (did_hit_object) {
                 rtx_cuda_kernel_update_ray(ray,
                     hit_point,
-                    unit_next_ray_direction,
-                    cosine_term,
-                    path_weight);
+                    unit_next_ray_direction);
             }
         }
 

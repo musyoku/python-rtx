@@ -30,8 +30,8 @@ __global__ void nee_texture_memory_kernel(
     int curand_seed)
 {
     extern __shared__ char shared_memory[];
-    curandStatePhilox4_32_10_t curand_state_philox4;
-    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state_philox4);
+    curandStatePhilox4_32_10_t curand_state;
+    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
 
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
@@ -85,7 +85,7 @@ __global__ void nee_texture_memory_kernel(
         rtxCUDARay shadow_ray;
         rtxCUDARay primary_ray;
         float3 hit_point;
-        float3 hit_face_normal;
+        float3 unit_hit_face_normal;
         float4 hit_va;
         float4 hit_vb;
         float4 hit_vc;
@@ -183,9 +183,9 @@ __global__ void nee_texture_memory_kernel(
                                 hit_point.y = ray->origin.y + distance * ray->direction.y;
                                 hit_point.z = ray->origin.z + distance * ray->direction.z;
 
-                                hit_face_normal.x = face_normal.x;
-                                hit_face_normal.y = face_normal.y;
-                                hit_face_normal.z = face_normal.z;
+                                unit_hit_face_normal.x = face_normal.x;
+                                unit_hit_face_normal.y = face_normal.y;
+                                unit_hit_face_normal.z = face_normal.z;
 
                                 hit_va = va;
                                 hit_vb = vb;
@@ -221,9 +221,9 @@ __global__ void nee_texture_memory_kernel(
                             };
                             const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
 
-                            hit_face_normal.x = normal.x / norm;
-                            hit_face_normal.y = normal.y / norm;
-                            hit_face_normal.z = normal.z / norm;
+                            unit_hit_face_normal.x = normal.x / norm;
+                            unit_hit_face_normal.y = normal.y / norm;
+                            unit_hit_face_normal.z = normal.z / norm;
 
                             did_hit_object = true;
                             hit_object = object;
@@ -260,10 +260,11 @@ __global__ void nee_texture_memory_kernel(
                         shared_serialized_texture_object_array,
                         g_serialized_uv_coordinate_array_texture_ref);
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    float coeff = brdf * sqrtf(attr.brightness) / (2.0f * M_PI);
-                    pixel.r += min(coeff * hit_color.r * path_weight.r * total_light_face_area * g_term, attr.brightness);
-                    pixel.g += min(coeff * hit_color.g * path_weight.g * total_light_face_area * g_term, attr.brightness);
-                    pixel.b += min(coeff * hit_color.b * path_weight.b * total_light_face_area * g_term, attr.brightness);
+                    float emission = sqrtf(attr.brightness) / (2.0f * M_PI);
+                    float inv_pdf = total_light_face_area;
+                    pixel.r += min(path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term, attr.brightness);
+                    pixel.g += min(path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term, attr.brightness);
+                    pixel.b += min(path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term, attr.brightness);
                     // pixel.r += brdf * hit_color.r * path_weight.r * total_light_face_area * g_term;
                     // pixel.g += brdf * hit_color.g * path_weight.g * total_light_face_area * g_term;
                     // pixel.b += brdf * hit_color.b * path_weight.b * total_light_face_area * g_term;
@@ -278,14 +279,17 @@ __global__ void nee_texture_memory_kernel(
                 // 反射方向のサンプリング
                 float3 unit_next_ray_direction;
                 float cosine_term;
-                rtx_cuda_kernel_sample_ray_direction(unit_next_ray_direction,
+                rtx_cuda_kernel_sample_ray_direction(
+                    unit_hit_face_normal,
+                    unit_next_ray_direction,
                     cosine_term,
-                    curand_state_philox4);
+                    curand_state);
 
                 bool did_hit_light = false;
+                brdf = 0.0f;
                 rtx_cuda_kernel_fetch_hit_color_in_texture_memory(
                     hit_point,
-                    hit_face_normal,
+                    unit_hit_face_normal,
                     hit_object,
                     hit_face,
                     hit_color,
@@ -295,6 +299,7 @@ __global__ void nee_texture_memory_kernel(
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
                     g_serialized_uv_coordinate_array_texture_ref,
+                    brdf,
                     did_hit_light);
 
                 // 光源に当たった場合トレースを打ち切り
@@ -302,9 +307,11 @@ __global__ void nee_texture_memory_kernel(
                     if (iter > 0) {
                         break;
                     }
-                    pixel.r += hit_color.r * path_weight.r;
-                    pixel.g += hit_color.g * path_weight.g;
-                    pixel.b += hit_color.b * path_weight.b;
+                    // 最初のパスで光源に当たった場合のみ寄与を加算
+                    float brightness = brdf;
+                    pixel.r += hit_color.r * path_weight.r * brightness;
+                    pixel.g += hit_color.g * path_weight.g * brightness;
+                    pixel.b += hit_color.b * path_weight.b * brightness;
                     break;
                 }
 
@@ -316,26 +323,13 @@ __global__ void nee_texture_memory_kernel(
                 ray->direction.y = unit_next_ray_direction.y;
                 ray->direction.z = unit_next_ray_direction.z;
 
-                next_path_weight.r = path_weight.r * M_PI * hit_color.r * cosine_term;
-                next_path_weight.g = path_weight.g * M_PI * hit_color.g * cosine_term;
-                next_path_weight.b = path_weight.b * M_PI * hit_color.b * cosine_term;
-
-                int material_type = hit_object.layerd_material_types.outside;
-                if (material_type == RTXMaterialTypeLambert) {
-                    rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    brdf = attr.albedo / M_PI;
-                } else if (material_type == RTXMaterialTypeOrenNayar) {
-                    rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    brdf = attr.albedo / M_PI;
-                } else if (material_type == RTXMaterialTypeEmissive) {
-                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    next_path_weight.r *= attr.brightness;
-                    next_path_weight.g *= attr.brightness;
-                    next_path_weight.b *= attr.brightness;
-                }
+                float inv_pdf = 2.0f * M_PI;
+                next_path_weight.r = path_weight.r * brdf * hit_color.r * cosine_term * inv_pdf;
+                next_path_weight.g = path_weight.g * brdf * hit_color.g * cosine_term * inv_pdf;
+                next_path_weight.b = path_weight.b * brdf * hit_color.b * cosine_term * inv_pdf;
 
                 // 光源のサンプリング
-                float4 uniform4 = curand_uniform4(&curand_state_philox4);
+                float4 uniform4 = curand_uniform4(&curand_state);
                 const int table_index = floorf(uniform4.x * float(light_sampling_table_size));
                 const int object_index = shared_light_sampling_table[table_index];
                 rtxObject object = shared_serialized_object_array[object_index];
@@ -345,7 +339,7 @@ __global__ void nee_texture_memory_kernel(
                 const float4 va = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
                 const float4 vb = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.y + object.serialized_vertex_index_offset);
                 const float4 vc = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.z + object.serialized_vertex_index_offset);
-                float4 weight = curand_uniform4(&curand_state_philox4);
+                float4 weight = curand_uniform4(&curand_state);
                 const float sum = weight.x + weight.y + weight.z;
                 weight.x /= sum;
                 weight.y /= sum;
@@ -367,9 +361,9 @@ __global__ void nee_texture_memory_kernel(
                 shadow_ray.direction.y /= light_distance;
                 shadow_ray.direction.z /= light_distance;
 
-                float dot1 = shadow_ray.direction.x * hit_face_normal.x
-                    + shadow_ray.direction.y * hit_face_normal.y
-                    + shadow_ray.direction.z * hit_face_normal.z;
+                float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
+                    + shadow_ray.direction.y * unit_hit_face_normal.y
+                    + shadow_ray.direction.z * unit_hit_face_normal.z;
                 if (dot1 <= 0.0f) {
                     ray = &primary_ray;
                     iter += 1;
@@ -399,14 +393,6 @@ __global__ void nee_texture_memory_kernel(
                     dot2 *= -1.0f;
                 }
                 g_term = dot1 * dot2 / (light_distance * light_distance);
-
-                if (g_term > 1 && threadIdx.x == 78 && 289024 < ray_index && ray_index <= 289152) {
-                    printf("hit_point: %f, %f, %f\n", hit_point.x, hit_point.y, hit_point.z);
-                    printf("random_point: %f, %f, %f\n", random_point.x, random_point.y, random_point.z);
-                    printf("shadow_ray.direction: %f, %f, %f\n", shadow_ray.direction.x, shadow_ray.direction.y, shadow_ray.direction.z);
-
-                    printf("G: %f = %f * %f / %f iter: %d thread: %d\n", g_term, dot1, dot2, (light_distance * light_distance), iter, threadIdx.x);
-                }
                 ray = &shadow_ray;
             }
         }

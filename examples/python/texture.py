@@ -80,8 +80,8 @@ geometry.set_rotation((-math.pi / 2, 0, 0))
 geometry.set_position((0, -box_height / 2, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
-ceil = rtx.Object(geometry, material, mapping)
-scene.add(ceil)
+floor = rtx.Object(geometry, material, mapping)
+scene.add(floor)
 
 # place bunny
 faces, vertices = gm.load("../geometries/bunny")
@@ -98,8 +98,9 @@ screen_width = 96
 screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 128
+rt_args.num_rays_per_pixel = 512
 rt_args.max_bounce = 5
+rt_args.next_event_estimation_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 256

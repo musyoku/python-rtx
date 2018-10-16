@@ -162,6 +162,7 @@
     color_mapping_array,                                                                      \
     texture_object_array,                                                                     \
     uv_coordinate_array,                                                                      \
+    brdf,                                                                                     \
     did_hit_light)                                                                            \
     {                                                                                         \
         rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
@@ -176,6 +177,7 @@
             color_mapping_array,                                                              \
             texture_object_array,                                                             \
             uv_coordinate_array,                                                              \
+            brdf,                                                                             \
             did_hit_light);                                                                   \
     }
 #define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(                                     \
@@ -190,6 +192,7 @@
     color_mapping_array,                                                                       \
     texture_object_array,                                                                      \
     uv_coordinate_array,                                                                       \
+    brdf,                                                                                      \
     did_hit_light)                                                                             \
     {                                                                                          \
         rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
@@ -204,6 +207,7 @@
             color_mapping_array,                                                               \
             texture_object_array,                                                              \
             uv_coordinate_array,                                                               \
+            brdf,                                                                              \
             did_hit_light);                                                                    \
     }
 
@@ -220,6 +224,7 @@
     color_mapping_array,                                                                                                                                                                                   \
     texture_object_array,                                                                                                                                                                                  \
     uv_coordinate_array,                                                                                                                                                                                   \
+    brdf,                                                                                                                                                                                                  \
     did_hit_light)                                                                                                                                                                                         \
     {                                                                                                                                                                                                      \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
@@ -261,9 +266,7 @@
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
             float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                                 \
-            hit_color.r *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
-            hit_color.g *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
-            hit_color.b *= attr.albedo * cos_ref / M_PI;                                                                                                                                                   \
+            brdf = attr.albedo * cos_ref / M_PI;                                                                                                                                                           \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
             /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                                       \
             rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
@@ -296,12 +299,11 @@
             cross_ref.z /= norm;                                                                                                                                                                           \
             const float cos_phi = cross_view.x * cross_ref.x + cross_view.y * cross_ref.y + cross_view.z * cross_ref.z;                                                                                    \
             const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                             \
-            hit_color.r *= coeff / M_PI;                                                                                                                                                                   \
-            hit_color.g *= coeff / M_PI;                                                                                                                                                                   \
-            hit_color.b *= coeff / M_PI;                                                                                                                                                                   \
+            brdf = coeff / M_PI;                                                                                                                                                                           \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
             rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
+            brdf = attr.brightness;                                                                                                                                                                        \
         }                                                                                                                                                                                                  \
     }
 
@@ -398,6 +400,7 @@
     }
 
 #define rtx_cuda_kernel_sample_ray_direction(                                                                                       \
+    unit_hit_face_normal,                                                                                                           \
     direction,                                                                                                                      \
     cosine_term,                                                                                                                    \
     curand_state)                                                                                                                   \
@@ -407,7 +410,7 @@
         unit_diffuse.x /= norm;                                                                                                     \
         unit_diffuse.y /= norm;                                                                                                     \
         unit_diffuse.z /= norm;                                                                                                     \
-        cosine_term = hit_face_normal.x * unit_diffuse.x + hit_face_normal.y * unit_diffuse.y + hit_face_normal.z * unit_diffuse.z; \
+        cosine_term = unit_hit_face_normal.x * unit_diffuse.x + unit_hit_face_normal.y * unit_diffuse.y + unit_hit_face_normal.z * unit_diffuse.z; \
         if (cosine_term < 0.0f) {                                                                                                   \
             unit_diffuse.x *= -1;                                                                                                   \
             unit_diffuse.y *= -1;                                                                                                   \
@@ -419,25 +422,20 @@
         direction.z = unit_diffuse.z;                                                                                               \
     }
 
-#define rtx_cuda_kernel_update_ray(                        \
-    ray,                                                   \
-    hit_point,                                             \
-    unit_next_ray_direction,                               \
-    cosine_term,                                           \
-    path_weight)                                           \
-    {                                                      \
-        ray.origin.x = hit_point.x;                        \
-        ray.origin.y = hit_point.y;                        \
-        ray.origin.z = hit_point.z;                        \
-        ray.direction.x = unit_next_ray_direction.x;       \
-        ray.direction.y = unit_next_ray_direction.y;       \
-        ray.direction.z = unit_next_ray_direction.z;       \
-        ray_direction_inv.x = 1.0f / ray.direction.x;      \
-        ray_direction_inv.y = 1.0f / ray.direction.y;      \
-        ray_direction_inv.z = 1.0f / ray.direction.z;      \
-        path_weight.r *= M_PI * hit_color.r * cosine_term; \
-        path_weight.g *= M_PI * hit_color.g * cosine_term; \
-        path_weight.b *= M_PI * hit_color.b * cosine_term; \
+#define rtx_cuda_kernel_update_ray(                   \
+    ray,                                              \
+    hit_point,                                        \
+    unit_next_ray_direction)                          \
+    {                                                 \
+        ray.origin.x = hit_point.x;                   \
+        ray.origin.y = hit_point.y;                   \
+        ray.origin.z = hit_point.z;                   \
+        ray.direction.x = unit_next_ray_direction.x;  \
+        ray.direction.y = unit_next_ray_direction.y;  \
+        ray.direction.z = unit_next_ray_direction.z;  \
+        ray_direction_inv.x = 1.0f / ray.direction.x; \
+        ray_direction_inv.y = 1.0f / ray.direction.y; \
+        ray_direction_inv.z = 1.0f / ray.direction.z; \
     }
 
 #define rtx_cuda_check_kernel_arguments()                             \
