@@ -76,6 +76,9 @@ __global__ void mcrt_texture_memory_kernel(
     int num_generated_rays_per_pixel = num_rays_per_thread * int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
 
     int target_pixel_index = ray_index_offset / num_generated_rays_per_pixel;
+    if (target_pixel_index >= screen_width * screen_height) {
+        return;
+    }
     int target_pixel_x = target_pixel_index % screen_width;
     int target_pixel_y = target_pixel_index / screen_width;
     float aspect_ratio = float(screen_width) / float(screen_height);
@@ -83,6 +86,19 @@ __global__ void mcrt_texture_memory_kernel(
 
     // 出力する画素
     rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    // float4 supersampling_noise;
+    // supersampling_noise = curand_uniform4(&curand_state);
+
+    // uint32_t w = curand_seed;
+    // uint32_t x = w << 13;
+    // uint32_t y = (w >> 9) ^ (x << 6);
+    // uint32_t z = y >> 7;
+
+    unsigned long xors_x = curand_seed;
+    unsigned long xors_y = 362436069;
+    unsigned long xors_z = 521288629;
+    unsigned long xors_w = 88675123;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = ray_index_offset + n;
@@ -94,7 +110,22 @@ __global__ void mcrt_texture_memory_kernel(
         // レイの生成
         rtxCUDARay ray;
         // スーパーサンプリング
-        float4 noise = curand_uniform4(&curand_state);
+        float2 noise;
+
+        unsigned long t = xors_x ^ (xors_x << 11);
+        xors_x = xors_y;
+        xors_y = xors_z;
+        xors_z = xors_w;
+        xors_w = (xors_w ^ (xors_w >> 19)) ^ (t ^ (t >> 8));
+        noise.x = float(xors_w & 0xFFFF) / 65535.0;
+
+        t = xors_x ^ (xors_x << 11);
+        xors_x = xors_y;
+        xors_y = xors_z;
+        xors_z = xors_w;
+        xors_w = (xors_w ^ (xors_w >> 19)) ^ (t ^ (t >> 8));
+        noise.y = float(xors_w & 0xFFFF) / 65535.0;
+
         // 方向
         ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
         ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;
@@ -297,7 +328,6 @@ __global__ void mcrt_texture_memory_kernel(
             path_weight.g *= hit_color.g * brdf * cosine_term * inv_pdf;
             path_weight.b *= hit_color.b * brdf * cosine_term * inv_pdf;
         }
-
     }
     global_serialized_render_array[render_buffer_index] = pixel;
 }
