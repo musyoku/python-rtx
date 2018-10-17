@@ -2,7 +2,7 @@
 
 // インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
 
-#define rtx_cuda_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
+#define __rtx_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
     {                                                                                \
         const float eps = 0.000001;                                                  \
         float3 edge_ba = {                                                           \
@@ -62,7 +62,7 @@
         }                                                                            \
     }
 
-#define rtx_cuda_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                \
+#define __rtx_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -89,7 +89,7 @@
         }                                                                                                                          \
     }
 
-#define rtx_cuda_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                      \
+#define __rtx_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                      \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -180,7 +180,7 @@
             brdf,                                                               \
             did_hit_light);                                                     \
     }
-#define rtx_cuda_fetch_hit_color_in_texture_memory(                              \
+#define __rtx_fetch_hit_color_in_texture_memory(                                 \
     hit_point,                                                                   \
     hit_face_normal,                                                             \
     hit_object,                                                                  \
@@ -395,7 +395,19 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_sample_ray_direction(                                                                                                             \
+#define __rtx_fetch_bvh_node_in_texture_memory(node, texture_ref, node_index)         \
+    {                                                                                  \
+        float4 attributes_as_float4 = tex1Dfetch(texture_ref, node_index * 3 + 0);     \
+        int4* attributes_as_int4_ptr = reinterpret_cast<int4*>(&attributes_as_float4); \
+        node.hit_node_index = attributes_as_int4_ptr->x;                               \
+        node.miss_node_index = attributes_as_int4_ptr->y;                              \
+        node.assigned_face_index_start = attributes_as_int4_ptr->z;                    \
+        node.assigned_face_index_end = attributes_as_int4_ptr->w;                      \
+        node.aabb_max = tex1Dfetch(texture_ref, node_index * 3 + 1);                   \
+        node.aabb_min = tex1Dfetch(texture_ref, node_index * 3 + 2);                   \
+    }
+
+#define __rtx_sample_ray_direction(                                                                                                                \
     unit_hit_face_normal,                                                                                                                          \
     direction,                                                                                                                                     \
     cosine_term,                                                                                                                                   \
@@ -418,7 +430,7 @@
         direction.z = unit_diffuse.z;                                                                                                              \
     }
 
-#define rtx_cuda_update_ray(                          \
+#define __rtx_update_ray(                             \
     ray,                                              \
     hit_point,                                        \
     unit_next_ray_direction)                          \
