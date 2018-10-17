@@ -87,14 +87,7 @@ __global__ void mcrt_texture_memory_kernel(
     // 出力する画素
     rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    // float4 supersampling_noise;
-    // supersampling_noise = curand_uniform4(&curand_state);
-
-    // uint32_t w = curand_seed;
-    // uint32_t x = w << 13;
-    // uint32_t y = (w >> 9) ^ (x << 6);
-    // uint32_t z = y >> 7;
-
+    // xorshiftのシード
     unsigned long xors_x = curand_seed;
     unsigned long xors_y = 362436069;
     unsigned long xors_z = 521288629;
@@ -128,6 +121,12 @@ __global__ void mcrt_texture_memory_kernel(
         } else {
             ray.origin = { ray.direction.x, ray.direction.y, ray_origin_z };
         }
+        // BVHのAABBとの衝突判定で使う
+        float3 ray_direction_inv = {
+            1.0f / ray.direction.x,
+            1.0f / ray.direction.y,
+            1.0f / ray.direction.z,
+        };
 
         float3 hit_point;
         float3 unit_hit_face_normal;
@@ -136,12 +135,6 @@ __global__ void mcrt_texture_memory_kernel(
         float4 hit_vc;
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
-
-        float3 ray_direction_inv = {
-            1.0f / ray.direction.x,
-            1.0f / ray.direction.y,
-            1.0f / ray.direction.z,
-        };
 
         // 光輸送経路のウェイト
         rtxRGBAColor path_weight = { 1.0f, 1.0f, 1.0f };
@@ -303,7 +296,11 @@ __global__ void mcrt_texture_memory_kernel(
                 break;
             }
 
-            __rtx_update_ray(ray, hit_point, unit_next_ray_direction);
+            __rtx_update_ray(
+                ray,
+                ray_direction_inv,
+                hit_point,
+                unit_next_ray_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;

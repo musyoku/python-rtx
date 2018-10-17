@@ -735,6 +735,12 @@ void Renderer::render_objects(int height, int width)
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("reduce_sum: %lf msec\n", elapsed);
 }
+void Renderer::check_arguments()
+{
+    if(_rt_args->num_rays_per_pixel() < _cuda_args->num_rays_per_thread()){
+        throw std::runtime_error("rt_args.num_rays_per_pixel must be grater than cuda_args.num_rays_per_thread");
+    }
+}
 void Renderer::render(
     std::shared_ptr<Scene> scene,
     std::shared_ptr<Camera> camera,
@@ -746,6 +752,7 @@ void Renderer::render(
     _camera = camera;
     _rt_args = rt_args;
     _cuda_args = cuda_args;
+    check_arguments();
 
     int height = render_buffer.shape(0);
     int width = render_buffer.shape(1);

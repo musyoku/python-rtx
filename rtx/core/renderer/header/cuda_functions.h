@@ -2,7 +2,7 @@
 
 // インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
 
-#define __rtx_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
+#define __rtx_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance)    \
     {                                                                                \
         const float eps = 0.000001;                                                  \
         float3 edge_ba = {                                                           \
@@ -62,7 +62,7 @@
         }                                                                            \
     }
 
-#define __rtx_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                \
+#define __rtx_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                   \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -89,7 +89,7 @@
         }                                                                                                                          \
     }
 
-#define __rtx_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                      \
+#define __rtx_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                         \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -395,7 +395,7 @@
         }                                                                                                                                                                                                  \
     }
 
-#define __rtx_fetch_bvh_node_in_texture_memory(node, texture_ref, node_index)         \
+#define __rtx_fetch_bvh_node_in_texture_memory(node, texture_ref, node_index)          \
     {                                                                                  \
         float4 attributes_as_float4 = tex1Dfetch(texture_ref, node_index * 3 + 0);     \
         int4* attributes_as_int4_ptr = reinterpret_cast<int4*>(&attributes_as_float4); \
@@ -432,6 +432,7 @@
 
 #define __rtx_update_ray(                             \
     ray,                                              \
+    ray_direction_inv,                                \
     hit_point,                                        \
     unit_next_ray_direction)                          \
     {                                                 \

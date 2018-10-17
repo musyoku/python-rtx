@@ -57,6 +57,7 @@ private:
     int _screen_width;
     int _total_frames;
 
+    void check_arguments();
     void construct_bvh();
     void transform_objects_to_view_space();
     void transform_geometries_to_view_space();

@@ -268,9 +268,6 @@ __global__ void nee_shared_memory_kernel(
             }
 
             if (did_hit_object) {
-                __rtx_update_ray(ray,
-                    hit_point,
-                    unit_next_ray_direction);
             }
         }
 

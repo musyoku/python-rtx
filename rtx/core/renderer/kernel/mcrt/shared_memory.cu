@@ -268,7 +268,7 @@ __global__ void mcrt_shared_memory_kernel(
                 break;
             }
 
-            __rtx_update_ray(ray, hit_point, unit_next_ray_direction);
+            __rtx_update_ray(ray, ray_direction_inv, hit_point, unit_next_ray_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;
