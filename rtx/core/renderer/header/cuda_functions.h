@@ -2,67 +2,67 @@
 
 // インライン関数でも速度が落ちるのですべてプリプロセッサで埋め込む
 
-#define rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
-    {                                                                                       \
-        const float eps = 0.000001;                                                         \
-        float3 edge_ba = {                                                                  \
-            vb.x - va.x,                                                                    \
-            vb.y - va.y,                                                                    \
-            vb.z - va.z,                                                                    \
-        };                                                                                  \
-        float3 edge_ca = {                                                                  \
-            vc.x - va.x,                                                                    \
-            vc.y - va.y,                                                                    \
-            vc.z - va.z,                                                                    \
-        };                                                                                  \
-        float3 h = {                                                                        \
-            ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y,                      \
-            ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z,                      \
-            ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x,                      \
-        };                                                                                  \
-        float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;                      \
-        if (f > -eps && f < eps) {                                                          \
-            continue;                                                                       \
-        }                                                                                   \
-        f = 1.0f / f;                                                                       \
-        s.x = ray.origin.x - va.x;                                                          \
-        s.y = ray.origin.y - va.y;                                                          \
-        s.z = ray.origin.z - va.z;                                                          \
-        float dot = s.x * h.x + s.y * h.y + s.z * h.z;                                      \
-        float u = f * dot;                                                                  \
-        if (u < 0.0f || u > 1.0f) {                                                         \
-            continue;                                                                       \
-        }                                                                                   \
-        h.x = s.y * edge_ba.z - s.z * edge_ba.y;                                            \
-        h.y = s.z * edge_ba.x - s.x * edge_ba.z;                                            \
-        h.z = s.x * edge_ba.y - s.y * edge_ba.x;                                            \
-        dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z;        \
-        float v = f * dot;                                                                  \
-        if (v < 0.0f || u + v > 1.0f) {                                                     \
-            continue;                                                                       \
-        }                                                                                   \
-        s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                                \
-        s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                                \
-        s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                                \
-        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;                      \
-        s.x = s.x / norm;                                                                   \
-        s.y = s.y / norm;                                                                   \
-        s.z = s.z / norm;                                                                   \
-        dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z;        \
-        if (dot > 0.0f) {                                                                   \
-            continue;                                                                       \
-        }                                                                                   \
-        dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;                          \
-        t = f * dot;                                                                        \
-        if (t <= 0.001f) {                                                                  \
-            continue;                                                                       \
-        }                                                                                   \
-        if (min_distance <= t) {                                                            \
-            continue;                                                                       \
-        }                                                                                   \
+#define rtx_cuda_intersect_triangle_or_continue(ray, va, vb, vc, s, t, min_distance) \
+    {                                                                                \
+        const float eps = 0.000001;                                                  \
+        float3 edge_ba = {                                                           \
+            vb.x - va.x,                                                             \
+            vb.y - va.y,                                                             \
+            vb.z - va.z,                                                             \
+        };                                                                           \
+        float3 edge_ca = {                                                           \
+            vc.x - va.x,                                                             \
+            vc.y - va.y,                                                             \
+            vc.z - va.z,                                                             \
+        };                                                                           \
+        float3 h = {                                                                 \
+            ray.direction.y * edge_ca.z - ray.direction.z * edge_ca.y,               \
+            ray.direction.z * edge_ca.x - ray.direction.x * edge_ca.z,               \
+            ray.direction.x * edge_ca.y - ray.direction.y * edge_ca.x,               \
+        };                                                                           \
+        float f = edge_ba.x * h.x + edge_ba.y * h.y + edge_ba.z * h.z;               \
+        if (f > -eps && f < eps) {                                                   \
+            continue;                                                                \
+        }                                                                            \
+        f = 1.0f / f;                                                                \
+        s.x = ray.origin.x - va.x;                                                   \
+        s.y = ray.origin.y - va.y;                                                   \
+        s.z = ray.origin.z - va.z;                                                   \
+        float dot = s.x * h.x + s.y * h.y + s.z * h.z;                               \
+        float u = f * dot;                                                           \
+        if (u < 0.0f || u > 1.0f) {                                                  \
+            continue;                                                                \
+        }                                                                            \
+        h.x = s.y * edge_ba.z - s.z * edge_ba.y;                                     \
+        h.y = s.z * edge_ba.x - s.x * edge_ba.z;                                     \
+        h.z = s.x * edge_ba.y - s.y * edge_ba.x;                                     \
+        dot = h.x * ray.direction.x + h.y * ray.direction.y + h.z * ray.direction.z; \
+        float v = f * dot;                                                           \
+        if (v < 0.0f || u + v > 1.0f) {                                              \
+            continue;                                                                \
+        }                                                                            \
+        s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                         \
+        s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                         \
+        s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                         \
+        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;               \
+        s.x = s.x / norm;                                                            \
+        s.y = s.y / norm;                                                            \
+        s.z = s.z / norm;                                                            \
+        dot = s.x * ray.direction.x + s.y * ray.direction.y + s.z * ray.direction.z; \
+        if (dot > 0.0f) {                                                            \
+            continue;                                                                \
+        }                                                                            \
+        dot = edge_ca.x * h.x + edge_ca.y * h.y + edge_ca.z * h.z;                   \
+        t = f * dot;                                                                 \
+        if (t <= 0.001f) {                                                           \
+            continue;                                                                \
+        }                                                                            \
+        if (min_distance <= t) {                                                     \
+            continue;                                                                \
+        }                                                                            \
     }
 
-#define rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                         \
+#define rtx_cuda_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                \
     {                                                                                                                              \
         float4 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
@@ -89,7 +89,7 @@
         }                                                                                                                          \
     }
 
-#define rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)               \
+#define rtx_cuda_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                      \
     {                                                                                                                          \
         float tmin = ((ray_direction_inv.x < 0 ? node.aabb_max.x : node.aabb_min.x) - ray.origin.x) * ray_direction_inv.x;     \
         float tmax = ((ray_direction_inv.x < 0 ? node.aabb_min.x : node.aabb_max.x) - ray.origin.x) * ray_direction_inv.x;     \
@@ -124,7 +124,7 @@
         }                                                                                                                      \
     }
 
-#define rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory(                                                       \
+#define rtx_cuda_fetch_uv_coordinate_in_linear_memory(                                                              \
     x,                                                                                                              \
     y,                                                                                                              \
     uv_coordinate_array,                                                                                            \
@@ -137,7 +137,7 @@
         x = max(0.0f, lambda.x * uv_a.u + lambda.y * uv_b.u + lambda.z * uv_c.u);                                   \
         y = max(0.0f, lambda.x * uv_a.v + lambda.y * uv_b.v + lambda.z * uv_c.v);                                   \
     }
-#define rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory(                                                         \
+#define rtx_cuda_fetch_uv_coordinate_in_texture_memory(                                                                \
     x,                                                                                                                 \
     y,                                                                                                                 \
     uv_coordinate_array,                                                                                               \
@@ -150,68 +150,68 @@
         x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                      \
         y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                      \
     }
-#define rtx_cuda_kernel_fetch_hit_color_in_linear_memory(                                     \
-    hit_point,                                                                                \
-    hit_face_normal,                                                                          \
-    hit_object,                                                                               \
-    hit_face,                                                                                 \
-    hit_color,                                                                                \
-    unit_current_ray_direction,                                                               \
-    unit_next_ray_direction,                                                                  \
-    material_attribute_byte_array,                                                            \
-    color_mapping_array,                                                                      \
-    texture_object_array,                                                                     \
-    uv_coordinate_array,                                                                      \
-    brdf,                                                                                     \
-    did_hit_light)                                                                            \
-    {                                                                                         \
-        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
-            hit_point,                                                                        \
-            hit_face_normal,                                                                  \
-            hit_object,                                                                       \
-            hit_face,                                                                         \
-            hit_color,                                                                        \
-            unit_current_ray_direction,                                                       \
-            unit_next_ray_direction,                                                          \
-            material_attribute_byte_array,                                                    \
-            color_mapping_array,                                                              \
-            texture_object_array,                                                             \
-            uv_coordinate_array,                                                              \
-            brdf,                                                                             \
-            did_hit_light);                                                                   \
+#define rtx_cuda_fetch_hit_color_in_linear_memory(                              \
+    hit_point,                                                                  \
+    hit_face_normal,                                                            \
+    hit_object,                                                                 \
+    hit_face,                                                                   \
+    hit_color,                                                                  \
+    unit_current_ray_direction,                                                 \
+    unit_next_ray_direction,                                                    \
+    material_attribute_byte_array,                                              \
+    color_mapping_array,                                                        \
+    texture_object_array,                                                       \
+    uv_coordinate_array,                                                        \
+    brdf,                                                                       \
+    did_hit_light)                                                              \
+    {                                                                           \
+        rtx_cuda_fetch_hit_color(rtx_cuda_fetch_uv_coordinate_in_linear_memory, \
+            hit_point,                                                          \
+            hit_face_normal,                                                    \
+            hit_object,                                                         \
+            hit_face,                                                           \
+            hit_color,                                                          \
+            unit_current_ray_direction,                                         \
+            unit_next_ray_direction,                                            \
+            material_attribute_byte_array,                                      \
+            color_mapping_array,                                                \
+            texture_object_array,                                               \
+            uv_coordinate_array,                                                \
+            brdf,                                                               \
+            did_hit_light);                                                     \
     }
-#define rtx_cuda_kernel_fetch_hit_color_in_texture_memory(                                     \
-    hit_point,                                                                                 \
-    hit_face_normal,                                                                           \
-    hit_object,                                                                                \
-    hit_face,                                                                                  \
-    hit_color,                                                                                 \
-    unit_current_ray_direction,                                                                \
-    unit_next_ray_direction,                                                                   \
-    material_attribute_byte_array,                                                             \
-    color_mapping_array,                                                                       \
-    texture_object_array,                                                                      \
-    uv_coordinate_array,                                                                       \
-    brdf,                                                                                      \
-    did_hit_light)                                                                             \
-    {                                                                                          \
-        rtx_cuda_kernel_fetch_hit_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
-            hit_point,                                                                         \
-            hit_face_normal,                                                                   \
-            hit_object,                                                                        \
-            hit_face,                                                                          \
-            hit_color,                                                                         \
-            unit_current_ray_direction,                                                        \
-            unit_next_ray_direction,                                                           \
-            material_attribute_byte_array,                                                     \
-            color_mapping_array,                                                               \
-            texture_object_array,                                                              \
-            uv_coordinate_array,                                                               \
-            brdf,                                                                              \
-            did_hit_light);                                                                    \
+#define rtx_cuda_fetch_hit_color_in_texture_memory(                              \
+    hit_point,                                                                   \
+    hit_face_normal,                                                             \
+    hit_object,                                                                  \
+    hit_face,                                                                    \
+    hit_color,                                                                   \
+    unit_current_ray_direction,                                                  \
+    unit_next_ray_direction,                                                     \
+    material_attribute_byte_array,                                               \
+    color_mapping_array,                                                         \
+    texture_object_array,                                                        \
+    uv_coordinate_array,                                                         \
+    brdf,                                                                        \
+    did_hit_light)                                                               \
+    {                                                                            \
+        rtx_cuda_fetch_hit_color(rtx_cuda_fetch_uv_coordinate_in_texture_memory, \
+            hit_point,                                                           \
+            hit_face_normal,                                                     \
+            hit_object,                                                          \
+            hit_face,                                                            \
+            hit_color,                                                           \
+            unit_current_ray_direction,                                          \
+            unit_next_ray_direction,                                             \
+            material_attribute_byte_array,                                       \
+            color_mapping_array,                                                 \
+            texture_object_array,                                                \
+            uv_coordinate_array,                                                 \
+            brdf,                                                                \
+            did_hit_light);                                                      \
     }
 
-#define rtx_cuda_kernel_fetch_hit_color(                                                                                                                                                                   \
+#define rtx_cuda_fetch_hit_color(                                                                                                                                                                          \
     fetch_uv_coordinates,                                                                                                                                                                                  \
     hit_point,                                                                                                                                                                                             \
     hit_face_normal,                                                                                                                                                                                       \
@@ -307,47 +307,47 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_kernel_fetch_light_color_in_linear_memory(                                     \
-    hit_point,                                                                                  \
-    hit_object,                                                                                 \
-    hit_face,                                                                                   \
-    hit_color,                                                                                  \
-    material_attribute_byte_array,                                                              \
-    color_mapping_array,                                                                        \
-    texture_object_array,                                                                       \
-    uv_coordinate_array)                                                                        \
-    {                                                                                           \
-        rtx_cuda_kernel_fetch_light_color(rtx_cuda_kernel_fetch_uv_coordinate_in_linear_memory, \
-            hit_point,                                                                          \
-            hit_object,                                                                         \
-            hit_face,                                                                           \
-            hit_color,                                                                          \
-            material_attribute_byte_array,                                                      \
-            color_mapping_array,                                                                \
-            texture_object_array,                                                               \
-            uv_coordinate_array)                                                                \
+#define rtx_cuda_fetch_light_color_in_linear_memory(                              \
+    hit_point,                                                                    \
+    hit_object,                                                                   \
+    hit_face,                                                                     \
+    hit_color,                                                                    \
+    material_attribute_byte_array,                                                \
+    color_mapping_array,                                                          \
+    texture_object_array,                                                         \
+    uv_coordinate_array)                                                          \
+    {                                                                             \
+        rtx_cuda_fetch_light_color(rtx_cuda_fetch_uv_coordinate_in_linear_memory, \
+            hit_point,                                                            \
+            hit_object,                                                           \
+            hit_face,                                                             \
+            hit_color,                                                            \
+            material_attribute_byte_array,                                        \
+            color_mapping_array,                                                  \
+            texture_object_array,                                                 \
+            uv_coordinate_array)                                                  \
     }
-#define rtx_cuda_kernel_fetch_light_color_in_texture_memory(                                     \
-    hit_point,                                                                                   \
-    hit_object,                                                                                  \
-    hit_face,                                                                                    \
-    hit_color,                                                                                   \
-    material_attribute_byte_array,                                                               \
-    color_mapping_array,                                                                         \
-    texture_object_array,                                                                        \
-    uv_coordinate_array)                                                                         \
-    {                                                                                            \
-        rtx_cuda_kernel_fetch_light_color(rtx_cuda_kernel_fetch_uv_coordinate_in_texture_memory, \
-            hit_point,                                                                           \
-            hit_object,                                                                          \
-            hit_face,                                                                            \
-            hit_color,                                                                           \
-            material_attribute_byte_array,                                                       \
-            color_mapping_array,                                                                 \
-            texture_object_array,                                                                \
-            uv_coordinate_array)                                                                 \
+#define rtx_cuda_fetch_light_color_in_texture_memory(                              \
+    hit_point,                                                                     \
+    hit_object,                                                                    \
+    hit_face,                                                                      \
+    hit_color,                                                                     \
+    material_attribute_byte_array,                                                 \
+    color_mapping_array,                                                           \
+    texture_object_array,                                                          \
+    uv_coordinate_array)                                                           \
+    {                                                                              \
+        rtx_cuda_fetch_light_color(rtx_cuda_fetch_uv_coordinate_in_texture_memory, \
+            hit_point,                                                             \
+            hit_object,                                                            \
+            hit_face,                                                              \
+            hit_color,                                                             \
+            material_attribute_byte_array,                                         \
+            color_mapping_array,                                                   \
+            texture_object_array,                                                  \
+            uv_coordinate_array)                                                   \
     }
-#define rtx_cuda_kernel_fetch_light_color(                                                                                                                                                                 \
+#define rtx_cuda_fetch_light_color(                                                                                                                                                                        \
     fetch_uv_coordinates,                                                                                                                                                                                  \
     hit_point,                                                                                                                                                                                             \
     hit_object,                                                                                                                                                                                            \
@@ -395,30 +395,30 @@
         }                                                                                                                                                                                                  \
     }
 
-#define rtx_cuda_kernel_sample_ray_direction(                                                                                       \
-    unit_hit_face_normal,                                                                                                           \
-    direction,                                                                                                                      \
-    cosine_term,                                                                                                                    \
-    curand_state)                                                                                                                   \
-    {                                                                                                                               \
-        float4 unit_diffuse = curand_normal4(&curand_state);                                                                        \
-        float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);     \
-        unit_diffuse.x /= norm;                                                                                                     \
-        unit_diffuse.y /= norm;                                                                                                     \
-        unit_diffuse.z /= norm;                                                                                                     \
+#define rtx_cuda_sample_ray_direction(                                                                                                             \
+    unit_hit_face_normal,                                                                                                                          \
+    direction,                                                                                                                                     \
+    cosine_term,                                                                                                                                   \
+    curand_state)                                                                                                                                  \
+    {                                                                                                                                              \
+        float4 unit_diffuse = curand_normal4(&curand_state);                                                                                       \
+        float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);                    \
+        unit_diffuse.x /= norm;                                                                                                                    \
+        unit_diffuse.y /= norm;                                                                                                                    \
+        unit_diffuse.z /= norm;                                                                                                                    \
         cosine_term = unit_hit_face_normal.x * unit_diffuse.x + unit_hit_face_normal.y * unit_diffuse.y + unit_hit_face_normal.z * unit_diffuse.z; \
-        if (cosine_term < 0.0f) {                                                                                                   \
-            unit_diffuse.x *= -1;                                                                                                   \
-            unit_diffuse.y *= -1;                                                                                                   \
-            unit_diffuse.z *= -1;                                                                                                   \
-            cosine_term *= -1;                                                                                                      \
-        }                                                                                                                           \
-        direction.x = unit_diffuse.x;                                                                                               \
-        direction.y = unit_diffuse.y;                                                                                               \
-        direction.z = unit_diffuse.z;                                                                                               \
+        if (cosine_term < 0.0f) {                                                                                                                  \
+            unit_diffuse.x *= -1;                                                                                                                  \
+            unit_diffuse.y *= -1;                                                                                                                  \
+            unit_diffuse.z *= -1;                                                                                                                  \
+            cosine_term *= -1;                                                                                                                     \
+        }                                                                                                                                          \
+        direction.x = unit_diffuse.x;                                                                                                              \
+        direction.y = unit_diffuse.y;                                                                                                              \
+        direction.z = unit_diffuse.z;                                                                                                              \
     }
 
-#define rtx_cuda_kernel_update_ray(                   \
+#define rtx_cuda_update_ray(                          \
     ray,                                              \
     hit_point,                                        \
     unit_next_ray_direction)                          \
@@ -434,7 +434,7 @@
         ray_direction_inv.z = 1.0f / ray.direction.z; \
     }
 
-#define rtx_cuda_check_kernel_arguments()                             \
+#define __check_kernel_arguments()                                    \
     {                                                                 \
         assert(gpu_serialized_face_vertex_index_array != NULL);       \
         assert(gpu_serialized_vertex_array != NULL);                  \
@@ -449,4 +449,14 @@
         if (uv_coordinate_array_size > 0) {                           \
             assert(gpu_serialized_uv_coordinate_array != NULL);       \
         }                                                             \
+    }
+
+#define __xorshift_uniform(ret, x, y, z, w)   \
+    {                                         \
+        unsigned long t = x ^ (x << 11);      \
+        x = y;                                \
+        y = z;                                \
+        z = w;                                \
+        w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)); \
+        ret = float(w & 0xFFFF) / 65535.0;    \
     }

@@ -111,20 +111,8 @@ __global__ void mcrt_texture_memory_kernel(
         rtxCUDARay ray;
         // スーパーサンプリング
         float2 noise;
-
-        unsigned long t = xors_x ^ (xors_x << 11);
-        xors_x = xors_y;
-        xors_y = xors_z;
-        xors_z = xors_w;
-        xors_w = (xors_w ^ (xors_w >> 19)) ^ (t ^ (t >> 8));
-        noise.x = float(xors_w & 0xFFFF) / 65535.0;
-
-        t = xors_x ^ (xors_x << 11);
-        xors_x = xors_y;
-        xors_y = xors_z;
-        xors_z = xors_w;
-        xors_w = (xors_w ^ (xors_w >> 19)) ^ (t ^ (t >> 8));
-        noise.y = float(xors_w & 0xFFFF) / 65535.0;
+        __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
+        __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
 
         // 方向
         ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
@@ -198,7 +186,7 @@ __global__ void mcrt_texture_memory_kernel(
                         // 詳細は以下参照
                         // An Efficient and Robust Ray–Box Intersection Algorithm
                         // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                        rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index);
+                        rtx_cuda_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index);
                     } else {
                         // 葉ノード
                         // 割り当てられたジオメトリの各面との衝突判定を行う
@@ -218,7 +206,7 @@ __global__ void mcrt_texture_memory_kernel(
 
                                 float3 face_normal;
                                 float distance;
-                                rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, face_normal, distance, min_distance);
+                                rtx_cuda_intersect_triangle_or_continue(ray, va, vb, vc, face_normal, distance, min_distance);
 
                                 min_distance = distance;
                                 hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -248,7 +236,7 @@ __global__ void mcrt_texture_memory_kernel(
                             const float4 radius = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.y + object.serialized_vertex_index_offset);
 
                             float distance;
-                            rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, distance, min_distance);
+                            rtx_cuda_intersect_sphere_or_continue(ray, center, radius, distance, min_distance);
 
                             min_distance = distance;
                             hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -286,7 +274,7 @@ __global__ void mcrt_texture_memory_kernel(
             // 反射方向のサンプリング
             float3 unit_next_ray_direction;
             float cosine_term;
-            rtx_cuda_kernel_sample_ray_direction(
+            rtx_cuda_sample_ray_direction(
                 unit_hit_face_normal,
                 unit_next_ray_direction,
                 cosine_term,
@@ -296,7 +284,7 @@ __global__ void mcrt_texture_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             float brdf = 0.0f;
-            rtx_cuda_kernel_fetch_hit_color_in_texture_memory(
+            rtx_cuda_fetch_hit_color_in_texture_memory(
                 hit_point,
                 unit_hit_face_normal,
                 hit_object,
@@ -320,7 +308,7 @@ __global__ void mcrt_texture_memory_kernel(
                 break;
             }
 
-            rtx_cuda_kernel_update_ray(ray, hit_point, unit_next_ray_direction);
+            rtx_cuda_update_ray(ray, hit_point, unit_next_ray_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;
@@ -355,7 +343,7 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
     int screen_width, int screen_height,
     int curand_seed)
 {
-    rtx_cuda_check_kernel_arguments();
+    __check_kernel_arguments();
 
     // cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     cudaBindTexture(0, g_serialized_face_vertex_index_array_texture_ref, gpu_serialized_face_vertex_index_array, cudaCreateChannelDesc<int4>(), sizeof(rtxFaceVertexIndex) * face_vertex_index_array_size);

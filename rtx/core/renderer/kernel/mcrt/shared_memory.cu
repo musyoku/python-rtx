@@ -149,7 +149,7 @@ __global__ void mcrt_shared_memory_kernel(
                         // 詳細は以下参照
                         // An Efficient and Robust Ray–Box Intersection Algorithm
                         // http://www.cs.utah.edu/~awilliam/box/box.pdf
-                        rtx_cuda_kernel_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index);
+                        rtx_cuda_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index);
                     } else {
                         // 葉ノード
                         // 割り当てられたジオメトリの各面との衝突判定を行う
@@ -169,7 +169,7 @@ __global__ void mcrt_shared_memory_kernel(
 
                                 float3 face_normal;
                                 float distance;
-                                rtx_cuda_kernel_intersect_triangle_or_continue(ray, va, vb, vc, face_normal, distance, min_distance);
+                                rtx_cuda_intersect_triangle_or_continue(ray, va, vb, vc, face_normal, distance, min_distance);
 
                                 min_distance = distance;
                                 hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -196,7 +196,7 @@ __global__ void mcrt_shared_memory_kernel(
                             const rtxVertex radius = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
 
                             float distance;
-                            rtx_cuda_kernel_intersect_sphere_or_continue(ray, center, radius, distance, min_distance);
+                            rtx_cuda_intersect_sphere_or_continue(ray, center, radius, distance, min_distance);
 
                             min_distance = distance;
                             hit_point.x = ray.origin.x + distance * ray.direction.x;
@@ -234,7 +234,7 @@ __global__ void mcrt_shared_memory_kernel(
             // 反射方向のサンプリング
             float3 unit_next_ray_direction;
             float cosine_term;
-            rtx_cuda_kernel_sample_ray_direction(
+            rtx_cuda_sample_ray_direction(
                 unit_hit_face_normal,
                 unit_next_ray_direction,
                 cosine_term,
@@ -244,7 +244,7 @@ __global__ void mcrt_shared_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             float brdf = 0.0f;
-            rtx_cuda_kernel_fetch_hit_color_in_linear_memory(
+            rtx_cuda_fetch_hit_color_in_linear_memory(
                 hit_point,
                 unit_hit_face_normal,
                 hit_object,
@@ -268,7 +268,7 @@ __global__ void mcrt_shared_memory_kernel(
                 break;
             }
 
-            rtx_cuda_kernel_update_ray(ray, hit_point, unit_next_ray_direction);
+            rtx_cuda_update_ray(ray, hit_point, unit_next_ray_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;
@@ -304,7 +304,7 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
     int screen_width, int screen_height,
     int curand_seed)
 {
-    rtx_cuda_check_kernel_arguments();
+    __check_kernel_arguments();
     // cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     mcrt_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
         ray_array_size,
