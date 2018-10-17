@@ -93,7 +93,7 @@ geometry.set_scale((3, 3, 3))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
-scene.add(bunny)
+# scene.add(bunny)
 
 screen_width = 768
 screen_height = 512

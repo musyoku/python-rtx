@@ -638,7 +638,6 @@ void Renderer::render_objects(int height, int width)
     }
 
     int num_rays_per_pixel = _rt_args->num_rays_per_pixel();
-    int num_rays = height * width * num_rays_per_pixel;
 
     if (should_update_render_buffer) {
         int num_rays_per_thread = _cuda_args->num_rays_per_thread();
@@ -655,8 +654,6 @@ void Renderer::render_objects(int height, int width)
     auto end = std::chrono::system_clock::now();
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     printf("preprocessing: %lf msec\n", elapsed);
-
-    size_t available_shared_memory_bytes = rtx_cuda_get_available_shared_memory_bytes();
 
     start = std::chrono::system_clock::now();
     if (_rt_args->next_event_estimation_enabled()) {
@@ -682,7 +679,6 @@ void Renderer::render_objects(int height, int width)
     }
     _total_frames++;
 
-    int num_threads = _cuda_args->num_threads();
     int num_rays_per_thread = _cuda_args->num_rays_per_thread();
     int num_threads_per_pixel = int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
 

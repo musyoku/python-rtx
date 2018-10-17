@@ -327,7 +327,7 @@
             texture_object_array,                                                 \
             uv_coordinate_array)                                                  \
     }
-#define rtx_cuda_fetch_light_color_in_texture_memory(                              \
+#define __rtx_fetch_light_color_in_texture_memory(                              \
     hit_point,                                                                     \
     hit_object,                                                                    \
     hit_face,                                                                      \
@@ -480,3 +480,4 @@
     unsigned long xors_y = 362436069;   \
     unsigned long xors_z = 521288629;   \
     unsigned long xors_w = 88675123;
+

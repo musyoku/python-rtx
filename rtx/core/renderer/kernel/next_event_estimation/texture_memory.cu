@@ -113,8 +113,6 @@ __global__ void nee_texture_memory_kernel(
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
         int hit_object_index;
-        float light_distance;
-        float dot1;
         float g_term;
         float brdf;
 
@@ -283,7 +281,7 @@ __global__ void nee_texture_memory_kernel(
                 // 光源に当たった場合寄与を加算
                 int material_type = hit_object.layerd_material_types.outside;
                 if (material_type == RTXMaterialTypeEmissive) {
-                    rtx_cuda_fetch_light_color_in_texture_memory(
+                    __rtx_fetch_light_color_in_texture_memory(
                         hit_point,
                         hit_object,
                         hit_face,
@@ -295,9 +293,6 @@ __global__ void nee_texture_memory_kernel(
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     float emission = attr.brightness;
                     float inv_pdf = total_light_face_area;
-                    // pixel.r += min(path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term, attr.brightness);
-                    // pixel.g += min(path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term, attr.brightness);
-                    // pixel.b += min(path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term, attr.brightness);
                     pixel.r += path_weight.r * emission * brdf * hit_color.r * inv_pdf * g_term;
                     pixel.g += path_weight.g * emission * brdf * hit_color.g * inv_pdf * g_term;
                     pixel.b += path_weight.b * emission * brdf * hit_color.b * inv_pdf * g_term;
@@ -374,17 +369,19 @@ __global__ void nee_texture_memory_kernel(
                 const float4 va = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
                 const float4 vb = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.y + object.serialized_vertex_index_offset);
                 const float4 vc = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.z + object.serialized_vertex_index_offset);
-                
+
+                // 面上の一点の一様なサンプリング
+                // http://www.cs.princeton.edu/~funk/tog02.pdf
                 float r1, r2;
                 __xorshift_uniform(r1, xors_x, xors_y, xors_z, xors_w);
                 __xorshift_uniform(r2, xors_x, xors_y, xors_z, xors_w);
                 r1 = sqrtf(r1);
                 const float3 random_point = {
-                    (1.0f - r1) * va.x + (r1 * (1.0 - r2)) * vb.x + (r1 * r2) * vc.x,
-                    (1.0f - r1) * va.y + (r1 * (1.0 - r2)) * vb.y + (r1 * r2) * vc.y,
-                    (1.0f - r1) * va.z + (r1 * (1.0 - r2)) * vb.z + (r1 * r2) * vc.z,
+                    (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
+                    (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
+                    (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
                 };
-                
+
                 shadow_ray.origin.x = hit_point.x;
                 shadow_ray.origin.y = hit_point.y;
                 shadow_ray.origin.z = hit_point.z;
@@ -392,26 +389,28 @@ __global__ void nee_texture_memory_kernel(
                 shadow_ray.direction.x = random_point.x - hit_point.x;
                 shadow_ray.direction.y = random_point.y - hit_point.y;
                 shadow_ray.direction.z = random_point.z - hit_point.z;
-                light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
+                const float light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
                 shadow_ray.direction.x /= light_distance;
                 shadow_ray.direction.y /= light_distance;
                 shadow_ray.direction.z /= light_distance;
 
-                dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
+                const float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
                     + shadow_ray.direction.y * unit_hit_face_normal.y
                     + shadow_ray.direction.z * unit_hit_face_normal.z;
+
+                // 面の裏側の光源へは到達できないのでスキップ
                 if (dot1 <= 0.0f) {
                     ray = &primary_ray;
                     iter += 1;
                     continue;
                 }
 
-                float3 edge_ba = {
+                const float3 edge_ba = {
                     vb.x - va.x,
                     vb.y - va.y,
                     vb.z - va.z,
                 };
-                float3 edge_ca = {
+                const float3 edge_ca = {
                     vc.x - va.x,
                     vc.y - va.y,
                     vc.z - va.z,
@@ -421,10 +420,10 @@ __global__ void nee_texture_memory_kernel(
                 light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
                 light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
                 const float norm = sqrtf(light_normal.x * light_normal.x + light_normal.y * light_normal.y + light_normal.z * light_normal.z) + 1e-12;
-                light_normal.x = light_normal.x / norm;
-                light_normal.y = light_normal.y / norm;
-                light_normal.z = light_normal.z / norm;
-                float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
+                light_normal.x /= norm;
+                light_normal.y /= norm;
+                light_normal.z /= norm;
+                const float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
                 g_term = dot1 * dot2 / (light_distance * light_distance);
                 ray = &shadow_ray;
             }
