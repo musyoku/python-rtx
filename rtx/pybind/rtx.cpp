@@ -78,6 +78,7 @@ PYBIND11_MODULE(rtx, module)
         .def(py::init<>())
         .def_property("num_rays_per_pixel", &RayTracingArguments::num_rays_per_pixel, &RayTracingArguments::set_num_rays_per_pixel)
         .def_property("next_event_estimation_enabled", &RayTracingArguments::next_event_estimation_enabled, &RayTracingArguments::set_next_event_estimation_enabled)
+        .def_property("supersampling_enabled", &RayTracingArguments::supersampling_enabled, &RayTracingArguments::set_supersampling_enabled)
         .def_property("max_bounce", &RayTracingArguments::max_bounce, &RayTracingArguments::set_max_bounce);
     py::class_<CUDAKernelLaunchArguments, std::shared_ptr<CUDAKernelLaunchArguments>>(module, "CUDAKernelLaunchArguments")
         .def(py::init<>())
@@ -86,11 +87,13 @@ PYBIND11_MODULE(rtx, module)
 
     // Cameras
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")
+        .def(py::init<>())
         .def(py::init<py::tuple, py::tuple, py::tuple, float, float, float, float>(),
             py::arg("eye"), py::arg("center"), py::arg("up"), py::arg("fov_rad"), py::arg("aspect_ratio"), py::arg("z_near"), py::arg("z_far"))
         .def_property("fov_rad", &PerspectiveCamera::fov_rad, &PerspectiveCamera::set_fov_rad)
         .def("look_at", (void (PerspectiveCamera::*)(py::tuple, py::tuple, py::tuple)) & PerspectiveCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
     py::class_<OrthographicCamera, Camera, std::shared_ptr<OrthographicCamera>>(module, "OrthographicCamera")
+        .def(py::init<>())
         .def(py::init<py::tuple, py::tuple, py::tuple>(), py::arg("eye"), py::arg("center"), py::arg("up"))
         .def("look_at", (void (OrthographicCamera::*)(py::tuple, py::tuple, py::tuple)) & OrthographicCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
 

@@ -15,8 +15,7 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 
  Current status:
 
- ![https://user-images.githubusercontent.com/15250418/45751801-6c956080-bc4e-11e8-8bf7-86ad43da411f.png](https://user-images.githubusercontent.com/15250418/45751801-6c956080-bc4e-11e8-8bf7-86ad43da411f.png)
-
+![result](https://user-images.githubusercontent.com/15250418/47110743-a62cac00-d28c-11e8-998f-79d02af039ed.png)
 
 # Requirements
 

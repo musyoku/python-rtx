@@ -111,6 +111,7 @@ typedef struct rtxMCRTKernelArguments {
     int threaded_bvh_node_array_size;
     int uv_coordinate_array_size;
     int curand_seed;
+    bool supersampling_enabled;
 } rtxMCRTKernelArguments;
 
 typedef struct rtxNEEKernelArguments {
@@ -130,8 +131,9 @@ typedef struct rtxNEEKernelArguments {
     int threaded_bvh_array_size;
     int color_mapping_array_size;
     int threaded_bvh_node_array_size;
-    int curand_seed;
     int light_sampling_table_size;
     int uv_coordinate_array_size;
     float total_light_face_area;
+    int curand_seed;
+    bool supersampling_enabled;
 } rtxNEEKernelArguments;

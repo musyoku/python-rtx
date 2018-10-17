@@ -342,6 +342,7 @@ void Renderer::launch_mcrt_kernel()
     args.threaded_bvh_node_array_size = _cpu_threaded_bvh_node_array.size();
     args.uv_coordinate_array_size = _cpu_serialized_uv_coordinate_array.size();
     args.curand_seed = _total_frames;
+    args.supersampling_enabled = _rt_args->supersampling_enabled();
 
     size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
@@ -458,6 +459,7 @@ void Renderer::launch_nee_kernel()
     args.light_sampling_table_size = _cpu_light_sampling_table.size();
     args.total_light_face_area = _total_light_face_area;
     args.curand_seed = _total_frames;
+    args.supersampling_enabled = _rt_args->supersampling_enabled();
 
     size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();

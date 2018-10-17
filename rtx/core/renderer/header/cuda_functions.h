@@ -374,3 +374,29 @@
     unsigned long xors_y = 362436069;   \
     unsigned long xors_z = 521288629;   \
     unsigned long xors_w = 88675123;
+
+#define __rtx_generate_ray(ray, args, aspect_ratio)                                                                                          \
+    /* スーパーサンプリング */                                                                                                     \
+    float2 noise = { 0.0f, 0.0f };                                                                                                           \
+    if (args.supersampling_enabled) {                                                                                                        \
+        __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);                                                                         \
+        __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);                                                                         \
+    }                                                                                                                                        \
+    /* 方向 */                                                                                                                             \
+    ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(args.screen_width) - 1.0f;                                              \
+    ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(args.screen_height) - 1.0f) / aspect_ratio;                           \
+    ray.direction.z = -args.ray_origin_z;                                                                                                    \
+    /* 始点 */                                                                                                                             \
+    if (args.camera_type == RTXCameraTypePerspective) {                                                                                      \
+        ray.origin = { 0.0f, 0.0f, args.ray_origin_z };                                                                                      \
+        /* 正規化 */                                                                                                                      \
+        const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z); \
+        ray.direction.x /= norm;                                                                                                             \
+        ray.direction.y /= norm;                                                                                                             \
+        ray.direction.z /= norm;                                                                                                             \
+    } else {                                                                                                                                 \
+        ray.origin = { ray.direction.x * args.ray_origin_z, ray.direction.y * args.ray_origin_z, args.ray_origin_z };                        \
+        ray.direction.x = 0.0f;                                                                                                              \
+        ray.direction.y = 0.0f;                                                                                                              \
+        ray.direction.z = -1.0f;                                                                                                             \
+    }
