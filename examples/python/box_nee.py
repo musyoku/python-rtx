@@ -118,6 +118,9 @@ camera = rtx.PerspectiveCamera(
     z_near=0.01,
     z_far=100)
 
+camera = rtx.OrthographicCamera(
+    eye=(0, -0.5, 2), center=(0, -0.5, 0), up=(0, 1, 0))
+
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 30
 for n in range(total_iterations):

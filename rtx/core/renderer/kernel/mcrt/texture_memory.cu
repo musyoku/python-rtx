@@ -113,7 +113,6 @@ __global__ void mcrt_texture_memory_kernel(
         float2 noise;
         __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
         __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
-
         // 方向
         ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
         ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;

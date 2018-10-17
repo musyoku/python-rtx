@@ -1,3 +1,4 @@
+#include "../core/camera/orthographic.h"
 #include "../core/camera/perspective.h"
 #include "../core/class/camera.h"
 #include "../core/class/geometry.h"
@@ -89,6 +90,9 @@ PYBIND11_MODULE(rtx, module)
             py::arg("eye"), py::arg("center"), py::arg("up"), py::arg("fov_rad"), py::arg("aspect_ratio"), py::arg("z_near"), py::arg("z_far"))
         .def_property("fov_rad", &PerspectiveCamera::fov_rad, &PerspectiveCamera::set_fov_rad)
         .def("look_at", (void (PerspectiveCamera::*)(py::tuple, py::tuple, py::tuple)) & PerspectiveCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
+    py::class_<OrthographicCamera, Camera, std::shared_ptr<OrthographicCamera>>(module, "OrthographicCamera")
+        .def(py::init<py::tuple, py::tuple, py::tuple>(), py::arg("eye"), py::arg("center"), py::arg("up"))
+        .def("look_at", (void (OrthographicCamera::*)(py::tuple, py::tuple, py::tuple)) & OrthographicCamera::look_at, py::arg("eye"), py::arg("center"), py::arg("up"));
 
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())

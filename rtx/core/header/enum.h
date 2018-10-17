@@ -28,7 +28,7 @@ enum RTXMappingType {
 
 enum RTXCameraType {
     RTXCameraTypePerspective = 1,
-    RTXCameraTypeOrthogonal,
+    RTXCameraTypeOrthographic,
 };
 
 #define BVH_DEFAULT_TRIANGLES_PER_NODE 25
