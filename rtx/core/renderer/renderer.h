@@ -17,8 +17,7 @@
 namespace rtx {
 class Renderer {
 private:
-    // host
-    rtx::array<rtxRay> _cpu_ray_array;
+    // Host
     rtx::array<rtxFaceVertexIndex> _cpu_face_vertex_indices_array;
     rtx::array<rtxVertex> _cpu_vertex_array;
     rtx::array<rtxObject> _cpu_object_array;
@@ -31,8 +30,7 @@ private:
     rtx::array<rtxRGBAColor> _cpu_color_mapping_array;
     rtx::array<rtxUVCoordinate> _cpu_serialized_uv_coordinate_array;
 
-    // device
-    rtxRay* _gpu_ray_array;
+    // Device
     rtxFaceVertexIndex* _gpu_face_vertex_indices_array;
     rtxVertex* _gpu_vertex_array;
     rtxObject* _gpu_object_array;

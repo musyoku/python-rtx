@@ -12,7 +12,6 @@
 #include <stdio.h>
 
 __global__ void mcrt_texture_memory_kernel(
-    int num_rays,
     int face_vertex_index_array_size,
     int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
@@ -34,6 +33,7 @@ __global__ void mcrt_texture_memory_kernel(
     extern __shared__ char shared_memory[];
     curandStatePhilox4_32_10_t curand_state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
+    __xorshift_init(curand_seed);
 
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
@@ -86,12 +86,6 @@ __global__ void mcrt_texture_memory_kernel(
 
     // 出力する画素
     rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-    // xorshiftのシード
-    unsigned long xors_x = curand_seed;
-    unsigned long xors_y = 362436069;
-    unsigned long xors_z = 521288629;
-    unsigned long xors_w = 88675123;
 
     for (int n = 0; n < num_rays_per_thread; n++) {
         int ray_index = ray_index_offset + n;
@@ -313,7 +307,6 @@ __global__ void mcrt_texture_memory_kernel(
 }
 
 void rtx_cuda_launch_mcrt_texture_memory_kernel(
-    rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
     rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
     rtxObject* gpu_serialized_object_array, int object_array_size,
@@ -343,7 +336,6 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
     cudaBindTexture(0, g_serialized_uv_coordinate_array_texture_ref, gpu_serialized_uv_coordinate_array, cudaCreateChannelDesc<float2>(), sizeof(rtxUVCoordinate) * uv_coordinate_array_size);
 
     mcrt_texture_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
-        ray_array_size,
         face_vertex_index_array_size,
         vertex_array_size,
         gpu_serialized_object_array, object_array_size,

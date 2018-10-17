@@ -21,9 +21,8 @@ size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();
 
 // 引数が同じ関数を作るのでプリプロセッサで行う
-#define rtx_cuda_define_cuda_mcrt_kernel_launcher_function(memory_type)                                      \
+#define rtx_define_cuda_mcrt_kernel_launcher_function(memory_type)                                      \
     void rtx_cuda_launch_mcrt_##memory_type##_kernel(                                                        \
-        rtxRay* gpu_ray_array, int ray_array_size,                                                           \
         rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,                   \
         rtxVertex* gpu_vertex_array, int vertex_array_size,                                                  \
         rtxObject* gpu_object_array, int object_array_size,                                                  \
@@ -45,13 +44,12 @@ size_t rtx_cuda_get_cudaTextureObject_t_bytes();
         int screen_width, int screen_height,                                                                 \
         int curand_seed);
 
-rtx_cuda_define_cuda_mcrt_kernel_launcher_function(texture_memory)
-    rtx_cuda_define_cuda_mcrt_kernel_launcher_function(shared_memory)
-        rtx_cuda_define_cuda_mcrt_kernel_launcher_function(global_memory)
+rtx_define_cuda_mcrt_kernel_launcher_function(texture_memory)
+rtx_define_cuda_mcrt_kernel_launcher_function(shared_memory)
+rtx_define_cuda_mcrt_kernel_launcher_function(global_memory)
 
-#define rtx_cuda_define_cuda_nee_kernel_launcher_function(memory_type)                                       \
+#define rtx_define_cuda_nee_kernel_launcher_function(memory_type)                                       \
     void rtx_cuda_launch_nee_##memory_type##_kernel(                                                         \
-        rtxRay* gpu_ray_array, int ray_array_size,                                                           \
         rtxFaceVertexIndex* gpu_face_vertex_index_array, int face_vertex_index_array_size,                   \
         rtxVertex* gpu_vertex_array, int vertex_array_size,                                                  \
         rtxObject* gpu_object_array, int object_array_size,                                                  \
@@ -70,8 +68,11 @@ rtx_cuda_define_cuda_mcrt_kernel_launcher_function(texture_memory)
         int num_rays_per_pixel,                                                                              \
         size_t shared_memory_bytes,                                                                          \
         int max_bounce,                                                                                      \
+        RTXCameraType camera_type,                                                                           \
+        float ray_origin_z,                                                                                  \
+        int screen_width, int screen_height,                                                                 \
         int curand_seed);
 
-            rtx_cuda_define_cuda_nee_kernel_launcher_function(texture_memory)
-                rtx_cuda_define_cuda_nee_kernel_launcher_function(shared_memory)
-                    rtx_cuda_define_cuda_nee_kernel_launcher_function(global_memory)
+rtx_define_cuda_nee_kernel_launcher_function(texture_memory)
+rtx_define_cuda_nee_kernel_launcher_function(shared_memory)
+rtx_define_cuda_nee_kernel_launcher_function(global_memory)

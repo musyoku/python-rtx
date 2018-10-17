@@ -5,7 +5,6 @@ CUDAKernelLaunchArguments::CUDAKernelLaunchArguments()
 {
     _num_threads = 256;
     _num_rays_per_thread = 256;
-    _num_blocks = 1024;
 }
 int CUDAKernelLaunchArguments::num_threads()
 {
@@ -22,13 +21,5 @@ int CUDAKernelLaunchArguments::num_rays_per_thread()
 void CUDAKernelLaunchArguments::set_num_rays_per_thread(int num)
 {
     _num_rays_per_thread = num;
-}
-int CUDAKernelLaunchArguments::num_blocks()
-{
-    return _num_blocks;
-}
-void CUDAKernelLaunchArguments::set_num_blocks(int bounce)
-{
-    _num_blocks = bounce;
 }
 }

@@ -81,8 +81,7 @@ PYBIND11_MODULE(rtx, module)
     py::class_<CUDAKernelLaunchArguments, std::shared_ptr<CUDAKernelLaunchArguments>>(module, "CUDAKernelLaunchArguments")
         .def(py::init<>())
         .def_property("num_threads", &CUDAKernelLaunchArguments::num_threads, &CUDAKernelLaunchArguments::set_num_threads)
-        .def_property("num_rays_per_thread", &CUDAKernelLaunchArguments::num_rays_per_thread, &CUDAKernelLaunchArguments::set_num_rays_per_thread)
-        .def_property("num_blocks", &CUDAKernelLaunchArguments::num_blocks, &CUDAKernelLaunchArguments::set_num_blocks);
+        .def_property("num_rays_per_thread", &CUDAKernelLaunchArguments::num_rays_per_thread, &CUDAKernelLaunchArguments::set_num_rays_per_thread);
 
     // Cameras
     py::class_<PerspectiveCamera, Camera, std::shared_ptr<PerspectiveCamera>>(module, "PerspectiveCamera")

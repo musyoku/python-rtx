@@ -12,7 +12,6 @@
 #include <stdio.h>
 
 __global__ void mcrt_shared_memory_kernel(
-    int ray_array_size,
     rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
     rtxVertex* global_serialized_vertex_array, int vertex_array_size,
     rtxObject* global_serialized_object_array, int object_array_size,
@@ -25,12 +24,17 @@ __global__ void mcrt_shared_memory_kernel(
     rtxRGBAPixel* global_serialized_render_array,
     int num_active_texture_units,
     int num_rays_per_thread,
+    int num_rays_per_pixel,
     int max_bounce,
+    RTXCameraType camera_type,
+    float ray_origin_z,
+    int screen_width, int screen_height,
     int curand_seed)
 {
     extern __shared__ char shared_memory[];
     curandStatePhilox4_32_10_t curand_state;
     curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
+    __xorshift_init(curand_seed);
 
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
@@ -92,13 +96,56 @@ __global__ void mcrt_shared_memory_kernel(
     }
     __syncthreads();
 
+    int ray_index_offset = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread;
+    int num_generated_rays_per_pixel = num_rays_per_thread * int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
+
+    int target_pixel_index = ray_index_offset / num_generated_rays_per_pixel;
+    if (target_pixel_index >= screen_width * screen_height) {
+        return;
+    }
+    int target_pixel_x = target_pixel_index % screen_width;
+    int target_pixel_y = target_pixel_index / screen_width;
+    float aspect_ratio = float(screen_width) / float(screen_height);
+    int render_buffer_index = ray_index_offset / num_rays_per_thread;
+
+    // 出力する画素
+    rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
+
     for (int n = 0; n < num_rays_per_thread; n++) {
-        int ray_index = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread + n;
-        if (ray_index >= ray_array_size) {
+        int ray_index = ray_index_offset + n;
+        int ray_index_in_pixel = ray_index % num_generated_rays_per_pixel;
+        if (ray_index_in_pixel >= num_rays_per_pixel) {
             return;
         }
 
+        // レイの生成
         rtxCUDARay ray;
+        // スーパーサンプリング
+        float2 noise;
+        __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
+        __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
+        // 方向
+        ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
+        ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;
+        ray.direction.z = -ray_origin_z;
+        // 正規化
+        const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
+        ray.direction.x /= norm;
+        ray.direction.y /= norm;
+        ray.direction.z /= norm;
+        // 始点
+        if (camera_type == RTXCameraTypePerspective) {
+            ray.origin = { 0.0f, 0.0f, ray_origin_z };
+        } else {
+            ray.origin = { ray.direction.x, ray.direction.y, ray_origin_z };
+        }
+        // BVHのAABBとの衝突判定で使う
+        float3 ray_direction_inv = {
+            1.0f / ray.direction.x,
+            1.0f / ray.direction.y,
+            1.0f / ray.direction.z,
+        };
+
         float3 hit_point;
         float3 unit_hit_face_normal;
         rtxVertex hit_va;
@@ -107,20 +154,8 @@ __global__ void mcrt_shared_memory_kernel(
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
 
-        ray.direction = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 0);
-        ray.origin = tex1Dfetch(g_serialized_ray_array_texture_ref, ray_index * 2 + 1);
-
-        float3 ray_direction_inv = {
-            1.0f / ray.direction.x,
-            1.0f / ray.direction.y,
-            1.0f / ray.direction.z,
-        };
-
-        // 出力する画素
-        rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
-
         // 光輸送経路のウェイト
-        rtxRGBAPixel path_weight = { 1.0f, 1.0f, 1.0f };
+        rtxRGBAColor path_weight = { 1.0f, 1.0f, 1.0f };
 
         for (int bounce = 0; bounce < max_bounce; bounce++) {
             float min_distance = FLT_MAX;
@@ -276,13 +311,11 @@ __global__ void mcrt_shared_memory_kernel(
             path_weight.g *= hit_color.g * brdf * cosine_term * inv_pdf;
             path_weight.b *= hit_color.b * brdf * cosine_term * inv_pdf;
         }
-
-        global_serialized_render_array[ray_index] = pixel;
     }
+    global_serialized_render_array[render_buffer_index] = pixel;
 }
 
 void rtx_cuda_launch_mcrt_shared_memory_kernel(
-    rtxRay* gpu_serialized_ray_array, int ray_array_size,
     rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
     rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
     rtxObject* gpu_serialized_object_array, int object_array_size,
@@ -305,9 +338,7 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
     int curand_seed)
 {
     __check_kernel_arguments();
-    // cudaBindTexture(0, g_serialized_ray_array_texture_ref, gpu_serialized_ray_array, cudaCreateChannelDesc<float4>(), sizeof(rtxRay) * ray_array_size);
     mcrt_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
-        ray_array_size,
         gpu_serialized_face_vertex_index_array, face_vertex_index_array_size,
         gpu_serialized_vertex_array, vertex_array_size,
         gpu_serialized_object_array, object_array_size,
@@ -320,8 +351,11 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
         gpu_serialized_render_array,
         num_active_texture_units,
         num_rays_per_thread,
+        num_rays_per_pixel,
         max_bounce,
+        camera_type,
+        ray_origin_z,
+        screen_width, screen_height,
         curand_seed);
     cudaCheckError(cudaThreadSynchronize());
-    // cudaUnbindTexture(g_serialized_ray_array_texture_ref);
 }

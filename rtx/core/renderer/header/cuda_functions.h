@@ -464,12 +464,19 @@
         }                                                             \
     }
 
-#define __xorshift_uniform(ret, x, y, z, w)   \
-    {                                         \
-        unsigned long t = x ^ (x << 11);      \
-        x = y;                                \
-        y = z;                                \
-        z = w;                                \
-        w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)); \
-        ret = float(w & 0xFFFF) / 65535.0;    \
+#define __xorshift_uniform(ret, x, y, z, w) \
+    {                                       \
+        unsigned long t = x ^ (x << 11);    \
+        t = (t ^ (t >> 8));                 \
+        x = y;                              \
+        y = z;                              \
+        z = w;                              \
+        w = (w ^ (w >> 19)) ^ t;            \
+        ret = float(w & 0xFFFF) / 65535.0;  \
     }
+
+#define __xorshift_init(curand_seed)    \
+    unsigned long xors_x = curand_seed; \
+    unsigned long xors_y = 362436069;   \
+    unsigned long xors_z = 521288629;   \
+    unsigned long xors_w = 88675123;
