@@ -264,9 +264,6 @@ __global__ void nee_global_memory_kernel(
                 break;
             }
 
-            //  衝突点の色を検出
-            rtxRGBAColor hit_color;
-
             if (is_shadow_ray) {
                 // 光源に当たった場合寄与を加算
                 rtxRGBAColor hit_light_color;
@@ -303,7 +300,7 @@ __global__ void nee_global_memory_kernel(
                     hit_point,
                     hit_object,
                     hit_face,
-                    hit_color,
+                    hit_object_color,
                     shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
@@ -356,9 +353,9 @@ __global__ void nee_global_memory_kernel(
                 ray->direction.z = unit_next_ray_direction.z;
 
                 float inv_pdf = 2.0f * M_PI;
-                next_path_weight.r = path_weight.r * brdf * hit_color.r * cosine_term * inv_pdf;
-                next_path_weight.g = path_weight.g * brdf * hit_color.g * cosine_term * inv_pdf;
-                next_path_weight.b = path_weight.b * brdf * hit_color.b * cosine_term * inv_pdf;
+                next_path_weight.r = path_weight.r * brdf * hit_object_color.r * cosine_term * inv_pdf;
+                next_path_weight.g = path_weight.g * brdf * hit_object_color.g * cosine_term * inv_pdf;
+                next_path_weight.b = path_weight.b * brdf * hit_object_color.b * cosine_term * inv_pdf;
 
                 // 光源のサンプリング
                 float2 uniform2;

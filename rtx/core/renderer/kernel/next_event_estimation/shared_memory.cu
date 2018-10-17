@@ -130,7 +130,7 @@ __global__ void nee_shared_memory_kernel(
         rtxObject hit_object;
         rtxRGBAColor hit_object_color;
         float g_term;
-        float brdf;
+        float shadow_ray_brdf;
 
         // スーパーサンプリング
         float2 noise;
@@ -287,9 +287,6 @@ __global__ void nee_shared_memory_kernel(
                 break;
             }
 
-            //  衝突点の色を検出
-            rtxRGBAColor hit_color;
-
             if (is_shadow_ray) {
                 // 光源に当たった場合寄与を加算
                 rtxRGBAColor hit_light_color;
@@ -308,9 +305,9 @@ __global__ void nee_shared_memory_kernel(
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     float emission = attr.brightness;
                     float inv_pdf = args.total_light_face_area;
-                    pixel.r += path_weight.r * emission * brdf * hit_light_color.r * hit_object_color.r * inv_pdf * g_term;
-                    pixel.g += path_weight.g * emission * brdf * hit_light_color.g * hit_object_color.g * inv_pdf * g_term;
-                    pixel.b += path_weight.b * emission * brdf * hit_light_color.b * hit_object_color.b * inv_pdf * g_term;
+                    pixel.r += path_weight.r * emission * shadow_ray_brdf * hit_light_color.r * hit_object_color.r * inv_pdf * g_term;
+                    pixel.g += path_weight.g * emission * shadow_ray_brdf * hit_light_color.g * hit_object_color.g * inv_pdf * g_term;
+                    pixel.b += path_weight.b * emission * shadow_ray_brdf * hit_light_color.b * hit_object_color.b * inv_pdf * g_term;
                 }
 
                 path_weight.r = next_path_weight.r;
@@ -326,7 +323,7 @@ __global__ void nee_shared_memory_kernel(
                     hit_point,
                     hit_object,
                     hit_face,
-                    hit_color,
+                    hit_object_color,
                     shared_serialized_material_attribute_byte_array,
                     shared_serialized_color_mapping_array,
                     shared_serialized_texture_object_array,
@@ -351,7 +348,7 @@ __global__ void nee_shared_memory_kernel(
                     break;
                 }
 
-                // 反射方向のサンプリング
+                // 入射方向のサンプリング
                 float3 unit_next_ray_direction;
                 float cosine_term;
                 __rtx_sample_ray_direction(
@@ -360,28 +357,20 @@ __global__ void nee_shared_memory_kernel(
                     cosine_term,
                     curand_state);
 
-                float brdf = 0.0f;
+                float input_ray_brdf = 0.0f;
                 __rtx_compute_brdf(
                     unit_hit_face_normal,
                     hit_object,
                     hit_face,
-                    ray->direction,
+                    primary_ray.direction,
                     unit_next_ray_direction,
                     shared_serialized_material_attribute_byte_array,
-                    brdf);
-
-                // 入射方向のサンプリング
-                ray->origin.x = hit_point.x;
-                ray->origin.y = hit_point.y;
-                ray->origin.z = hit_point.z;
-                ray->direction.x = unit_next_ray_direction.x;
-                ray->direction.y = unit_next_ray_direction.y;
-                ray->direction.z = unit_next_ray_direction.z;
+                    input_ray_brdf);
 
                 float inv_pdf = 2.0f * M_PI;
-                next_path_weight.r = path_weight.r * brdf * hit_color.r * cosine_term * inv_pdf;
-                next_path_weight.g = path_weight.g * brdf * hit_color.g * cosine_term * inv_pdf;
-                next_path_weight.b = path_weight.b * brdf * hit_color.b * cosine_term * inv_pdf;
+                next_path_weight.r = path_weight.r * input_ray_brdf * hit_object_color.r * cosine_term * inv_pdf;
+                next_path_weight.g = path_weight.g * input_ray_brdf * hit_object_color.g * cosine_term * inv_pdf;
+                next_path_weight.b = path_weight.b * input_ray_brdf * hit_object_color.b * cosine_term * inv_pdf;
 
                 // 光源のサンプリング
                 float2 uniform2;
@@ -408,7 +397,7 @@ __global__ void nee_shared_memory_kernel(
                     (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
                     (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
                 };
-                
+
                 shadow_ray.origin.x = hit_point.x;
                 shadow_ray.origin.y = hit_point.y;
                 shadow_ray.origin.z = hit_point.z;
@@ -420,6 +409,24 @@ __global__ void nee_shared_memory_kernel(
                 shadow_ray.direction.x /= light_distance;
                 shadow_ray.direction.y /= light_distance;
                 shadow_ray.direction.z /= light_distance;
+
+                shadow_ray_brdf = 0.0f;
+                __rtx_compute_brdf(
+                    unit_hit_face_normal,
+                    hit_object,
+                    hit_face,
+                    primary_ray.direction,
+                    shadow_ray.direction,
+                    shared_serialized_material_attribute_byte_array,
+                    shadow_ray_brdf);
+
+                // 次のパス
+                primary_ray.origin.x = hit_point.x;
+                primary_ray.origin.y = hit_point.y;
+                primary_ray.origin.z = hit_point.z;
+                primary_ray.direction.x = unit_next_ray_direction.x;
+                primary_ray.direction.y = unit_next_ray_direction.y;
+                primary_ray.direction.z = unit_next_ray_direction.z;
 
                 const float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
                     + shadow_ray.direction.y * unit_hit_face_normal.y

@@ -91,12 +91,12 @@ geometry = rtx.StandardGeometry(faces, vertices, 25)
 geometry.set_position((0, -box_height / 2 - (bottom[1] + 0.01) * 3, 0))
 geometry.set_scale((3, 3, 3))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 0, 0))
+mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
-screen_width = 96
-screen_height = 64
+screen_width = 768
+screen_height = 512
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 128
