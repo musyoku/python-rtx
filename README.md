@@ -11,6 +11,8 @@ Ray Tracing library inspired by [three.js](https://github.com/mrdoob/three.js/)
 - [x] Area Lights
 - [x] Texture
 - [x] Next Event Estimation
+- [ ] Specular Reflection
+- [ ] Refraction
 - [ ] Subsurface Scattering
 
  Current status:
