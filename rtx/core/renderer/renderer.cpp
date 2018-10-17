@@ -356,6 +356,7 @@ void Renderer::launch_mcrt_kernel()
             _camera->type(),
             ray_origin_z,
             _screen_width, _screen_height,
+            _scene->_ambient_color,
             curand_seed);
         return;
     }
@@ -389,6 +390,7 @@ void Renderer::launch_mcrt_kernel()
             _camera->type(),
             ray_origin_z,
             _screen_width, _screen_height,
+            _scene->_ambient_color,
             curand_seed);
 
         // グローバルメモリに直列データを入れる場合
@@ -412,6 +414,7 @@ void Renderer::launch_mcrt_kernel()
         //     _camera->type(),
         //     ray_origin_z,
         //     _screen_width, _screen_height,
+        // _scene->_ambient_color,
         //     curand_seed);
         return;
     }
@@ -436,7 +439,7 @@ void Renderer::launch_nee_kernel()
         PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(_camera.get());
         ray_origin_z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
     }
-    
+
     size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
     required_shared_memory_bytes += _cpu_vertex_array.bytes();
@@ -474,6 +477,7 @@ void Renderer::launch_nee_kernel()
             _camera->type(),
             ray_origin_z,
             _screen_width, _screen_height,
+            _scene->_ambient_color,
             curand_seed);
         return;
     }
@@ -510,6 +514,7 @@ void Renderer::launch_nee_kernel()
             _camera->type(),
             ray_origin_z,
             _screen_width, _screen_height,
+            _scene->_ambient_color,
             curand_seed);
 
         // グローバルメモリに直列データを入れる場合
@@ -535,6 +540,7 @@ void Renderer::launch_nee_kernel()
         //     _camera->type(),
         //     ray_origin_z,
         //     _screen_width, _screen_height,
+        // _scene->_ambient_color,
         //     curand_seed);
         return;
     }

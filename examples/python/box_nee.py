@@ -8,7 +8,7 @@ from PIL import Image
 import geometry as gm
 import rtx
 
-scene = rtx.Scene()
+scene = rtx.Scene(ambient_color=(1, 1, 1))
 
 box_width = 6
 box_height = 5
@@ -93,15 +93,15 @@ geometry.set_scale((3, 3, 3))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
-# scene.add(bunny)
+scene.add(bunny)
 
-screen_width = 768
-screen_height = 512
+screen_width = 96
+screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 128
 rt_args.max_bounce = 4
-rt_args.next_event_estimation_enabled = True
+rt_args.next_event_estimation_enabled = False
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 64
@@ -110,7 +110,7 @@ cuda_args.num_rays_per_thread = 128
 renderer = rtx.Renderer()
 
 camera = rtx.PerspectiveCamera(
-    eye=(0, -0.5, 6),
+    eye=(0, -0.5, 12),
     center=(0, -0.5, 0),
     up=(0, 1, 0),
     fov_rad=math.pi / 3,

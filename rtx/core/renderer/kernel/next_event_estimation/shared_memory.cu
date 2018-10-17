@@ -31,6 +31,7 @@ __global__ void nee_shared_memory_kernel(
     RTXCameraType camera_type,
     float ray_origin_z,
     int screen_width, int screen_height,
+    rtxRGBAColor ambient_color, 
     int curand_seed)
 {
     extern __shared__ char shared_memory[];
@@ -136,7 +137,6 @@ __global__ void nee_shared_memory_kernel(
         rtxVertex hit_vc;
         rtxFaceVertexIndex hit_face;
         rtxObject hit_object;
-        int hit_object_index;
         float g_term;
         float brdf;
 
@@ -248,7 +248,6 @@ __global__ void nee_shared_memory_kernel(
 
                                 did_hit_object = true;
                                 hit_object = object;
-                                hit_object_index = object_index;
                             }
                         } else if (object.geometry_type == RTXGeometryTypeSphere) {
                             int serialized_array_index = node.assigned_face_index_start + object.serialized_face_index_offset;
@@ -278,7 +277,6 @@ __global__ void nee_shared_memory_kernel(
 
                             did_hit_object = true;
                             hit_object = object;
-                            hit_object_index = object_index;
                         }
                     }
 
@@ -291,6 +289,9 @@ __global__ void nee_shared_memory_kernel(
             }
 
             if (did_hit_object == false) {
+                pixel.r += ambient_color.r;
+                pixel.g += ambient_color.g;
+                pixel.b += ambient_color.b;
                 break;
             }
 
@@ -442,7 +443,10 @@ __global__ void nee_shared_memory_kernel(
                 light_normal.y /= norm;
                 light_normal.z /= norm;
                 const float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
-                g_term = dot1 * dot2 / (light_distance * light_distance);
+
+                // ハック
+                const float r = max(light_distance, 0.5f);
+                g_term = dot1 * dot2 / (r * r);
                 ray = &shadow_ray;
             }
         }
@@ -472,6 +476,7 @@ void rtx_cuda_launch_nee_shared_memory_kernel(
     RTXCameraType camera_type,
     float ray_origin_z,
     int screen_width, int screen_height,
+    rtxRGBAColor ambient_color, 
     int curand_seed)
 {
     __check_kernel_arguments();
@@ -495,6 +500,7 @@ void rtx_cuda_launch_nee_shared_memory_kernel(
         camera_type,
         ray_origin_z,
         screen_width, screen_height,
+        ambient_color,
         curand_seed);
     cudaCheckError(cudaThreadSynchronize());
 }

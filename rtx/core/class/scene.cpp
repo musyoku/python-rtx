@@ -1,6 +1,14 @@
 #include "scene.h"
 
 namespace rtx {
+Scene::Scene(pybind11::tuple ambient_color)
+{
+    _ambient_color = {
+        ambient_color[0].cast<float>(),
+        ambient_color[1].cast<float>(),
+        ambient_color[2].cast<float>(),
+    };
+}
 void Scene::add(std::shared_ptr<Object> object)
 {
     _object_array.emplace_back(object);

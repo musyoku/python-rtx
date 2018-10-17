@@ -29,6 +29,7 @@ __global__ void mcrt_shared_memory_kernel(
     RTXCameraType camera_type,
     float ray_origin_z,
     int screen_width, int screen_height,
+    rtxRGBAColor ambient_color, 
     int curand_seed)
 {
     extern __shared__ char shared_memory[];
@@ -263,6 +264,9 @@ __global__ void mcrt_shared_memory_kernel(
             }
 
             if (did_hit_object == false) {
+                pixel.r += ambient_color.r;
+                pixel.g += ambient_color.g;
+                pixel.b += ambient_color.b;
                 break;
             }
 
@@ -335,6 +339,7 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
     RTXCameraType camera_type,
     float ray_origin_z,
     int screen_width, int screen_height,
+    rtxRGBAColor ambient_color, 
     int curand_seed)
 {
     __check_kernel_arguments();
@@ -356,6 +361,7 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
         camera_type,
         ray_origin_z,
         screen_width, screen_height,
+        ambient_color,
         curand_seed);
     cudaCheckError(cudaThreadSynchronize());
 }

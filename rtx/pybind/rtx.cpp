@@ -39,7 +39,7 @@ PYBIND11_MODULE(rtx, module)
 
     // Scene
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
-        .def(py::init<>())
+        .def(py::init<py::tuple>(), py::arg("ambient_color"))
         .def("add", &Scene::add)
         .def("num_triangles", &Scene::num_triangles);
 
