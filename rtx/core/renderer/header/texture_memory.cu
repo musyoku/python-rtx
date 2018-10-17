@@ -296,7 +296,7 @@ __global__ void mcrt_texture_memory_kernel(
             rtxRGBAColor hit_color;
             bool did_hit_light = false;
             float brdf = 0.0f;
-            __rtx_fetch_hit_color_in_texture_memory(
+            __rtx_fetch_color_in_texture_memory(
                 hit_point,
                 unit_hit_face_normal,
                 hit_object,

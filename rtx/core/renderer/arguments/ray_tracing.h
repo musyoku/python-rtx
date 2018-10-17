@@ -6,6 +6,7 @@ private:
     int _num_rays_per_pixel;
     int _max_bounce;
     bool _next_event_estimation_enabled;
+    bool _supersampling_enabled;
 
 public:
     RayTracingArguments();
@@ -15,5 +16,7 @@ public:
     void set_max_bounce(int bounce);
     bool next_event_estimation_enabled();
     void set_next_event_estimation_enabled(bool enabled);
+    bool supersampling_enabled();
+    void set_supersampling_enabled(bool enabled);
 };
 }

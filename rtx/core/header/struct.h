@@ -1,4 +1,5 @@
 #pragma once
+#include "enum.h"
 
 typedef struct rtxVector4f {
     float x;
@@ -90,3 +91,47 @@ typedef struct rtxOrenNayarMaterialAttribute {
     float albedo;
     float roughness;
 } rtxOrenNayarMaterialAttribute;
+
+typedef struct rtxMCRTKernelArguments {
+    int num_active_texture_units;
+    int num_rays_per_thread;
+    int num_rays_per_pixel;
+    int max_bounce;
+    float ray_origin_z;
+    int screen_width;
+    int screen_height;
+    RTXCameraType camera_type;
+    rtxRGBAColor ambient_color;
+    int face_vertex_index_array_size;
+    int vertex_array_size;
+    int object_array_size;
+    int material_attribute_byte_array_size;
+    int threaded_bvh_array_size;
+    int color_mapping_array_size;
+    int threaded_bvh_node_array_size;
+    int uv_coordinate_array_size;
+    int curand_seed;
+} rtxMCRTKernelArguments;
+
+typedef struct rtxNEEKernelArguments {
+    int num_active_texture_units;
+    int num_rays_per_thread;
+    int num_rays_per_pixel;
+    int max_bounce;
+    float ray_origin_z;
+    int screen_width;
+    int screen_height;
+    RTXCameraType camera_type;
+    rtxRGBAColor ambient_color;
+    int face_vertex_index_array_size;
+    int vertex_array_size;
+    int object_array_size;
+    int material_attribute_byte_array_size;
+    int threaded_bvh_array_size;
+    int color_mapping_array_size;
+    int threaded_bvh_node_array_size;
+    int curand_seed;
+    int light_sampling_table_size;
+    int uv_coordinate_array_size;
+    float total_light_face_area;
+} rtxNEEKernelArguments;

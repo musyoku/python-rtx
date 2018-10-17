@@ -71,7 +71,7 @@ scene.add(ceil)
 geometry = rtx.PlainGeometry(box_width / 2, box_height / 2)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((0.01 - box_width / 2, -box_height / 4, 0))
-material = rtx.EmissiveMaterial(5.0, visible=False)
+material = rtx.EmissiveMaterial(5.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
@@ -91,7 +91,7 @@ geometry = rtx.StandardGeometry(faces, vertices, 25)
 geometry.set_position((0, -box_height / 2 - (bottom[1] + 0.01) * 3, 0))
 geometry.set_scale((3, 3, 3))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((1, 0, 0))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
@@ -110,7 +110,7 @@ cuda_args.num_rays_per_thread = 128
 renderer = rtx.Renderer()
 
 camera = rtx.PerspectiveCamera(
-    eye=(0, -0.5, 12),
+    eye=(0, -0.5, 6),
     center=(0, -0.5, 0),
     up=(0, 1, 0),
     fov_rad=math.pi / 3,

@@ -12,87 +12,79 @@
 #include <stdio.h>
 
 __global__ void mcrt_global_memory_kernel(
-    rtxFaceVertexIndex* global_serialized_face_vertex_indices_array, int face_vertex_index_array_size,
-    rtxVertex* global_serialized_vertex_array, int vertex_array_size,
-    rtxObject* global_serialized_object_array, int object_array_size,
-    rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* global_serialized_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* global_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* global_serialized_color_mapping_array, int color_mapping_array_size,
-    rtxUVCoordinate* global_serialized_uv_coordinate_array, int uv_coordinate_array_size,
+    rtxFaceVertexIndex* global_serialized_face_vertex_indices_array,
+    rtxVertex* global_serialized_vertex_array,
+    rtxObject* global_serialized_object_array,
+    rtxMaterialAttributeByte* global_serialized_material_attribute_byte_array,
+    rtxThreadedBVH* global_serialized_threaded_bvh_array,
+    rtxThreadedBVHNode* global_serialized_threaded_bvh_node_array,
+    rtxRGBAColor* global_serialized_color_mapping_array,
+    rtxUVCoordinate* global_serialized_uv_coordinate_array,
     cudaTextureObject_t* global_serialized_mapping_texture_object_array,
     rtxRGBAPixel* global_serialized_render_array,
-    int num_active_texture_units,
-    int num_rays_per_thread,
-    int num_rays_per_pixel,
-    int max_bounce,
-    RTXCameraType camera_type,
-    float ray_origin_z,
-    int screen_width, int screen_height,
-    rtxRGBAColor ambient_color, 
-    int curand_seed)
+    rtxMCRTKernelArguments args)
 {
     extern __shared__ char shared_memory[];
     curandStatePhilox4_32_10_t curand_state;
-    curand_init(curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
-    __xorshift_init(curand_seed);
+    curand_init(args.curand_seed, blockIdx.x * blockDim.x + threadIdx.x, 0, &curand_state);
+    __xorshift_init(args.curand_seed);
 
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
     rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
-    offset += sizeof(rtxObject) * object_array_size;
+    offset += sizeof(rtxObject) * args.object_array_size;
 
     rtxMaterialAttributeByte* shared_serialized_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
-    offset += sizeof(rtxMaterialAttributeByte) * material_attribute_byte_array_size;
+    offset += sizeof(rtxMaterialAttributeByte) * args.material_attribute_byte_array_size;
 
     rtxThreadedBVH* shared_serialized_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
-    offset += sizeof(rtxThreadedBVH) * threaded_bvh_array_size;
+    offset += sizeof(rtxThreadedBVH) * args.threaded_bvh_array_size;
 
     rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
-    offset += sizeof(rtxRGBAColor) * color_mapping_array_size;
+    offset += sizeof(rtxRGBAColor) * args.color_mapping_array_size;
 
     cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
-    offset += sizeof(cudaTextureObject_t) * num_active_texture_units;
+    offset += sizeof(cudaTextureObject_t) * args.num_active_texture_units;
 
     // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー
     if (threadIdx.x == 0) {
-        for (int m = 0; m < object_array_size; m++) {
+        for (int m = 0; m < args.object_array_size; m++) {
             shared_serialized_object_array[m] = global_serialized_object_array[m];
         }
-        for (int m = 0; m < material_attribute_byte_array_size; m++) {
+        for (int m = 0; m < args.material_attribute_byte_array_size; m++) {
             shared_serialized_material_attribute_byte_array[m] = global_serialized_material_attribute_byte_array[m];
         }
-        for (int m = 0; m < threaded_bvh_array_size; m++) {
+        for (int m = 0; m < args.threaded_bvh_array_size; m++) {
             shared_serialized_threaded_bvh_array[m] = global_serialized_threaded_bvh_array[m];
         }
-        for (int m = 0; m < color_mapping_array_size; m++) {
+        for (int m = 0; m < args.color_mapping_array_size; m++) {
             shared_serialized_color_mapping_array[m] = global_serialized_color_mapping_array[m];
         }
-        for (int m = 0; m < num_active_texture_units; m++) {
+        for (int m = 0; m < args.num_active_texture_units; m++) {
             shared_serialized_texture_object_array[m] = global_serialized_mapping_texture_object_array[m];
         }
     }
     __syncthreads();
 
-    int ray_index_offset = (blockIdx.x * blockDim.x + threadIdx.x) * num_rays_per_thread;
-    int num_generated_rays_per_pixel = num_rays_per_thread * int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
+    int ray_index_offset = (blockIdx.x * blockDim.x + threadIdx.x) * args.num_rays_per_thread;
+    int num_generated_rays_per_pixel = args.num_rays_per_thread * int(ceilf(float(args.num_rays_per_pixel) / float(args.num_rays_per_thread)));
 
     int target_pixel_index = ray_index_offset / num_generated_rays_per_pixel;
-    if (target_pixel_index >= screen_width * screen_height) {
+    if (target_pixel_index >= args.screen_width * args.screen_height) {
         return;
     }
-    int target_pixel_x = target_pixel_index % screen_width;
-    int target_pixel_y = target_pixel_index / screen_width;
-    float aspect_ratio = float(screen_width) / float(screen_height);
-    int render_buffer_index = ray_index_offset / num_rays_per_thread;
+    int target_pixel_x = target_pixel_index % args.screen_width;
+    int target_pixel_y = target_pixel_index / args.screen_width;
+    float aspect_ratio = float(args.screen_width) / float(args.screen_height);
+    int render_buffer_index = ray_index_offset / args.num_rays_per_thread;
 
     // 出力する画素
     rtxRGBAPixel pixel = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    for (int n = 0; n < num_rays_per_thread; n++) {
+    for (int n = 0; n < args.num_rays_per_thread; n++) {
         int ray_index = ray_index_offset + n;
         int ray_index_in_pixel = ray_index % num_generated_rays_per_pixel;
-        if (ray_index_in_pixel >= num_rays_per_pixel) {
+        if (ray_index_in_pixel >= args.num_rays_per_pixel) {
             return;
         }
 
@@ -103,19 +95,19 @@ __global__ void mcrt_global_memory_kernel(
         __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
         __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
         // 方向
-        ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(screen_width) - 1.0f;
-        ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(screen_height) - 1.0f) / aspect_ratio;
-        ray.direction.z = -ray_origin_z;
+        ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(args.screen_width) - 1.0f;
+        ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(args.screen_height) - 1.0f) / aspect_ratio;
+        ray.direction.z = -args.ray_origin_z;
         // 正規化
         const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
         ray.direction.x /= norm;
         ray.direction.y /= norm;
         ray.direction.z /= norm;
         // 始点
-        if (camera_type == RTXCameraTypePerspective) {
-            ray.origin = { 0.0f, 0.0f, ray_origin_z };
+        if (args.camera_type == RTXCameraTypePerspective) {
+            ray.origin = { 0.0f, 0.0f, args.ray_origin_z };
         } else {
-            ray.origin = { ray.direction.x, ray.direction.y, ray_origin_z };
+            ray.origin = { ray.direction.x, ray.direction.y, args.ray_origin_z };
         }
         // BVHのAABBとの衝突判定で使う
         float3 ray_direction_inv = {
@@ -135,12 +127,12 @@ __global__ void mcrt_global_memory_kernel(
         // 光輸送経路のウェイト
         rtxRGBAColor path_weight = { 1.0f, 1.0f, 1.0f };
 
-        for (int bounce = 0; bounce < max_bounce; bounce++) {
+        for (int bounce = 0; bounce < args.max_bounce; bounce++) {
             float min_distance = FLT_MAX;
             bool did_hit_object = false;
 
             // シーン上の全オブジェクトについて
-            for (int object_index = 0; object_index < object_array_size; object_index++) {
+            for (int object_index = 0; object_index < args.object_array_size; object_index++) {
                 rtxObject object = shared_serialized_object_array[object_index];
 
                 // 各ジオメトリのThreaded BVH
@@ -241,9 +233,39 @@ __global__ void mcrt_global_memory_kernel(
             }
 
             if (did_hit_object == false) {
-                pixel.r += ambient_color.r;
-                pixel.g += ambient_color.g;
-                pixel.b += ambient_color.b;
+                pixel.r += args.ambient_color.r;
+                pixel.g += args.ambient_color.g;
+                pixel.b += args.ambient_color.b;
+                break;
+            }
+
+            //  衝突点の色を検出
+            rtxRGBAColor hit_color;
+            __rtx_fetch_color_in_linear_memory(
+                hit_point,
+                hit_object,
+                hit_face,
+                hit_color,
+                shared_serialized_material_attribute_byte_array,
+                shared_serialized_color_mapping_array,
+                shared_serialized_texture_object_array,
+                global_serialized_uv_coordinate_array);
+
+            int material_type = hit_object.layerd_material_types.outside;
+            bool did_hit_light = material_type == RTXMaterialTypeEmissive;
+
+            // 光源に当たった場合トレースを打ち切り
+            if (did_hit_light) {
+                rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                if (bounce == 0 && attr.visible == false) {
+                    pixel.r += args.ambient_color.r;
+                    pixel.g += args.ambient_color.g;
+                    pixel.b += args.ambient_color.b;
+                } else {
+                    pixel.r += hit_color.r * path_weight.r * attr.brightness;
+                    pixel.g += hit_color.g * path_weight.g * attr.brightness;
+                    pixel.b += hit_color.b * path_weight.b * attr.brightness;
+                }
                 break;
             }
 
@@ -256,41 +278,21 @@ __global__ void mcrt_global_memory_kernel(
                 cosine_term,
                 curand_state);
 
-            //  衝突点の色を検出
-            rtxRGBAColor hit_color;
-            bool did_hit_light = false;
             float brdf = 0.0f;
-            rtx_cuda_fetch_hit_color_in_linear_memory(
-                hit_point,
+            __rtx_compute_brdf(
                 unit_hit_face_normal,
                 hit_object,
                 hit_face,
-                hit_color,
                 ray.direction,
                 unit_next_ray_direction,
                 shared_serialized_material_attribute_byte_array,
-                shared_serialized_color_mapping_array,
-                shared_serialized_texture_object_array,
-                global_serialized_uv_coordinate_array,
-                brdf,
-                did_hit_light);
+                brdf);
 
-            // 光源に当たった場合トレースを打ち切り
-            if (did_hit_light) {
-                rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                if (bounce == 0 && attr.visible == false) {
-                    pixel.r += ambient_color.r;
-                    pixel.g += ambient_color.g;
-                    pixel.b += ambient_color.b;
-                } else {
-                    pixel.r += hit_color.r * path_weight.r * attr.brightness;
-                    pixel.g += hit_color.g * path_weight.g * attr.brightness;
-                    pixel.b += hit_color.b * path_weight.b * attr.brightness;
-                }
-                break;
-            }
-
-            __rtx_update_ray(ray, ray_direction_inv, hit_point, unit_next_ray_direction);
+            __rtx_update_ray(
+                ray,
+                ray_direction_inv,
+                hit_point,
+                unit_next_ray_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;
@@ -302,48 +304,30 @@ __global__ void mcrt_global_memory_kernel(
     global_serialized_render_array[render_buffer_index] = pixel;
 }
 void rtx_cuda_launch_mcrt_global_memory_kernel(
-    rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array, int face_vertex_index_array_size,
-    rtxVertex* gpu_serialized_vertex_array, int vertex_array_size,
-    rtxObject* gpu_serialized_object_array, int object_array_size,
-    rtxMaterialAttributeByte* gpu_serialized_material_attribute_byte_array, int material_attribute_byte_array_size,
-    rtxThreadedBVH* gpu_serialized_threaded_bvh_array, int threaded_bvh_array_size,
-    rtxThreadedBVHNode* gpu_serialized_threaded_bvh_node_array, int threaded_bvh_node_array_size,
-    rtxRGBAColor* gpu_serialized_color_mapping_array, int color_mapping_array_size,
-    rtxUVCoordinate* gpu_serialized_uv_coordinate_array, int uv_coordinate_array_size,
-    rtxRGBAPixel* gpu_serialized_render_array, int render_array_size,
-    int num_active_texture_units,
-    int num_threads,
-    int num_blocks,
-    int num_rays_per_thread,
-    int num_rays_per_pixel,
-    size_t shared_memory_bytes,
-    int max_bounce,
-    RTXCameraType camera_type,
-    float ray_origin_z,
-    int screen_width, int screen_height,
-    rtxRGBAColor ambient_color, 
-    int curand_seed)
+    rtxFaceVertexIndex* gpu_serialized_face_vertex_index_array,
+    rtxVertex* gpu_serialized_vertex_array,
+    rtxObject* gpu_serialized_object_array,
+    rtxMaterialAttributeByte* gpu_serialized_material_attribute_byte_array,
+    rtxThreadedBVH* gpu_serialized_threaded_bvh_array,
+    rtxThreadedBVHNode* gpu_serialized_threaded_bvh_node_array,
+    rtxRGBAColor* gpu_serialized_color_mapping_array,
+    rtxUVCoordinate* gpu_serialized_uv_coordinate_array,
+    rtxRGBAPixel* gpu_serialized_render_array,
+    rtxMCRTKernelArguments& args,
+    int num_threads, int num_blocks, size_t shared_memory_bytes)
 {
     __check_kernel_arguments();
     mcrt_global_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
-        gpu_serialized_face_vertex_index_array, face_vertex_index_array_size,
-        gpu_serialized_vertex_array, vertex_array_size,
-        gpu_serialized_object_array, object_array_size,
-        gpu_serialized_material_attribute_byte_array, material_attribute_byte_array_size,
-        gpu_serialized_threaded_bvh_array, threaded_bvh_array_size,
-        gpu_serialized_threaded_bvh_node_array, threaded_bvh_node_array_size,
-        gpu_serialized_color_mapping_array, color_mapping_array_size,
-        gpu_serialized_uv_coordinate_array, uv_coordinate_array_size,
+        gpu_serialized_face_vertex_index_array,
+        gpu_serialized_vertex_array,
+        gpu_serialized_object_array,
+        gpu_serialized_material_attribute_byte_array,
+        gpu_serialized_threaded_bvh_array,
+        gpu_serialized_threaded_bvh_node_array,
+        gpu_serialized_color_mapping_array,
+        gpu_serialized_uv_coordinate_array,
         g_gpu_serialized_mapping_texture_object_array,
         gpu_serialized_render_array,
-        num_active_texture_units,
-        num_rays_per_thread,
-        num_rays_per_pixel,
-        max_bounce,
-        camera_type,
-        ray_origin_z,
-        screen_width, screen_height,
-        ambient_color,
-        curand_seed);
+        args);
     cudaCheckError(cudaThreadSynchronize());
 }

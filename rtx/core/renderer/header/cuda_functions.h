@@ -150,202 +150,48 @@
         x = max(0.0f, lambda.x * uv_a.x + lambda.y * uv_b.x + lambda.z * uv_c.x);                                      \
         y = max(0.0f, lambda.x * uv_a.y + lambda.y * uv_b.y + lambda.z * uv_c.y);                                      \
     }
-#define rtx_cuda_fetch_hit_color_in_linear_memory(                              \
-    hit_point,                                                                  \
-    hit_face_normal,                                                            \
-    hit_object,                                                                 \
-    hit_face,                                                                   \
-    hit_color,                                                                  \
-    unit_current_ray_direction,                                                 \
-    unit_next_ray_direction,                                                    \
-    material_attribute_byte_array,                                              \
-    color_mapping_array,                                                        \
-    texture_object_array,                                                       \
-    uv_coordinate_array,                                                        \
-    brdf,                                                                       \
-    did_hit_light)                                                              \
-    {                                                                           \
-        rtx_cuda_fetch_hit_color(rtx_cuda_fetch_uv_coordinate_in_linear_memory, \
-            hit_point,                                                          \
-            hit_face_normal,                                                    \
-            hit_object,                                                         \
-            hit_face,                                                           \
-            hit_color,                                                          \
-            unit_current_ray_direction,                                         \
-            unit_next_ray_direction,                                            \
-            material_attribute_byte_array,                                      \
-            color_mapping_array,                                                \
-            texture_object_array,                                               \
-            uv_coordinate_array,                                                \
-            brdf,                                                               \
-            did_hit_light);                                                     \
+#define __rtx_fetch_color_in_linear_memory(                              \
+    hit_point,                                                           \
+    hit_object,                                                          \
+    hit_face,                                                            \
+    hit_color,                                                           \
+    material_attribute_byte_array,                                       \
+    color_mapping_array,                                                 \
+    texture_object_array,                                                \
+    uv_coordinate_array)                                                 \
+    {                                                                    \
+        __rtx_fetch_color(rtx_cuda_fetch_uv_coordinate_in_linear_memory, \
+            hit_point,                                                   \
+            hit_object,                                                  \
+            hit_face,                                                    \
+            hit_color,                                                   \
+            material_attribute_byte_array,                               \
+            color_mapping_array,                                         \
+            texture_object_array,                                        \
+            uv_coordinate_array);                                        \
     }
-#define __rtx_fetch_hit_color_in_texture_memory(                                 \
-    hit_point,                                                                   \
-    hit_face_normal,                                                             \
-    hit_object,                                                                  \
-    hit_face,                                                                    \
-    hit_color,                                                                   \
-    unit_current_ray_direction,                                                  \
-    unit_next_ray_direction,                                                     \
-    material_attribute_byte_array,                                               \
-    color_mapping_array,                                                         \
-    texture_object_array,                                                        \
-    uv_coordinate_array,                                                         \
-    brdf,                                                                        \
-    did_hit_light)                                                               \
-    {                                                                            \
-        rtx_cuda_fetch_hit_color(rtx_cuda_fetch_uv_coordinate_in_texture_memory, \
-            hit_point,                                                           \
-            hit_face_normal,                                                     \
-            hit_object,                                                          \
-            hit_face,                                                            \
-            hit_color,                                                           \
-            unit_current_ray_direction,                                          \
-            unit_next_ray_direction,                                             \
-            material_attribute_byte_array,                                       \
-            color_mapping_array,                                                 \
-            texture_object_array,                                                \
-            uv_coordinate_array,                                                 \
-            brdf,                                                                \
-            did_hit_light);                                                      \
+#define __rtx_fetch_color_in_texture_memory(                              \
+    hit_point,                                                            \
+    hit_object,                                                           \
+    hit_face,                                                             \
+    hit_color,                                                            \
+    material_attribute_byte_array,                                        \
+    color_mapping_array,                                                  \
+    texture_object_array,                                                 \
+    uv_coordinate_array)                                                  \
+    {                                                                     \
+        __rtx_fetch_color(rtx_cuda_fetch_uv_coordinate_in_texture_memory, \
+            hit_point,                                                    \
+            hit_object,                                                   \
+            hit_face,                                                     \
+            hit_color,                                                    \
+            material_attribute_byte_array,                                \
+            color_mapping_array,                                          \
+            texture_object_array,                                         \
+            uv_coordinate_array);                                         \
     }
 
-#define rtx_cuda_fetch_hit_color(                                                                                                                                                                          \
-    fetch_uv_coordinates,                                                                                                                                                                                  \
-    hit_point,                                                                                                                                                                                             \
-    hit_face_normal,                                                                                                                                                                                       \
-    hit_object,                                                                                                                                                                                            \
-    hit_face,                                                                                                                                                                                              \
-    hit_color,                                                                                                                                                                                             \
-    unit_current_ray_direction,                                                                                                                                                                            \
-    unit_next_ray_direction,                                                                                                                                                                               \
-    material_attribute_byte_array,                                                                                                                                                                         \
-    color_mapping_array,                                                                                                                                                                                   \
-    texture_object_array,                                                                                                                                                                                  \
-    uv_coordinate_array,                                                                                                                                                                                   \
-    brdf,                                                                                                                                                                                                  \
-    did_hit_light)                                                                                                                                                                                         \
-    {                                                                                                                                                                                                      \
-        int material_type = hit_object.layerd_material_types.outside;                                                                                                                                      \
-        int mapping_type = hit_object.mapping_type;                                                                                                                                                        \
-        int geometry_type = hit_object.geometry_type;                                                                                                                                                      \
-        if (mapping_type == RTXMappingTypeSolidColor) {                                                                                                                                                    \
-            rtxRGBAColor color = color_mapping_array[hit_object.mapping_index];                                                                                                                            \
-            hit_color.r = color.r;                                                                                                                                                                         \
-            hit_color.g = color.g;                                                                                                                                                                         \
-            hit_color.b = color.b;                                                                                                                                                                         \
-        } else if (mapping_type == RTXMappingTypeTexture) {                                                                                                                                                \
-            if (geometry_type == RTXGeometryTypeStandard) {                                                                                                                                                \
-                /* 衝突位置を重心座標系で表す */                                                                                                                                              \
-                /* https://shikihuiku.wordpress.com/2017/05/23/barycentric-coordinates%E3%81%AE%E8%A8%88%E7%AE%97%E3%81%A8perspective-correction-partial-derivative%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6/*/ \
-                float3 d1 = { hit_va.x - hit_vc.x, hit_va.y - hit_vc.y, hit_va.z - hit_vc.z };                                                                                                             \
-                float3 d2 = { hit_vb.x - hit_vc.x, hit_vb.y - hit_vc.y, hit_vb.z - hit_vc.z };                                                                                                             \
-                float3 d = { hit_point.x - hit_vc.x, hit_point.y - hit_vc.y, hit_point.z - hit_vc.z };                                                                                                     \
-                const float d1x = d1.x * d1.x + d1.y * d1.y + d1.z * d1.z;                                                                                                                                 \
-                const float d1y = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;                                                                                                                                 \
-                const float d2x = d1y;                                                                                                                                                                     \
-                const float d2y = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;                                                                                                                                 \
-                const float dx = d.x * d1.x + d.y * d1.y + d.z * d1.z;                                                                                                                                     \
-                const float dy = d.x * d2.x + d.y * d2.y + d.z * d2.z;                                                                                                                                     \
-                const float det = d1x * d2y - d1y * d2x;                                                                                                                                                   \
-                float3 lambda = { (dx * d2y - dy * d2x) / det, (d1x * dy - d1y * dx) / det, 0.0f };                                                                                                        \
-                lambda.z = 1.0f - lambda.x - lambda.y;                                                                                                                                                     \
-                float x, y;                                                                                                                                                                                \
-                fetch_uv_coordinates(x, y, uv_coordinate_array, hit_face, hit_object);                                                                                                                     \
-                float4 color = tex2D<float4>(texture_object_array[hit_object.mapping_index], x, y);                                                                                                        \
-                hit_color.r = color.x;                                                                                                                                                                     \
-                hit_color.g = color.y;                                                                                                                                                                     \
-                hit_color.b = color.z;                                                                                                                                                                     \
-            } else {                                                                                                                                                                                       \
-                hit_color.r = 0.0f;                                                                                                                                                                        \
-                hit_color.g = 0.0f;                                                                                                                                                                        \
-                hit_color.b = 0.0f;                                                                                                                                                                        \
-            }                                                                                                                                                                                              \
-        }                                                                                                                                                                                                  \
-        if (material_type == RTXMaterialTypeLambert) {                                                                                                                                                     \
-            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                         \
-            float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                                 \
-            brdf = attr.albedo * cos_ref / M_PI;                                                                                                                                                           \
-        } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                                            \
-            /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                                       \
-            rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                     \
-            const float squared_roughness = attr.roughness * attr.roughness;                                                                                                                               \
-            const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                              \
-            const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                                    \
-            const float cos_view = -(hit_face_normal.x * unit_current_ray_direction.x + hit_face_normal.y * unit_current_ray_direction.y + hit_face_normal.z * unit_current_ray_direction.z);              \
-            const float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                           \
-            const float theta_view = acos(cos_view);                                                                                                                                                       \
-            const float theta_ref = acos(cos_ref);                                                                                                                                                         \
-            const float sin_alpha = sin(max(theta_view, theta_ref));                                                                                                                                       \
-            const float tan_beta = tan(min(theta_view, theta_ref));                                                                                                                                        \
-            float3 cross_view = {                                                                                                                                                                          \
-                -(unit_current_ray_direction.y * hit_face_normal.z - unit_current_ray_direction.z * hit_face_normal.y),                                                                                    \
-                -(unit_current_ray_direction.z * hit_face_normal.x - unit_current_ray_direction.x * hit_face_normal.z),                                                                                    \
-                -(unit_current_ray_direction.x * hit_face_normal.y - unit_current_ray_direction.y * hit_face_normal.x),                                                                                    \
-            };                                                                                                                                                                                             \
-            float norm = sqrt(cross_view.x * cross_view.x + cross_view.y * cross_view.y + cross_view.z * cross_view.z);                                                                                    \
-            cross_view.x /= norm;                                                                                                                                                                          \
-            cross_view.y /= norm;                                                                                                                                                                          \
-            cross_view.z /= norm;                                                                                                                                                                          \
-            float3 cross_ref = {                                                                                                                                                                           \
-                unit_next_ray_direction.y * hit_face_normal.z - unit_next_ray_direction.z * hit_face_normal.y,                                                                                             \
-                unit_next_ray_direction.z * hit_face_normal.x - unit_next_ray_direction.x * hit_face_normal.z,                                                                                             \
-                unit_next_ray_direction.x * hit_face_normal.y - unit_next_ray_direction.y * hit_face_normal.x,                                                                                             \
-            };                                                                                                                                                                                             \
-            norm = sqrt(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                                \
-            cross_ref.x /= norm;                                                                                                                                                                           \
-            cross_ref.y /= norm;                                                                                                                                                                           \
-            cross_ref.z /= norm;                                                                                                                                                                           \
-            const float cos_phi = cross_view.x * cross_ref.x + cross_view.y * cross_ref.y + cross_view.z * cross_ref.z;                                                                                    \
-            const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                             \
-            brdf = coeff / M_PI;                                                                                                                                                                           \
-        } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
-            did_hit_light = true;                                                                                                                                                                          \
-        }                                                                                                                                                                                                  \
-    }
-
-#define rtx_cuda_fetch_light_color_in_linear_memory(                              \
-    hit_point,                                                                    \
-    hit_object,                                                                   \
-    hit_face,                                                                     \
-    hit_color,                                                                    \
-    material_attribute_byte_array,                                                \
-    color_mapping_array,                                                          \
-    texture_object_array,                                                         \
-    uv_coordinate_array)                                                          \
-    {                                                                             \
-        rtx_cuda_fetch_light_color(rtx_cuda_fetch_uv_coordinate_in_linear_memory, \
-            hit_point,                                                            \
-            hit_object,                                                           \
-            hit_face,                                                             \
-            hit_color,                                                            \
-            material_attribute_byte_array,                                        \
-            color_mapping_array,                                                  \
-            texture_object_array,                                                 \
-            uv_coordinate_array)                                                  \
-    }
-#define __rtx_fetch_light_color_in_texture_memory(                              \
-    hit_point,                                                                     \
-    hit_object,                                                                    \
-    hit_face,                                                                      \
-    hit_color,                                                                     \
-    material_attribute_byte_array,                                                 \
-    color_mapping_array,                                                           \
-    texture_object_array,                                                          \
-    uv_coordinate_array)                                                           \
-    {                                                                              \
-        rtx_cuda_fetch_light_color(rtx_cuda_fetch_uv_coordinate_in_texture_memory, \
-            hit_point,                                                             \
-            hit_object,                                                            \
-            hit_face,                                                              \
-            hit_color,                                                             \
-            material_attribute_byte_array,                                         \
-            color_mapping_array,                                                   \
-            texture_object_array,                                                  \
-            uv_coordinate_array)                                                   \
-    }
-#define rtx_cuda_fetch_light_color(                                                                                                                                                                        \
+#define __rtx_fetch_color(                                                                                                                                                                                 \
     fetch_uv_coordinates,                                                                                                                                                                                  \
     hit_point,                                                                                                                                                                                             \
     hit_object,                                                                                                                                                                                            \
@@ -391,6 +237,56 @@
                 hit_color.b = 0.0f;                                                                                                                                                                        \
             }                                                                                                                                                                                              \
         }                                                                                                                                                                                                  \
+    }
+
+#define __rtx_compute_brdf(                                                                                                                                                                   \
+    hit_face_normal,                                                                                                                                                                          \
+    hit_object,                                                                                                                                                                               \
+    hit_face,                                                                                                                                                                                 \
+    unit_current_ray_direction,                                                                                                                                                               \
+    unit_next_ray_direction,                                                                                                                                                                  \
+    material_attribute_byte_array,                                                                                                                                                            \
+    brdf)                                                                                                                                                                                     \
+    {                                                                                                                                                                                         \
+        int material_type = hit_object.layerd_material_types.outside;                                                                                                                         \
+        if (material_type == RTXMaterialTypeLambert) {                                                                                                                                        \
+            rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                            \
+            float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                    \
+            brdf = attr.albedo * cos_ref / M_PI;                                                                                                                                              \
+        } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                               \
+            /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                          \
+            rtxOrenNayarMaterialAttribute attr = ((rtxOrenNayarMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                        \
+            const float squared_roughness = attr.roughness * attr.roughness;                                                                                                                  \
+            const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                 \
+            const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                       \
+            const float cos_view = -(hit_face_normal.x * unit_current_ray_direction.x + hit_face_normal.y * unit_current_ray_direction.y + hit_face_normal.z * unit_current_ray_direction.z); \
+            const float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;              \
+            const float theta_view = acos(cos_view);                                                                                                                                          \
+            const float theta_ref = acos(cos_ref);                                                                                                                                            \
+            const float sin_alpha = sin(max(theta_view, theta_ref));                                                                                                                          \
+            const float tan_beta = tan(min(theta_view, theta_ref));                                                                                                                           \
+            float3 cross_view = {                                                                                                                                                             \
+                -(unit_current_ray_direction.y * hit_face_normal.z - unit_current_ray_direction.z * hit_face_normal.y),                                                                       \
+                -(unit_current_ray_direction.z * hit_face_normal.x - unit_current_ray_direction.x * hit_face_normal.z),                                                                       \
+                -(unit_current_ray_direction.x * hit_face_normal.y - unit_current_ray_direction.y * hit_face_normal.x),                                                                       \
+            };                                                                                                                                                                                \
+            float norm = sqrt(cross_view.x * cross_view.x + cross_view.y * cross_view.y + cross_view.z * cross_view.z);                                                                       \
+            cross_view.x /= norm;                                                                                                                                                             \
+            cross_view.y /= norm;                                                                                                                                                             \
+            cross_view.z /= norm;                                                                                                                                                             \
+            float3 cross_ref = {                                                                                                                                                              \
+                unit_next_ray_direction.y * hit_face_normal.z - unit_next_ray_direction.z * hit_face_normal.y,                                                                                \
+                unit_next_ray_direction.z * hit_face_normal.x - unit_next_ray_direction.x * hit_face_normal.z,                                                                                \
+                unit_next_ray_direction.x * hit_face_normal.y - unit_next_ray_direction.y * hit_face_normal.x,                                                                                \
+            };                                                                                                                                                                                \
+            norm = sqrt(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                   \
+            cross_ref.x /= norm;                                                                                                                                                              \
+            cross_ref.y /= norm;                                                                                                                                                              \
+            cross_ref.z /= norm;                                                                                                                                                              \
+            const float cos_phi = cross_view.x * cross_ref.x + cross_view.y * cross_ref.y + cross_view.z * cross_ref.z;                                                                       \
+            const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                \
+            brdf = coeff / M_PI;                                                                                                                                                              \
+        }                                                                                                                                                                                     \
     }
 
 #define __rtx_fetch_bvh_node_in_texture_memory(node, texture_ref, node_index)          \
@@ -454,10 +350,10 @@
         assert(gpu_serialized_threaded_bvh_array != NULL);            \
         assert(gpu_serialized_threaded_bvh_node_array != NULL);       \
         assert(gpu_serialized_render_array != NULL);                  \
-        if (color_mapping_array_size > 0) {                           \
+        if (args.color_mapping_array_size > 0) {                      \
             assert(gpu_serialized_color_mapping_array != NULL);       \
         }                                                             \
-        if (uv_coordinate_array_size > 0) {                           \
+        if (args.uv_coordinate_array_size > 0) {                      \
             assert(gpu_serialized_uv_coordinate_array != NULL);       \
         }                                                             \
     }
@@ -478,4 +374,3 @@
     unsigned long xors_y = 362436069;   \
     unsigned long xors_z = 521288629;   \
     unsigned long xors_w = 88675123;
-

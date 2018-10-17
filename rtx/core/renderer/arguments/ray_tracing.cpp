@@ -30,4 +30,12 @@ void RayTracingArguments::set_next_event_estimation_enabled(bool enabled)
 {
     _next_event_estimation_enabled = enabled;
 }
+bool RayTracingArguments::supersampling_enabled()
+{
+    return _supersampling_enabled;
+}
+void RayTracingArguments::set_supersampling_enabled(bool enabled)
+{
+    _supersampling_enabled = enabled; 
+}
 }
