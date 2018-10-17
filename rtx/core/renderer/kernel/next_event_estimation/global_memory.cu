@@ -109,25 +109,8 @@ __global__ void nee_global_memory_kernel(
         float g_term;
         float brdf;
 
-        // スーパーサンプリング
-        float2 noise;
-        __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
-        __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
-        // 方向
-        primary_ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(args.screen_width) - 1.0f;
-        primary_ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(args.screen_height) - 1.0f) / aspect_ratio;
-        primary_ray.direction.z = -args.ray_origin_z;
-        // 正規化
-        const float norm = sqrtf(primary_ray.direction.x * primary_ray.direction.x + primary_ray.direction.y * primary_ray.direction.y + primary_ray.direction.z * primary_ray.direction.z);
-        primary_ray.direction.x /= norm;
-        primary_ray.direction.y /= norm;
-        primary_ray.direction.z /= norm;
-        // 始点
-        if (args.camera_type == RTXCameraTypePerspective) {
-            primary_ray.origin = { 0.0f, 0.0f, args.ray_origin_z };
-        } else {
-            primary_ray.origin = { primary_ray.direction.x, primary_ray.direction.y, args.ray_origin_z };
-        }
+        // レイの生成
+        __rtx_generate_ray(primary_ray, args, aspect_ratio);
 
         float3 ray_direction_inv;
         ray = &primary_ray;

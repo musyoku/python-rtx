@@ -87,28 +87,10 @@ __global__ void mcrt_global_memory_kernel(
         if (ray_index_in_pixel >= args.num_rays_per_pixel) {
             return;
         }
-
         // レイの生成
         rtxCUDARay ray;
-        // スーパーサンプリング
-        float2 noise;
-        __xorshift_uniform(noise.x, xors_x, xors_y, xors_z, xors_w);
-        __xorshift_uniform(noise.y, xors_x, xors_y, xors_z, xors_w);
-        // 方向
-        ray.direction.x = 2.0f * float(target_pixel_x + noise.x) / float(args.screen_width) - 1.0f;
-        ray.direction.y = -(2.0f * float(target_pixel_y + noise.y) / float(args.screen_height) - 1.0f) / aspect_ratio;
-        ray.direction.z = -args.ray_origin_z;
-        // 正規化
-        const float norm = sqrtf(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z);
-        ray.direction.x /= norm;
-        ray.direction.y /= norm;
-        ray.direction.z /= norm;
-        // 始点
-        if (args.camera_type == RTXCameraTypePerspective) {
-            ray.origin = { 0.0f, 0.0f, args.ray_origin_z };
-        } else {
-            ray.origin = { ray.direction.x, ray.direction.y, args.ray_origin_z };
-        }
+        __rtx_generate_ray(ray, args, aspect_ratio);
+        
         // BVHのAABBとの衝突判定で使う
         float3 ray_direction_inv = {
             1.0f / ray.direction.x,

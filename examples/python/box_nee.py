@@ -95,8 +95,8 @@ mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
 scene.add(bunny)
 
-screen_width = 512
-screen_height = 512
+screen_width = 64
+screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 512
