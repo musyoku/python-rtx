@@ -301,9 +301,7 @@
             const float coeff = attr.albedo * cos_ref * (a + (b * max(0.0f, cos_phi) * sin_alpha * tan_beta));                                                                                             \
             brdf = coeff / M_PI;                                                                                                                                                                           \
         } else if (material_type == RTXMaterialTypeEmissive) {                                                                                                                                             \
-            rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                                       \
             did_hit_light = true;                                                                                                                                                                          \
-            brdf = attr.brightness;                                                                                                                                                                        \
         }                                                                                                                                                                                                  \
     }
 

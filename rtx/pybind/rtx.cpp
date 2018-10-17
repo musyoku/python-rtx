@@ -60,7 +60,8 @@ PYBIND11_MODULE(rtx, module)
     py::class_<OrenNayarMaterial, Material, std::shared_ptr<OrenNayarMaterial>>(module, "OrenNayarMaterial")
         .def(py::init<float, float>(), py::arg("albedo"), py::arg("roughness"));
     py::class_<EmissiveMaterial, Material, std::shared_ptr<EmissiveMaterial>>(module, "EmissiveMaterial")
-        .def(py::init<float>(), py::arg("brightness"));
+        .def(py::init<float>(), py::arg("brightness"))
+        .def(py::init<float, float>(), py::arg("brightness"), py::arg("visible"));
     py::class_<LayeredMaterial, std::shared_ptr<LayeredMaterial>>(module, "LayeredMaterial")
         .def(py::init<std::shared_ptr<Material>>())
         .def(py::init<std::shared_ptr<Material>, std::shared_ptr<Material>>())

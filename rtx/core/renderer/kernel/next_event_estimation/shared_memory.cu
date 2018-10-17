@@ -357,10 +357,16 @@ __global__ void nee_shared_memory_kernel(
                         break;
                     }
                     // 最初のパスで光源に当たった場合のみ寄与を加算
-                    float brightness = brdf;
-                    pixel.r += hit_color.r * path_weight.r * brightness;
-                    pixel.g += hit_color.g * path_weight.g * brightness;
-                    pixel.b += hit_color.b * path_weight.b * brightness;
+                    rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                    if (attr.visible) {
+                        pixel.r += hit_color.r * path_weight.r * attr.brightness;
+                        pixel.g += hit_color.g * path_weight.g * attr.brightness;
+                        pixel.b += hit_color.b * path_weight.b * attr.brightness;
+                    } else {
+                        pixel.r += ambient_color.r;
+                        pixel.g += ambient_color.g;
+                        pixel.b += ambient_color.b;
+                    }
                     break;
                 }
 

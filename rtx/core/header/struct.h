@@ -79,6 +79,7 @@ typedef char rtxMaterialAttributeByte;
 
 typedef struct rtxEmissiveMaterialAttribute {
     float brightness;
+    bool visible;
 } rtxEmissiveMaterialAttribute;
 
 typedef struct rtxLambertMaterialAttribute {

@@ -287,10 +287,16 @@ __global__ void mcrt_texture_memory_kernel(
 
             // 光源に当たった場合トレースを打ち切り
             if (did_hit_light) {
-                float brightness = brdf;
-                pixel.r += hit_color.r * path_weight.r * brightness;
-                pixel.g += hit_color.g * path_weight.g * brightness;
-                pixel.b += hit_color.b * path_weight.b * brightness;
+                rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
+                if (bounce == 0 && attr.visible == false) {
+                    pixel.r += ambient_color.r;
+                    pixel.g += ambient_color.g;
+                    pixel.b += ambient_color.b;
+                } else {
+                    pixel.r += hit_color.r * path_weight.r * attr.brightness;
+                    pixel.g += hit_color.g * path_weight.g * attr.brightness;
+                    pixel.b += hit_color.b * path_weight.b * attr.brightness;
+                }
                 break;
             }
 
@@ -330,7 +336,7 @@ void rtx_cuda_launch_mcrt_texture_memory_kernel(
     RTXCameraType camera_type,
     float ray_origin_z,
     int screen_width, int screen_height,
-    rtxRGBAColor ambient_color, 
+    rtxRGBAColor ambient_color,
     int curand_seed)
 {
     __check_kernel_arguments();

@@ -7,6 +7,12 @@ namespace rtx {
 EmissiveMaterial::EmissiveMaterial(float brightness)
 {
     _brightness = brightness;
+    _visible = true;
+}
+EmissiveMaterial::EmissiveMaterial(float brightness, bool visible)
+{
+    _brightness = brightness;
+    _visible = visible;
 }
 float EmissiveMaterial::brightness() const
 {
@@ -24,6 +30,7 @@ void EmissiveMaterial::serialize_attributes(rtx::array<rtxMaterialAttributeByte>
 {
     rtxEmissiveMaterialAttribute attr;
     attr.brightness = _brightness;
+    attr.visible = _visible;
     rtxMaterialAttributeByte* pointer = array.data();
     std::memcpy(&pointer[offset], &attr, sizeof(rtxEmissiveMaterialAttribute));
 }

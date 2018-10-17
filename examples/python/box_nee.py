@@ -8,7 +8,7 @@ from PIL import Image
 import geometry as gm
 import rtx
 
-scene = rtx.Scene(ambient_color=(1, 1, 1))
+scene = rtx.Scene(ambient_color=(0, 0, 0))
 
 box_width = 6
 box_height = 5
@@ -71,7 +71,7 @@ scene.add(ceil)
 geometry = rtx.PlainGeometry(box_width / 2, box_height / 2)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((0.01 - box_width / 2, -box_height / 4, 0))
-material = rtx.EmissiveMaterial(5.0)
+material = rtx.EmissiveMaterial(5.0, visible=False)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
@@ -101,7 +101,7 @@ screen_height = 64
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 128
 rt_args.max_bounce = 4
-rt_args.next_event_estimation_enabled = False
+rt_args.next_event_estimation_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 64
