@@ -221,7 +221,7 @@ __global__ void nee_texture_memory_kernel(
                                 hit_point.y - center.y,
                                 hit_point.z - center.z,
                             };
-                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
+                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
 
                             unit_hit_face_normal.x = normal.x / norm;
                             unit_hit_face_normal.y = normal.y / norm;
@@ -416,7 +416,7 @@ __global__ void nee_texture_memory_kernel(
                 light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
                 light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
                 light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
-                const float norm = sqrtf(light_normal.x * light_normal.x + light_normal.y * light_normal.y + light_normal.z * light_normal.z) + 1e-12;
+                const float norm = sqrtf(light_normal.x * light_normal.x + light_normal.y * light_normal.y + light_normal.z * light_normal.z);
                 light_normal.x /= norm;
                 light_normal.y /= norm;
                 light_normal.z /= norm;

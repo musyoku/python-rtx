@@ -44,7 +44,7 @@
         s.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                         \
         s.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                         \
         s.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                         \
-        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z) + 1e-12;               \
+        float norm = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z);                       \
         s.x = s.x / norm;                                                            \
         s.y = s.y / norm;                                                            \
         s.z = s.z / norm;                                                            \
@@ -62,9 +62,10 @@
         }                                                                            \
     }
 
+// http://www.pbr-book.org/3ed-2018/Utilities/Mathematical_Routines.html#SolvingQuadraticEquations
 #define __rtx_intersect_sphere_or_continue(ray, center, radius, t, min_distance)                                                   \
     {                                                                                                                              \
-        float4 oc = {                                                                                                              \
+        float3 oc = {                                                                                                              \
             ray.origin.x - center.x,                                                                                               \
             ray.origin.y - center.y,                                                                                               \
             ray.origin.z - center.z,                                                                                               \
@@ -72,11 +73,11 @@
         const float a = ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y + ray.direction.z * ray.direction.z; \
         const float b = 2.0f * (ray.direction.x * oc.x + ray.direction.y * oc.y + ray.direction.z * oc.z);                         \
         const float c = (oc.x * oc.x + oc.y * oc.y + oc.z * oc.z) - radius.x * radius.x;                                           \
-        const float d = b * b - 4.0f * a * c;                                                                                      \
-        if (d <= 0) {                                                                                                              \
+        const float discrim = b * b - 4.0f * a * c;                                                                                \
+        if (discrim <= 0) {                                                                                                        \
             continue;                                                                                                              \
         }                                                                                                                          \
-        const float root = sqrt(d);                                                                                                \
+        const float root = sqrt(discrim);                                                                                          \
         t = (-b - root) / (2.0f * a);                                                                                              \
         if (t <= 0.001f) {                                                                                                         \
             t = (-b + root) / (2.0f * a);                                                                                          \

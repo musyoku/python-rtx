@@ -260,7 +260,7 @@ __global__ void mcrt_texture_memory_kernel(
                                 hit_point.y - center.y,
                                 hit_point.z - center.z,
                             };
-                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
+                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
 
                             unit_hit_face_normal.x = normal.x / norm;
                             unit_hit_face_normal.y = normal.y / norm;

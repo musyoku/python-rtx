@@ -84,34 +84,21 @@ mapping = rtx.SolidColorMapping((0, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
-# place bunny
-group = rtx.ObjectGroup()
-faces, vertices = gm.load("../geometries/bunny")
-bottom = np.amin(vertices, axis=0)
-
-geometry = rtx.StandardGeometry(faces, vertices, 25)
-geometry.set_position((0, 0, 0.5))
+# place cylinder
+geometry = rtx.CylinderGeometry(1, 3)
+# geometry.set_rotation((0, 0, -math.pi / 2))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 1, 1))
-bunny = rtx.Object(geometry, material, mapping)
-group.add(bunny)
+mapping = rtx.SolidColorMapping((0, 1, 0))
+cylinder = rtx.Object(geometry, material, mapping)
+scene.add(cylinder)
 
-geometry = rtx.StandardGeometry(faces, vertices, 25)
-geometry.set_position((0, 0, -0.5))
-bunny = rtx.Object(geometry, material, mapping)
-group.add(bunny)
-
-group.set_position((0, 0, 0))
-group.set_scale((3, 3, 3))
-scene.add(group)
-
-screen_width = 64
-screen_height = 64
+screen_width = 128
+screen_height = 128
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 1024
 rt_args.max_bounce = 4
-rt_args.next_event_estimation_enabled = True
+rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
@@ -145,7 +132,7 @@ for n in range(total_iterations):
     plt.title("NEE (1024spp)")
     plt.pause(1e-8)
 
-    group.set_rotation((rotation, 0, 0))
+    # group.set_rotation((rotation, 0, 0))
     rotation += math.pi / 10
 
 image = Image.fromarray(np.uint8(pixels * 255))

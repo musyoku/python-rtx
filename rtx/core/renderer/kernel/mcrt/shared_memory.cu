@@ -114,7 +114,7 @@ __global__ void mcrt_shared_memory_kernel(
         // レイの生成
         rtxCUDARay ray;
         __rtx_generate_ray(ray, args, aspect_ratio);
-        
+
         // BVHのAABBとの衝突判定で使う
         float3 ray_direction_inv = {
             1.0f / ray.direction.x,
@@ -219,11 +219,128 @@ __global__ void mcrt_shared_memory_kernel(
                                 hit_point.y - center.y,
                                 hit_point.z - center.z,
                             };
-                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z) + 1e-12;
+                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
 
                             unit_hit_face_normal.x = normal.x / norm;
                             unit_hit_face_normal.y = normal.y / norm;
                             unit_hit_face_normal.z = normal.z / norm;
+
+                            did_hit_object = true;
+                            hit_object = object;
+                        } else if (object.geometry_type == RTXGeometryTypeCylinder) {
+                            rtxFaceVertexIndex face;
+                            int offset = node.assigned_face_index_start + object.serialized_face_index_offset;
+
+                            // Load cylinder parameters
+                            face = shared_face_vertex_indices_array[offset + 0];
+                            const rtxVertex params = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const float radius = params.x;
+                            const float y_max = params.y;
+                            const float y_min = params.z;
+
+                            // Load transformation matrix
+                            face = shared_face_vertex_indices_array[offset + 1];
+                            const rtxVertex trans_a = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            // Load inverse transformation matrix
+                            face = shared_face_vertex_indices_array[offset + 2];
+                            const rtxVertex inv_trans_a = shared_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            // http://www.pbr-book.org/3ed-2018/Shapes/Cylinders.html#IntersectionTests
+                            // このコードでは上方向はy軸であることに注意
+                            float3 d = {
+                                ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,
+                                ray.direction.x * inv_trans_b.x + ray.direction.y * inv_trans_b.y + ray.direction.z * inv_trans_b.z,
+                                ray.direction.x * inv_trans_c.x + ray.direction.y * inv_trans_c.y + ray.direction.z * inv_trans_c.z,
+                            };
+                            float3 o = {
+                                ray.origin.x * inv_trans_a.x + ray.origin.y * inv_trans_a.y + ray.origin.z * inv_trans_a.z,
+                                ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z,
+                                ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z,
+                            };
+                            float t0, t1;
+                            const float a = d.x * d.x + d.z * d.z;
+                            const float b = 2.0f * (d.x * o.x + d.z * o.z);
+                            const float c = (o.x * o.x + o.z * o.z) - radius * radius;
+                            const float discrim = b * b - 4.0f * a * c;
+                            if (discrim <= 0) {
+                                continue;
+                            }
+                            const float root = sqrt(discrim);
+                            float q;
+                            if (b < 0.0f) {
+                                q = -0.5f * (b - root);
+                            } else {
+                                q = -0.5f * (b + root);
+                            }
+                            t0 = q / a;
+                            t1 = c / q;
+                            if (t0 > t1) {
+                                const float tmp = t1;
+                                t1 = t0;
+                                t0 = tmp;
+                            }
+                            if (t1 <= 0.001f) {
+                                continue;
+                            }
+                            float t_shape_hit = t0;
+                            if (t_shape_hit <= 0.001f) {
+                                t_shape_hit = t1;
+                            }
+
+                            // hit point in model space
+                            float3 p_hit = {
+                                o.x + t_shape_hit * d.x,
+                                o.y + t_shape_hit * d.y,
+                                o.z + t_shape_hit * d.z,
+                            };
+
+                            const float hit_rad = sqrtf(p_hit.x * p_hit.x + p_hit.z * p_hit.z);
+                            p_hit.x *= radius / hit_rad;
+                            p_hit.z *= radius / hit_rad;
+
+                            if (p_hit.y < y_min || p_hit.y > y_max) {
+                                if (t_shape_hit == t1) {
+                                    continue;
+                                }
+                                t_shape_hit = t1;
+                                p_hit.x = o.x + t_shape_hit * d.x;
+                                p_hit.y = o.y + t_shape_hit * d.y;
+                                p_hit.z = o.z + t_shape_hit * d.z;
+
+                                const float hit_rad = sqrtf(p_hit.x * p_hit.x + p_hit.z * p_hit.z);
+                                p_hit.x *= radius / hit_rad;
+                                p_hit.z *= radius / hit_rad;
+                                if (p_hit.y < y_min || p_hit.y > y_max) {
+                                    continue;
+                                }
+                            }
+
+                            min_distance = t_shape_hit;
+
+                            // normal in model space
+                            float3 normal = {
+                                p_hit.x,
+                                0.0f,
+                                p_hit.z,
+                            };
+                            const float norm = sqrtf(normal.x * normal.x + normal.z * normal.z);
+                            normal.x /= norm;
+                            normal.z /= norm;
+
+                            // normal in view space
+                            unit_hit_face_normal.x = normal.x * trans_a.x + normal.y * trans_a.y + normal.z * trans_a.z;
+                            unit_hit_face_normal.y = normal.x * trans_b.x + normal.y * trans_b.y + normal.z * trans_b.z;
+                            unit_hit_face_normal.z = normal.x * trans_c.x + normal.y * trans_c.y + normal.z * trans_c.z;
+
+                            // hit point in view space
+                            hit_point.x = ray.origin.x + t_shape_hit * ray.direction.x;
+                            hit_point.y = ray.origin.y + t_shape_hit * ray.direction.y;
+                            hit_point.z = ray.origin.z + t_shape_hit * ray.direction.z;
 
                             did_hit_object = true;
                             hit_object = object;
@@ -325,14 +442,14 @@ void rtx_cuda_launch_mcrt_shared_memory_kernel(
 {
     __check_kernel_arguments();
     mcrt_shared_memory_kernel<<<num_blocks, num_threads, shared_memory_bytes>>>(
-        gpu_serialized_face_vertex_index_array, 
-        gpu_serialized_vertex_array, 
-        gpu_serialized_object_array, 
-        gpu_serialized_material_attribute_byte_array, 
-        gpu_serialized_threaded_bvh_array, 
-        gpu_serialized_threaded_bvh_node_array, 
-        gpu_serialized_color_mapping_array, 
-        gpu_serialized_uv_coordinate_array, 
+        gpu_serialized_face_vertex_index_array,
+        gpu_serialized_vertex_array,
+        gpu_serialized_object_array,
+        gpu_serialized_material_attribute_byte_array,
+        gpu_serialized_threaded_bvh_array,
+        gpu_serialized_threaded_bvh_node_array,
+        gpu_serialized_color_mapping_array,
+        gpu_serialized_uv_coordinate_array,
         g_gpu_serialized_mapping_texture_object_array,
         gpu_serialized_render_array,
         args);

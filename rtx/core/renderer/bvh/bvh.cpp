@@ -238,8 +238,24 @@ Node::Node(std::vector<int> assigned_face_indices,
     _assigned_face_index_start = 0;
     _assigned_face_index_end = 0;
 
-    _aabb_max = geometry->center() + geometry->radius();
-    _aabb_min = geometry->center() - geometry->radius();
+    // AABBは使わない
+    _aabb_max = glm::vec3f(0.0f);
+    _aabb_min = glm::vec3f(0.0f);
+
+    _is_leaf = true;
+}
+Node::Node(std::vector<int> assigned_face_indices,
+    std::shared_ptr<CylinderGeometry>& geometry)
+{
+    assert(assigned_face_indices.size() > 0);
+    _assigned_face_indices = assigned_face_indices;
+    _index = 0;
+    _assigned_face_index_start = 0;
+    _assigned_face_index_end = 0;
+
+    // AABBは使わない
+    _aabb_max = glm::vec3f(0.0f);
+    _aabb_min = glm::vec3f(0.0f);
 
     _is_leaf = true;
 }
@@ -329,6 +345,20 @@ BVH::BVH(std::shared_ptr<Geometry>& geometry)
         _num_nodes = _root->num_children() + 1;
         return;
     }
+    if (geometry->type() == RTXGeometryTypeCylinder) {
+        std::shared_ptr<CylinderGeometry> cylinder = std::static_pointer_cast<CylinderGeometry>(geometry);
+        std::vector<int> assigned_face_indices;
+        for (int face_index = 0; face_index < geometry->num_faces(); face_index++) {
+            assigned_face_indices.push_back(face_index);
+        }
+        _current_node_index = 0;
+        _current_assigned_face_index_offset = 0;
+        _root = std::make_shared<Node>(assigned_face_indices, cylinder);
+        _root->set_hit_and_miss_links();
+
+        _num_nodes = _root->num_children() + 1;
+        return;
+    }
 }
 int BVH::num_nodes()
 {
@@ -380,7 +410,7 @@ void BVH::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int serializat
             int pos = node->_assigned_face_index_start + serialization_offset;
             for (int face_index : node->_assigned_face_indices) {
                 glm::vec3i face = face_vertex_indices_array[face_index];
-                buffer[pos] = { face[0], face[1], face[2] };
+                buffer[pos] = { face[0], face[1], face[2], -1 };
                 pos++;
                 // printf("[%d] (%d, %d, %d)\n", face_index, face[0], face[1], face[2]);
             }
@@ -389,9 +419,19 @@ void BVH::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int serializat
     }
     if (geometry->type() == RTXGeometryTypeSphere) {
         int pos = serialization_offset;
-        // 0 for center
-        // 1 for radius
-        buffer[pos] = { 0, 1, -1 };
+        // vertex 0: center
+        // vertex 1: radius
+        buffer[pos] = { 0, 1, -1, -1 };
+        return;
+    }
+    if (geometry->type() == RTXGeometryTypeCylinder) {
+        int pos = serialization_offset;
+        // vertex 0: cylinder parameter
+        buffer[pos + 0] = { 0, -1, -1, -1 };
+        // Set transformation matrix
+        buffer[pos + 1] = { 1, 2, 3, -1 };
+        // Set inverse transformation matrix
+        buffer[pos + 2] = { 4, 5, 6, -1 };
         return;
     }
 }
