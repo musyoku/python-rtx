@@ -26,6 +26,7 @@ using namespace rtx;
 PYBIND11_MODULE(rtx, module)
 {
     // Base classes
+    py::class_<Shape, std::shared_ptr<Shape>>(module, "Shape");
     py::class_<Geometry, std::shared_ptr<Geometry>>(module, "Geometry")
         .def("set_scale", (void (Geometry::*)(py::tuple)) & Geometry::set_scale)
         .def("set_position", (void (Geometry::*)(py::tuple)) & Geometry::set_position)
@@ -44,14 +45,14 @@ PYBIND11_MODULE(rtx, module)
         .def("num_triangles", &Scene::num_triangles);
 
     // Geometries
-    py::class_<SphereGeometry, Geometry, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
+    py::class_<SphereGeometry, Geometry, Shape, std::shared_ptr<SphereGeometry>>(module, "SphereGeometry")
         .def(py::init<float>(), py::arg("radius"));
-    py::class_<StandardGeometry, Geometry, std::shared_ptr<StandardGeometry>>(module, "StandardGeometry")
+    py::class_<StandardGeometry, Geometry, Shape, std::shared_ptr<StandardGeometry>>(module, "StandardGeometry")
         .def(py::init<py::array_t<int, py::array::c_style>, py::array_t<float, py::array::c_style>>(), py::arg("face_vertex_indeces"), py::arg("vertices"))
         .def(py::init<py::array_t<int, py::array::c_style>, py::array_t<float, py::array::c_style>, int>(), py::arg("face_vertex_indeces"), py::arg("vertices"), py::arg("bvh_max_triangles_per_node"));
-    py::class_<PlainGeometry, Geometry, std::shared_ptr<PlainGeometry>>(module, "PlainGeometry")
+    py::class_<PlainGeometry, Geometry, Shape, std::shared_ptr<PlainGeometry>>(module, "PlainGeometry")
         .def(py::init<float, float>(), py::arg("width"), py::arg("height"));
-    py::class_<BoxGeometry, Geometry, std::shared_ptr<BoxGeometry>>(module, "BoxGeometry")
+    py::class_<BoxGeometry, Geometry, Shape, std::shared_ptr<BoxGeometry>>(module, "BoxGeometry")
         .def(py::init<float, float, float>(), py::arg("width"), py::arg("height"), py::arg("depth"));
 
     // Materials
