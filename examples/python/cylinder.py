@@ -85,18 +85,25 @@ light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
 # place cylinder
-geometry = rtx.CylinderGeometry(1, 1)
-geometry.set_rotation((0, 0, -math.pi / 4))
+geometry = rtx.CylinderGeometry(0.5, 1)
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 cylinder = rtx.Object(geometry, material, mapping)
 scene.add(cylinder)
 
-screen_width = 96
-screen_height = 96
+# place box
+geometry = rtx.BoxGeometry(2.25, 1, 1.125)
+geometry.set_position((0, -1, 0))
+material = rtx.LambertMaterial(0.95)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+box = rtx.Object(geometry, material, mapping)
+scene.add(box)
+
+screen_width = 128
+screen_height = 128
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 1024
+rt_args.num_rays_per_pixel = 4096
 rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
@@ -119,8 +126,6 @@ camera = rtx.PerspectiveCamera(
 camera = rtx.OrthographicCamera(
     eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
 
-rotation = 0
-
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 30
 for n in range(total_iterations):
@@ -132,8 +137,6 @@ for n in range(total_iterations):
     plt.title("NEE (1024spp)")
     plt.pause(1e-8)
 
-    geometry.set_rotation((0, 0, rotation))
-    rotation += math.pi / 10
 
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

@@ -250,17 +250,17 @@ __global__ void mcrt_shared_memory_kernel(
                             const rtxVertex inv_trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
                             const rtxVertex inv_trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                            // http://www.pbr-book.org/3ed-2018/Shapes/Cylinders.html#IntersectionTests
-                            // このコードでは上方向はy軸であることに注意
+                            // http://woo4.me/wootracer/cylinder-intersection/
+                            // 方向ベクトルの変換では平行移動の成分を無視する
                             float3 d = {
                                 ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,
                                 ray.direction.x * inv_trans_b.x + ray.direction.y * inv_trans_b.y + ray.direction.z * inv_trans_b.z,
                                 ray.direction.x * inv_trans_c.x + ray.direction.y * inv_trans_c.y + ray.direction.z * inv_trans_c.z,
                             };
                             float3 o = {
-                                ray.origin.x * inv_trans_a.x + ray.origin.y * inv_trans_a.y + ray.origin.z * inv_trans_a.z,
-                                ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z,
-                                ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z,
+                                ray.origin.x * inv_trans_a.x + ray.origin.y * inv_trans_a.y + ray.origin.z * inv_trans_a.z + inv_trans_a.w,
+                                ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z + inv_trans_b.w,
+                                ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z + inv_trans_c.w,
                             };
 
                             float t0, t1;
@@ -279,7 +279,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 t1 = t0;
                                 t0 = tmp;
                             }
-                            if (t0 > min_distance) {
+                            if (min_distance <= t0) {
                                 continue;
                             }
                             float y0 = o.y + t0 * d.y;
