@@ -16,13 +16,11 @@ void rtx_cuda_malloc(void** gpu_array, size_t size)
 {
     assert(size > 0);
     cudaCheckError(cudaMalloc(gpu_array, size));
-    cudaCheckError(cudaGetLastError());
 }
 void rtx_cuda_malloc_pointer(void**& gpu_array, size_t size)
 {
     assert(size > 0);
     cudaCheckError(cudaMalloc(&gpu_array, size));
-    cudaCheckError(cudaGetLastError());
 }
 void rtx_cuda_memcpy_host_to_device(void* gpu_array, void* cpu_array, size_t size)
 {

@@ -65,4 +65,8 @@ std::shared_ptr<Mapping>& Object::mapping()
 {
     return _mapping;
 }
+void ObjectGroup::add(std::shared_ptr<Object> object)
+{
+    _object_array.push_back(object);
+}
 }

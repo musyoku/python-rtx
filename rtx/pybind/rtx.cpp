@@ -37,11 +37,18 @@ PYBIND11_MODULE(rtx, module)
     py::class_<Object, std::shared_ptr<Object>>(module, "Object")
         .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<Material>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"))
         .def(py::init<std::shared_ptr<Geometry>, std::shared_ptr<LayeredMaterial>, std::shared_ptr<Mapping>>(), py::arg("geometry"), py::arg("material"), py::arg("mapping"));
+    py::class_<ObjectGroup, std::shared_ptr<ObjectGroup>>(module, "ObjectGroup")
+        .def(py::init<>())
+        .def("set_scale", (void (ObjectGroup::*)(py::tuple)) & ObjectGroup::set_scale)
+        .def("set_position", (void (ObjectGroup::*)(py::tuple)) & ObjectGroup::set_position)
+        .def("set_rotation", (void (ObjectGroup::*)(py::tuple)) & ObjectGroup::set_rotation)
+        .def("add", &ObjectGroup::add);
 
     // Scene
     py::class_<Scene, std::shared_ptr<Scene>>(module, "Scene")
         .def(py::init<py::tuple>(), py::arg("ambient_color"))
-        .def("add", &Scene::add)
+        .def("add", (void (Scene::*)(std::shared_ptr<Object>)) & Scene::add, py::arg("add"))
+        .def("add", (void (Scene::*)(std::shared_ptr<ObjectGroup>)) & Scene::add, py::arg("add"))
         .def("num_triangles", &Scene::num_triangles);
 
     // Geometries

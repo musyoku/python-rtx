@@ -14,6 +14,11 @@ void Scene::add(std::shared_ptr<Object> object)
     _object_array.emplace_back(object);
     _updated = true;
 }
+void Scene::add(std::shared_ptr<ObjectGroup> group)
+{
+    _object_group_array.emplace_back(group);
+    _updated = true;
+}
 bool Scene::updated()
 {
     if (_updated) {
@@ -21,6 +26,16 @@ bool Scene::updated()
     }
     for (auto& object : _object_array) {
         if (object->geometry()->updated()) {
+            return true;
+        }
+    }
+    for (auto& group : _object_group_array) {
+        for (auto& object : group->_object_array) {
+            if (object->geometry()->updated()) {
+                return true;
+            }
+        }
+        if (group->updated()) {
             return true;
         }
     }
@@ -33,7 +48,6 @@ void Scene::set_updated(bool updated)
         object->geometry()->set_updated(updated);
     }
 }
-
 int Scene::num_triangles()
 {
     int num_triangles = 0;

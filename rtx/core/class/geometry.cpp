@@ -64,13 +64,13 @@ void Shape::update_model_matrix()
     _model_matrix = glm::scale(_model_matrix, _scale);
     _updated = true;
 }
+bool Shape::updated()
+{
+    return _updated;
+}
 glm::mat4f Shape::model_matrix()
 {
     return _model_matrix;
-}
-bool Geometry::updated()
-{
-    return _updated;
 }
 void Geometry::set_updated(bool updated)
 {

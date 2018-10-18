@@ -85,15 +85,25 @@ light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
 # place bunny
+group = rtx.ObjectGroup()
 faces, vertices = gm.load("../geometries/bunny")
 bottom = np.amin(vertices, axis=0)
+
 geometry = rtx.StandardGeometry(faces, vertices, 25)
-geometry.set_position((0, -box_height / 2 - (bottom[1] + 0.01) * 3, 0))
-geometry.set_scale((3, 3, 3))
+geometry.set_position((0, 0, 0.5))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 bunny = rtx.Object(geometry, material, mapping)
-scene.add(bunny)
+group.add(bunny)
+
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+geometry.set_position((0, 0, -0.5))
+bunny = rtx.Object(geometry, material, mapping)
+group.add(bunny)
+
+group.set_position((0, -box_height / 2 - (bottom[1] + 0.01) * 3, 0))
+group.set_scale((3, 3, 3))
+scene.add(group)
 
 screen_width = 64
 screen_height = 64
@@ -122,6 +132,8 @@ camera = rtx.PerspectiveCamera(
 camera = rtx.OrthographicCamera(
     eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
 
+rotation = 0
+
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 30
 for n in range(total_iterations):
@@ -131,6 +143,9 @@ for n in range(total_iterations):
 
     plt.imshow(pixels, interpolation="none")
     plt.pause(1e-8)
+
+    group.set_rotation((rotation, 0, 0))
+    rotation += math.pi / 10
 
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

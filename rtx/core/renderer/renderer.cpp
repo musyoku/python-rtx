@@ -45,7 +45,7 @@ Renderer::~Renderer()
 }
 void Renderer::transform_objects_to_view_space()
 {
-    int num_objects = _scene->_object_array.size();
+    int num_objects = _scene->_object_array.size() + _scene->_object_group_array.size();
     if (num_objects == 0) {
         return;
     }
@@ -56,6 +56,14 @@ void Renderer::transform_objects_to_view_space()
         glm::mat4 transformation_matrix = _camera->view_matrix() * geometry->model_matrix();
         auto transformed_geometry = geometry->transoform(transformation_matrix);
         _transformed_object_array.emplace_back(std::make_shared<Object>(transformed_geometry, object->material(), object->mapping()));
+    }
+    for (auto& group : _scene->_object_group_array) {
+        for (auto& object : group->_object_array) {
+            auto& geometry = object->geometry();
+            glm::mat4 transformation_matrix = _camera->view_matrix() * group->model_matrix() * geometry->model_matrix();
+            auto transformed_geometry = geometry->transoform(transformation_matrix);
+            _transformed_object_array.emplace_back(std::make_shared<Object>(transformed_geometry, object->material(), object->mapping()));
+        }
     }
 }
 void Renderer::serialize_geometries()

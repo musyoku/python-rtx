@@ -27,10 +27,8 @@ public:
 };
 
 class ObjectGroup : public Shape {
-private:
-    std::vector<std::shared_ptr<Object>> _object_array;
-
 public:
+    std::vector<std::shared_ptr<Object>> _object_array;
     ObjectGroup(){};
     void add(std::shared_ptr<Object> object);
 };
