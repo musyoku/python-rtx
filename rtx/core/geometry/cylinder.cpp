@@ -31,15 +31,15 @@ void CylinderGeometry::serialize_vertices(rtx::array<rtxVertex>& array, int offs
     array[0 + offset] = { _radius, _y_max, _y_min, -1.0f };
 
     // Add transformation matrix
-    array[1 + offset] = { _transformation_matrix[0][0], _transformation_matrix[1][0], _transformation_matrix[2][0], 0.0f };
-    array[2 + offset] = { _transformation_matrix[0][1], _transformation_matrix[1][1], _transformation_matrix[2][1], 0.0f };
-    array[3 + offset] = { _transformation_matrix[0][2], _transformation_matrix[1][2], _transformation_matrix[2][2], 0.0f };
+    array[1 + offset] = { _transformation_matrix[0][0], _transformation_matrix[1][0], _transformation_matrix[2][0], _transformation_matrix[3][0] };
+    array[2 + offset] = { _transformation_matrix[0][1], _transformation_matrix[1][1], _transformation_matrix[2][1], _transformation_matrix[3][1] };
+    array[3 + offset] = { _transformation_matrix[0][2], _transformation_matrix[1][2], _transformation_matrix[2][2], _transformation_matrix[3][2] };
 
     // Add inverse transformation matrix
     glm::mat4 inv_transformation_matrix = glm::inverse(_transformation_matrix);
-    array[4 + offset] = { inv_transformation_matrix[0][0], inv_transformation_matrix[1][0], inv_transformation_matrix[2][0], 0.0f };
-    array[5 + offset] = { inv_transformation_matrix[0][1], inv_transformation_matrix[1][1], inv_transformation_matrix[2][1], 0.0f };
-    array[6 + offset] = { inv_transformation_matrix[0][2], inv_transformation_matrix[1][2], inv_transformation_matrix[2][2], 0.0f };
+    array[4 + offset] = { inv_transformation_matrix[0][0], inv_transformation_matrix[1][0], inv_transformation_matrix[2][0], inv_transformation_matrix[3][0] };
+    array[5 + offset] = { inv_transformation_matrix[0][1], inv_transformation_matrix[1][1], inv_transformation_matrix[2][1], inv_transformation_matrix[3][1] };
+    array[6 + offset] = { inv_transformation_matrix[0][2], inv_transformation_matrix[1][2], inv_transformation_matrix[2][2], inv_transformation_matrix[3][2] };
 
     // printf("trans:\n");
     // printf("%f, %f, %f, %f\n", _transformation_matrix[0][0], _transformation_matrix[0][1], _transformation_matrix[0][2], _transformation_matrix[0][3]);

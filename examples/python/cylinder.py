@@ -85,15 +85,15 @@ light = rtx.Object(geometry, material, mapping)
 scene.add(light)
 
 # place cylinder
-geometry = rtx.CylinderGeometry(1, 3)
-# geometry.set_rotation((0, 0, -math.pi / 2))
+geometry = rtx.CylinderGeometry(1, 1)
+geometry.set_rotation((0, 0, -math.pi / 4))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((0, 1, 0))
+mapping = rtx.SolidColorMapping((1, 1, 1))
 cylinder = rtx.Object(geometry, material, mapping)
 scene.add(cylinder)
 
-screen_width = 128
-screen_height = 128
+screen_width = 96
+screen_height = 96
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 1024
@@ -132,7 +132,7 @@ for n in range(total_iterations):
     plt.title("NEE (1024spp)")
     plt.pause(1e-8)
 
-    # group.set_rotation((rotation, 0, 0))
+    geometry.set_rotation((0, 0, rotation))
     rotation += math.pi / 10
 
 image = Image.fromarray(np.uint8(pixels * 255))

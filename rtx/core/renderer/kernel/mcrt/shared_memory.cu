@@ -262,6 +262,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z,
                                 ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z,
                             };
+
                             float t0, t1;
                             const float a = d.x * d.x + d.z * d.z;
                             const float b = 2.0f * (d.x * o.x + d.z * o.z);
@@ -271,76 +272,87 @@ __global__ void mcrt_shared_memory_kernel(
                                 continue;
                             }
                             const float root = sqrt(discrim);
-                            float q;
-                            if (b < 0.0f) {
-                                q = -0.5f * (b - root);
-                            } else {
-                                q = -0.5f * (b + root);
-                            }
-                            t0 = q / a;
-                            t1 = c / q;
+                            t0 = (-b + root) / (2.0f * a);
+                            t1 = (-b - root) / (2.0f * a);
                             if (t0 > t1) {
-                                const float tmp = t1;
+                                float tmp = t1;
                                 t1 = t0;
                                 t0 = tmp;
                             }
-                            if (t1 <= 0.001f) {
+                            if (t0 > min_distance) {
                                 continue;
                             }
-                            float t_shape_hit = t0;
-                            if (t_shape_hit <= 0.001f) {
-                                t_shape_hit = t1;
-                            }
-
-                            // hit point in model space
-                            float3 p_hit = {
-                                o.x + t_shape_hit * d.x,
-                                o.y + t_shape_hit * d.y,
-                                o.z + t_shape_hit * d.z,
-                            };
-
-                            const float hit_rad = sqrtf(p_hit.x * p_hit.x + p_hit.z * p_hit.z);
-                            p_hit.x *= radius / hit_rad;
-                            p_hit.z *= radius / hit_rad;
-
-                            if (p_hit.y < y_min || p_hit.y > y_max) {
-                                if (t_shape_hit == t1) {
+                            float y0 = o.y + t0 * d.y;
+                            float y1 = o.y + t1 * d.y;
+                            float3 p_hit;
+                            float3 normal;
+                            float t;
+                            if (y0 < y_min) {
+                                if (y1 < y_min) {
                                     continue;
                                 }
-                                t_shape_hit = t1;
-                                p_hit.x = o.x + t_shape_hit * d.x;
-                                p_hit.y = o.y + t_shape_hit * d.y;
-                                p_hit.z = o.z + t_shape_hit * d.z;
-
-                                const float hit_rad = sqrtf(p_hit.x * p_hit.x + p_hit.z * p_hit.z);
-                                p_hit.x *= radius / hit_rad;
-                                p_hit.z *= radius / hit_rad;
-                                if (p_hit.y < y_min || p_hit.y > y_max) {
+                                float th = t0 + (t1 - t0) * (y0 - y_min) / (y0 - y1);
+                                if (th <= 0.0f) {
                                     continue;
                                 }
+                                p_hit.x = o.x + th * d.x;
+                                p_hit.y = o.y + th * d.y;
+                                p_hit.z = o.z + th * d.z;
+                                normal.x = 0.0f;
+                                normal.y = -1.0f;
+                                normal.z = 0.0f;
+                                t = th;
+                            } else if (y0 >= y_min && y0 <= y_max) {
+                                if (t0 <= 0.001f) {
+                                    continue;
+                                }
+                                p_hit.x = o.x + t0 * d.x;
+                                p_hit.y = o.y + t0 * d.y;
+                                p_hit.z = o.z + t0 * d.z;
+                                normal.x = p_hit.x;
+                                normal.y = 0.0f;
+                                normal.z = p_hit.z;
+                                const float norm = sqrtf(normal.x * normal.x + normal.z * normal.z);
+                                normal.x /= norm;
+                                normal.z /= norm;
+                                t = t0;
+                            } else if (y0 > y_max) {
+                                if (y1 > y_max) {
+                                    continue;
+                                }
+                                float th = t0 + (t1 - t0) * (y0 - y_max) / (y0 - y1);
+                                if (th <= 0) {
+                                    continue;
+                                }
+                                p_hit.x = o.x + th * d.x;
+                                p_hit.y = o.y + th * d.y;
+                                p_hit.z = o.z + th * d.z;
+                                normal.x = 0.0f;
+                                normal.y = 1.0f;
+                                normal.z = 0.0f;
+                                t = th;
+                            } else {
+                                continue;
                             }
 
-                            min_distance = t_shape_hit;
-
-                            // normal in model space
-                            float3 normal = {
-                                p_hit.x,
-                                0.0f,
-                                p_hit.z,
-                            };
-                            const float norm = sqrtf(normal.x * normal.x + normal.z * normal.z);
-                            normal.x /= norm;
-                            normal.z /= norm;
+                            min_distance = t;
 
                             // normal in view space
                             unit_hit_face_normal.x = normal.x * trans_a.x + normal.y * trans_a.y + normal.z * trans_a.z;
                             unit_hit_face_normal.y = normal.x * trans_b.x + normal.y * trans_b.y + normal.z * trans_b.z;
                             unit_hit_face_normal.z = normal.x * trans_c.x + normal.y * trans_c.y + normal.z * trans_c.z;
+                            const float norm = sqrtf(unit_hit_face_normal.x * unit_hit_face_normal.x + unit_hit_face_normal.y * unit_hit_face_normal.y + unit_hit_face_normal.z * unit_hit_face_normal.z);
+                            unit_hit_face_normal.x /= norm;
+                            unit_hit_face_normal.y /= norm;
+                            unit_hit_face_normal.z /= norm;
 
                             // hit point in view space
-                            hit_point.x = ray.origin.x + t_shape_hit * ray.direction.x;
-                            hit_point.y = ray.origin.y + t_shape_hit * ray.direction.y;
-                            hit_point.z = ray.origin.z + t_shape_hit * ray.direction.z;
+                            // hit_point.x = ray.origin.x + t * ray.direction.x;
+                            // hit_point.y = ray.origin.y + t * ray.direction.y;
+                            // hit_point.z = ray.origin.z + t * ray.direction.z;
+                            hit_point.x = p_hit.x * trans_a.x + p_hit.y * trans_a.y + p_hit.z * trans_a.z + trans_a.w;
+                            hit_point.y = p_hit.x * trans_b.x + p_hit.y * trans_b.y + p_hit.z * trans_b.z + trans_b.w;
+                            hit_point.z = p_hit.x * trans_c.x + p_hit.y * trans_c.y + p_hit.z * trans_c.z + trans_c.w;
 
                             did_hit_object = true;
                             hit_object = object;
