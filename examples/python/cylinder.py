@@ -56,7 +56,7 @@ geometry.set_position((0, box_height / 2, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 ceil = rtx.Object(geometry, material, mapping)
-scene.add(ceil)
+# scene.add(ceil)
 
 # floor
 geometry = rtx.PlainGeometry(box_width, box_width)
@@ -64,25 +64,29 @@ geometry.set_rotation((-math.pi / 2, 0, 0))
 geometry.set_position((0, -box_height / 2, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 1, 1))
-ceil = rtx.Object(geometry, material, mapping)
-scene.add(ceil)
+floor = rtx.Object(geometry, material, mapping)
+scene.add(floor)
 
 # light
-geometry = rtx.PlainGeometry(box_width / 3, box_height / 3)
+group = rtx.ObjectGroup()
+
+geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, math.pi / 2, 0))
-geometry.set_position((0.01 - box_width / 2, 0, 0))
-material = rtx.EmissiveMaterial(15.0)
+geometry.set_position((- box_width / 2 - 5, 0, 0))
+material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
-scene.add(light)
+group.add(light)
 
-geometry = rtx.PlainGeometry(box_width / 3, box_width / 3)
+geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, -math.pi / 2, 0))
-geometry.set_position((box_width / 2 - 0.01, 0, 0))
-material = rtx.EmissiveMaterial(15.0)
+geometry.set_position((box_width / 2 + 5, 0, 0))
+material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((0, 1, 1))
 light = rtx.Object(geometry, material, mapping)
-scene.add(light)
+group.add(light)
+
+scene.add(group)
 
 # place cylinder
 geometry = rtx.CylinderGeometry(0.5, 1)
@@ -96,14 +100,14 @@ geometry = rtx.ConeGeometry(2, 2)
 geometry.set_position((1, 0, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 0, 0))
-box = rtx.Object(geometry, material, mapping)
-scene.add(box)
+cone = rtx.Object(geometry, material, mapping)
+scene.add(cone)
 
 screen_width = 128
 screen_height = 128
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 1024
+rt_args.num_rays_per_pixel = 4096
 rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
@@ -139,7 +143,7 @@ for n in range(total_iterations):
     plt.pause(1e-8)
 
     rotation += math.pi / 36
-    geometry.set_rotation((rotation, 0, 0))
+    group.set_rotation((0, 0, rotation))
 
 
 image = Image.fromarray(np.uint8(pixels * 255))
