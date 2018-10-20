@@ -393,10 +393,8 @@ __global__ void mcrt_shared_memory_kernel(
                             float t0 = (-b + root) / (2.0f * a);
                             float t1 = (-b - root) / (2.0f * a);
                             float y0 = o.y + t0 * d.y;
-                            float y1 = o.y + t1 * d.y;
                             float3 p_hit;
                             bool did_hit_bottom = false;
-
                             if (y0 > height) {
                                 __swapf(t0, t1);
                                 y0 = o.y + t0 * d.y;
@@ -409,7 +407,7 @@ __global__ void mcrt_shared_memory_kernel(
                                     __swapf(t0, t1);
                                 }
                                 y0 = o.y + t0 * d.y;
-                                y1 = o.y + t1 * d.y;
+                                float y1 = o.y + t1 * d.y;
                                 if (y0 < 0.0f) {
                                     if (y1 < 0.0f) {
                                         continue;
@@ -429,6 +427,9 @@ __global__ void mcrt_shared_memory_kernel(
                                     t0 = -o.y / d.y;
                                 }
                                 __rtx_make_ray(p_hit, o, t0, d);
+                            }
+                            if (t0 <= 0.001) {
+                                continue;
                             }
 
                             if (min_distance <= t0) {
