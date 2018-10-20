@@ -7,6 +7,7 @@
 #include "../core/class/object.h"
 #include "../core/class/scene.h"
 #include "../core/geometry/box.h"
+#include "../core/geometry/cone.h"
 #include "../core/geometry/cylinder.h"
 #include "../core/geometry/plain.h"
 #include "../core/geometry/sphere.h"
@@ -63,6 +64,8 @@ PYBIND11_MODULE(rtx, module)
     py::class_<BoxGeometry, Geometry, Shape, std::shared_ptr<BoxGeometry>>(module, "BoxGeometry")
         .def(py::init<float, float, float>(), py::arg("width"), py::arg("height"), py::arg("depth"));
     py::class_<CylinderGeometry, Geometry, Shape, std::shared_ptr<CylinderGeometry>>(module, "CylinderGeometry")
+        .def(py::init<float, float>(), py::arg("radius"), py::arg("height"));
+    py::class_<ConeGeometry, Geometry, Shape, std::shared_ptr<ConeGeometry>>(module, "ConeGeometry")
         .def(py::init<float, float>(), py::arg("radius"), py::arg("height"));
 
     // Materials

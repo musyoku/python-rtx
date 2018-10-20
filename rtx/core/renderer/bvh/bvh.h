@@ -1,4 +1,5 @@
 #pragma once
+#include "../../geometry/cone.h"
 #include "../../geometry/cylinder.h"
 #include "../../geometry/sphere.h"
 #include "../../geometry/standard.h"
@@ -26,6 +27,8 @@ namespace bvh {
             std::shared_ptr<SphereGeometry>& geometry);
         Node(std::vector<int> assigned_face_indices,
             std::shared_ptr<CylinderGeometry>& geometry);
+        Node(std::vector<int> assigned_face_indices,
+            std::shared_ptr<ConeGeometry>& geometry);
         std::shared_ptr<Node> _left;
         std::shared_ptr<Node> _right;
         std::shared_ptr<Node> _miss;

@@ -87,15 +87,15 @@ scene.add(light)
 # place cylinder
 geometry = rtx.CylinderGeometry(0.5, 1)
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((0, 1, 0))
 cylinder = rtx.Object(geometry, material, mapping)
 scene.add(cylinder)
 
-# place box
-geometry = rtx.BoxGeometry(2.25, 1, 1.125)
-geometry.set_position((0, -1, 0))
+# place cone
+geometry = rtx.ConeGeometry(5, 1)
+geometry.set_position((1, 0, 0))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+mapping = rtx.SolidColorMapping((1, 0, 0))
 box = rtx.Object(geometry, material, mapping)
 scene.add(box)
 
@@ -103,14 +103,14 @@ screen_width = 128
 screen_height = 128
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 4096
-rt_args.max_bounce = 4
+rt_args.num_rays_per_pixel = 1
+rt_args.max_bounce = 1
 rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 64
-cuda_args.num_rays_per_thread = 64
+cuda_args.num_rays_per_thread = 1
 
 renderer = rtx.Renderer()
 

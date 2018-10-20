@@ -259,6 +259,21 @@ Node::Node(std::vector<int> assigned_face_indices,
 
     _is_leaf = true;
 }
+Node::Node(std::vector<int> assigned_face_indices,
+    std::shared_ptr<ConeGeometry>& geometry)
+{
+    assert(assigned_face_indices.size() > 0);
+    _assigned_face_indices = assigned_face_indices;
+    _index = 0;
+    _assigned_face_index_start = 0;
+    _assigned_face_index_end = 0;
+
+    // AABBは使わない
+    _aabb_max = glm::vec3f(0.0f);
+    _aabb_min = glm::vec3f(0.0f);
+
+    _is_leaf = true;
+}
 void Node::set_hit_and_miss_links()
 {
     if (_left) {
@@ -359,6 +374,20 @@ BVH::BVH(std::shared_ptr<Geometry>& geometry)
         _num_nodes = _root->num_children() + 1;
         return;
     }
+    if (geometry->type() == RTXGeometryTypeCone) {
+        std::shared_ptr<ConeGeometry> cone = std::static_pointer_cast<ConeGeometry>(geometry);
+        std::vector<int> assigned_face_indices;
+        for (int face_index = 0; face_index < geometry->num_faces(); face_index++) {
+            assigned_face_indices.push_back(face_index);
+        }
+        _current_node_index = 0;
+        _current_assigned_face_index_offset = 0;
+        _root = std::make_shared<Node>(assigned_face_indices, cone);
+        _root->set_hit_and_miss_links();
+
+        _num_nodes = _root->num_children() + 1;
+        return;
+    }
 }
 int BVH::num_nodes()
 {
@@ -425,6 +454,16 @@ void BVH::serialize_faces(rtx::array<rtxFaceVertexIndex>& buffer, int serializat
         return;
     }
     if (geometry->type() == RTXGeometryTypeCylinder) {
+        int pos = serialization_offset;
+        // vertex 0: cylinder parameter
+        buffer[pos + 0] = { 0, -1, -1, -1 };
+        // Set transformation matrix
+        buffer[pos + 1] = { 1, 2, 3, -1 };
+        // Set inverse transformation matrix
+        buffer[pos + 2] = { 4, 5, 6, -1 };
+        return;
+    }
+    if (geometry->type() == RTXGeometryTypeCone) {
         int pos = serialization_offset;
         // vertex 0: cylinder parameter
         buffer[pos + 0] = { 0, -1, -1, -1 };
