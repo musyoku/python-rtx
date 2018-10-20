@@ -92,7 +92,7 @@ cylinder = rtx.Object(geometry, material, mapping)
 scene.add(cylinder)
 
 # place cone
-geometry = rtx.ConeGeometry(5, 1)
+geometry = rtx.ConeGeometry(2, 2)
 geometry.set_position((1, 0, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 0, 0))
@@ -103,14 +103,14 @@ screen_width = 128
 screen_height = 128
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 1
-rt_args.max_bounce = 1
+rt_args.num_rays_per_pixel = 1024
+rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
 cuda_args.num_threads = 64
-cuda_args.num_rays_per_thread = 1
+cuda_args.num_rays_per_thread = 64
 
 renderer = rtx.Renderer()
 
@@ -126,8 +126,9 @@ camera = rtx.PerspectiveCamera(
 camera = rtx.OrthographicCamera(
     eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
 
+rotation = 0.0
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
-total_iterations = 30
+total_iterations = 300
 for n in range(total_iterations):
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
@@ -136,6 +137,9 @@ for n in range(total_iterations):
     plt.imshow(pixels, interpolation="none")
     plt.title("NEE (1024spp)")
     plt.pause(1e-8)
+
+    rotation += math.pi / 36
+    geometry.set_rotation((rotation, 0, 0))
 
 
 image = Image.fromarray(np.uint8(pixels * 255))

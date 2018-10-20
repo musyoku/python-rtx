@@ -228,6 +228,7 @@ __global__ void mcrt_shared_memory_kernel(
                             did_hit_object = true;
                             hit_object = object;
                         } else if (object.geometry_type == RTXGeometryTypeCylinder) {
+                            // http://woo4.me/wootracer/cylinder-intersection/
                             rtxFaceVertexIndex face;
                             int offset = node.assigned_face_index_start + object.serialized_face_index_offset;
 
@@ -250,7 +251,6 @@ __global__ void mcrt_shared_memory_kernel(
                             const rtxVertex inv_trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
                             const rtxVertex inv_trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                            // http://woo4.me/wootracer/cylinder-intersection/
                             // 方向ベクトルの変換では平行移動の成分を無視する
                             float3 d = {
                                 ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,
@@ -274,9 +274,7 @@ __global__ void mcrt_shared_memory_kernel(
                             float t0 = (-b + root) / (2.0f * a);
                             float t1 = (-b - root) / (2.0f * a);
                             if (t0 > t1) {
-                                float tmp = t1;
-                                t1 = t0;
-                                t0 = tmp;
+                                __swapf(t0, t1);
                             }
                             if (min_distance <= t0) {
                                 continue;
@@ -340,10 +338,10 @@ __global__ void mcrt_shared_memory_kernel(
                             unit_hit_face_normal.x = normal.x * trans_a.x + normal.y * trans_a.y + normal.z * trans_a.z;
                             unit_hit_face_normal.y = normal.x * trans_b.x + normal.y * trans_b.y + normal.z * trans_b.z;
                             unit_hit_face_normal.z = normal.x * trans_c.x + normal.y * trans_c.y + normal.z * trans_c.z;
-                            const float norm = sqrtf(unit_hit_face_normal.x * unit_hit_face_normal.x + unit_hit_face_normal.y * unit_hit_face_normal.y + unit_hit_face_normal.z * unit_hit_face_normal.z);
-                            unit_hit_face_normal.x /= norm;
-                            unit_hit_face_normal.y /= norm;
-                            unit_hit_face_normal.z /= norm;
+                            // const float norm = sqrtf(unit_hit_face_normal.x * unit_hit_face_normal.x + unit_hit_face_normal.y * unit_hit_face_normal.y + unit_hit_face_normal.z * unit_hit_face_normal.z);
+                            // unit_hit_face_normal.x /= norm;
+                            // unit_hit_face_normal.y /= norm;
+                            // unit_hit_face_normal.z /= norm;
 
                             // hit point in view space
                             hit_point.x = ray.origin.x + t * ray.direction.x;
@@ -356,6 +354,7 @@ __global__ void mcrt_shared_memory_kernel(
                             did_hit_object = true;
                             hit_object = object;
                         } else if (object.geometry_type == RTXGeometryTypeCone) {
+                            // http://www.pbr-book.org/3ed-2018/Shapes/Other_Quadrics.html
                             rtxFaceVertexIndex face;
                             int offset = node.assigned_face_index_start + object.serialized_face_index_offset;
 
@@ -377,7 +376,6 @@ __global__ void mcrt_shared_memory_kernel(
                             const rtxVertex inv_trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
                             const rtxVertex inv_trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                            // http://woo4.me/wootracer/cylinder-intersection/
                             // 方向ベクトルの変換では平行移動の成分を無視する
                             float3 d = {
                                 ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,
@@ -400,61 +398,82 @@ __global__ void mcrt_shared_memory_kernel(
                             const float root = sqrtf(discrim);
                             float t0 = (-b + root) / (2.0f * a);
                             float t1 = (-b - root) / (2.0f * a);
-                            if (t0 > t1) {
-                                float tmp = t1;
-                                t1 = t0;
-                                t0 = tmp;
-                            }
-                            if (min_distance <= t0) {
-                                continue;
-                            }
                             float y0 = o.y + t0 * d.y;
                             float y1 = o.y + t1 * d.y;
                             float3 p_hit;
+                            bool did_hit_bottom = false;
+
+                            if (y0 > height) {
+                                __swapf(t0, t1);
+                                y0 = o.y + t0 * d.y;
+                                if (y0 < 0.0f || height < y0) {
+                                    continue;
+                                }
+                                __rtx_make_ray(p_hit, o, t0, d);
+                            } else {
+                                if (t0 > t1) {
+                                    __swapf(t0, t1);
+                                }
+                                y0 = o.y + t0 * d.y;
+                                y1 = o.y + t1 * d.y;
+                                if (y0 < 0.0f) {
+                                    if (y1 < 0.0f) {
+                                        continue;
+                                    }
+                                    if (height < y1) {
+                                        continue;
+                                    }
+                                    did_hit_bottom = true;
+                                } else if (0.0f <= y0 && y0 <= height) {
+                                    if (y1 > height) {
+                                        did_hit_bottom = true;
+                                    }
+                                } else {
+                                    continue;
+                                }
+                                if (did_hit_bottom) {
+                                    t0 = -o.y / d.y;
+                                }
+                                __rtx_make_ray(p_hit, o, t0, d);
+                            }
+
                             float3 normal;
+                            if (did_hit_bottom) {
+                                normal.x = 0.0f;
+                                normal.y = -1.0f;
+                                normal.z = 0.0f;
+                            } else {
+                                float norm;
+                                normal.x = p_hit.x;
+                                normal.y = height / radius;
+                                normal.z = p_hit.z;
 
-                            p_hit.x = o.x + t0 * d.x;
-                            p_hit.y = o.y + t0 * d.y;
-                            p_hit.z = o.z + t0 * d.z;
-                            if (p_hit.y < 0.0f) {
-                                continue;
-                            }
-                            if (p_hit.y > height) {
-                                continue;
-                            }
-
-                            normal.x = p_hit.x;
-                            normal.y = height / radius;
-                            normal.z = p_hit.z;
-                            {
-                                const float norm = sqrtf(normal.x * normal.x + normal.z * normal.z);
+                                norm = sqrtf(normal.x * normal.x + normal.z * normal.z);
                                 normal.x /= norm;
                                 normal.y = height / radius;
                                 normal.z /= norm;
-                            }
-                            {
-                                const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
+                                norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
                                 normal.x /= norm;
                                 normal.y /= norm;
                                 normal.z /= norm;
                             }
 
-                            float t = t0;
-                            min_distance = t;
+                            min_distance = t0;
 
                             // normal in view space
                             unit_hit_face_normal.x = normal.x * trans_a.x + normal.y * trans_a.y + normal.z * trans_a.z;
                             unit_hit_face_normal.y = normal.x * trans_b.x + normal.y * trans_b.y + normal.z * trans_b.z;
                             unit_hit_face_normal.z = normal.x * trans_c.x + normal.y * trans_c.y + normal.z * trans_c.z;
-                            const float norm = sqrtf(unit_hit_face_normal.x * unit_hit_face_normal.x + unit_hit_face_normal.y * unit_hit_face_normal.y + unit_hit_face_normal.z * unit_hit_face_normal.z);
-                            unit_hit_face_normal.x /= norm;
-                            unit_hit_face_normal.y /= norm;
-                            unit_hit_face_normal.z /= norm;
+                            // const float norm = sqrtf(unit_hit_face_normal.x * unit_hit_face_normal.x + unit_hit_face_normal.y * unit_hit_face_normal.y + unit_hit_face_normal.z * unit_hit_face_normal.z);
+                            // unit_hit_face_normal.x /= norm;
+                            // unit_hit_face_normal.y /= norm;
+                            // unit_hit_face_normal.z /= norm;
 
                             // hit point in view space
-                            hit_point.x = ray.origin.x + t * ray.direction.x;
-                            hit_point.y = ray.origin.y + t * ray.direction.y;
-                            hit_point.z = ray.origin.z + t * ray.direction.z;
+                            hit_point.x = ray.origin.x + t0 * ray.direction.x;
+                            hit_point.y = ray.origin.y + t0 * ray.direction.y;
+                            hit_point.z = ray.origin.z + t0 * ray.direction.z;
                             // hit_point.x = p_hit.x * trans_a.x + p_hit.y * trans_a.y + p_hit.z * trans_a.z + trans_a.w;
                             // hit_point.y = p_hit.x * trans_b.x + p_hit.y * trans_b.y + p_hit.z * trans_b.z + trans_b.w;
                             // hit_point.z = p_hit.x * trans_c.x + p_hit.y * trans_c.y + p_hit.z * trans_c.z + trans_c.w;
@@ -490,11 +509,6 @@ __global__ void mcrt_shared_memory_kernel(
                 shared_serialized_color_mapping_array,
                 shared_serialized_texture_object_array,
                 shared_serialized_uv_coordinate_array);
-
-            pixel.r += hit_color.r * path_weight.r;
-            pixel.g += hit_color.g * path_weight.g;
-            pixel.b += hit_color.b * path_weight.b;
-            break;
 
             int material_type = hit_object.layerd_material_types.outside;
             bool did_hit_light = material_type == RTXMaterialTypeEmissive;

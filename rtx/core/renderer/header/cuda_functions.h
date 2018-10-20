@@ -376,6 +376,18 @@
     unsigned long xors_z = 521288629;   \
     unsigned long xors_w = 88675123;
 
+#define __swapf(a, b)        \
+    {                        \
+        const float tmp = a; \
+        a = b;               \
+        b = tmp;             \
+    }
+
+#define __rtx_make_ray(ret, o, t, d) \
+    ret.x = o.x + t * d.x;           \
+    ret.y = o.y + t * d.y;           \
+    ret.z = o.z + t * d.z;
+
 #define __rtx_generate_ray(ray, args, aspect_ratio)                                                                                          \
     /* スーパーサンプリング */                                                                                                     \
     float2 noise = { 0.0f, 0.0f };                                                                                                           \
