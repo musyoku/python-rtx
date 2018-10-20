@@ -131,10 +131,16 @@ camera = rtx.PerspectiveCamera(
 camera = rtx.OrthographicCamera(
     eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
 
+view_radius = 5
 rotation = 0.0
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 300
 for n in range(total_iterations):
+    eye = (view_radius * math.sin(rotation), view_radius,
+            view_radius * math.cos(rotation))
+    center = (0, 0, 0)
+    camera.look_at(eye, center, up=(0, 1, 0))
+            
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
@@ -144,7 +150,7 @@ for n in range(total_iterations):
     plt.pause(1e-8)
 
     rotation += math.pi / 36
-    group.set_rotation((0, 0, rotation))
+    # group.set_rotation((0, 0, rotation))
 
 
 image = Image.fromarray(np.uint8(pixels * 255))
