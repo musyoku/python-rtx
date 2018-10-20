@@ -292,9 +292,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 if (th <= 0.0f) {
                                     continue;
                                 }
-                                p_hit.x = o.x + th * d.x;
-                                p_hit.y = o.y + th * d.y;
-                                p_hit.z = o.z + th * d.z;
+                                __rtx_make_ray(p_hit, o, th, d);
                                 normal.x = 0.0f;
                                 normal.y = -1.0f;
                                 normal.z = 0.0f;
@@ -303,9 +301,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 if (t0 <= 0.001f) {
                                     continue;
                                 }
-                                p_hit.x = o.x + t0 * d.x;
-                                p_hit.y = o.y + t0 * d.y;
-                                p_hit.z = o.z + t0 * d.z;
+                                __rtx_make_ray(p_hit, o, t0, d);
                                 normal.x = p_hit.x;
                                 normal.y = 0.0f;
                                 normal.z = p_hit.z;
@@ -321,9 +317,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 if (th <= 0) {
                                     continue;
                                 }
-                                p_hit.x = o.x + th * d.x;
-                                p_hit.y = o.y + th * d.y;
-                                p_hit.z = o.z + th * d.z;
+                                __rtx_make_ray(p_hit, o, th, d);
                                 normal.x = 0.0f;
                                 normal.y = 1.0f;
                                 normal.z = 0.0f;
@@ -435,6 +429,10 @@ __global__ void mcrt_shared_memory_kernel(
                                     t0 = -o.y / d.y;
                                 }
                                 __rtx_make_ray(p_hit, o, t0, d);
+                            }
+
+                            if (min_distance <= t0) {
+                                continue;
                             }
 
                             float3 normal;

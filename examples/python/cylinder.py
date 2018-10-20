@@ -93,7 +93,7 @@ scene.add(cylinder)
 
 # place cone
 geometry = rtx.ConeGeometry(2, 2)
-geometry.set_position((1, 0, 0))
+geometry.set_position((3, 0, 0))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((1, 0, 0))
 box = rtx.Object(geometry, material, mapping)

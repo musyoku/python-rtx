@@ -150,9 +150,14 @@ void Renderer::serialize_light_sampling_table()
     int num_lights = 0;
     for (auto& object : _transformed_object_array) {
         auto& material = object->material();
-        if (material->is_emissive()) {
-            num_lights++;
+        if (material->is_emissive() == false) {
+            continue;
         }
+        auto& geometry = object->geometry();
+        if (geometry->type() != RTXGeometryTypeStandard) {
+            continue;
+        }
+        num_lights++;
     }
     int table_index = 0;
     _cpu_light_sampling_table = rtx::array<int>(num_lights);
