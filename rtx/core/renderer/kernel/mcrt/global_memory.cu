@@ -244,9 +244,9 @@ __global__ void mcrt_global_memory_kernel(
                     pixel.g += args.ambient_color.g;
                     pixel.b += args.ambient_color.b;
                 } else {
-                    pixel.r += hit_color.r * path_weight.r * attr.brightness;
-                    pixel.g += hit_color.g * path_weight.g * attr.brightness;
-                    pixel.b += hit_color.b * path_weight.b * attr.brightness;
+                    pixel.r += hit_color.r * path_weight.r * attr.intensity;
+                    pixel.g += hit_color.g * path_weight.g * attr.intensity;
+                    pixel.b += hit_color.b * path_weight.b * attr.intensity;
                 }
                 break;
             }

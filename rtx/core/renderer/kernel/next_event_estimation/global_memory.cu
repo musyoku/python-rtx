@@ -263,7 +263,7 @@ __global__ void nee_global_memory_kernel(
                         global_serialized_uv_coordinate_array);
 
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
-                    float emission = attr.brightness;
+                    float emission = attr.intensity;
                     float inv_pdf = args.total_light_face_area;
                     pixel.r += path_weight.r * emission * brdf * hit_light_color.r * hit_object_color.r * inv_pdf * g_term;
                     pixel.g += path_weight.g * emission * brdf * hit_light_color.g * hit_object_color.g * inv_pdf * g_term;
@@ -297,9 +297,9 @@ __global__ void nee_global_memory_kernel(
                     // 最初のパスで光源に当たった場合のみ寄与を加算
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     if (attr.visible) {
-                        pixel.r += hit_object_color.r * path_weight.r * attr.brightness;
-                        pixel.g += hit_object_color.g * path_weight.g * attr.brightness;
-                        pixel.b += hit_object_color.b * path_weight.b * attr.brightness;
+                        pixel.r += hit_object_color.r * path_weight.r * attr.intensity;
+                        pixel.g += hit_object_color.g * path_weight.g * attr.intensity;
+                        pixel.b += hit_object_color.b * path_weight.b * attr.intensity;
                     } else {
                         pixel.r += args.ambient_color.r;
                         pixel.g += args.ambient_color.g;

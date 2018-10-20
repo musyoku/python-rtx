@@ -313,10 +313,10 @@ __global__ void mcrt_texture_memory_kernel(
 
             // 光源に当たった場合トレースを打ち切り
             if (did_hit_light) {
-                float brightness = brdf;
-                pixel.r += hit_color.r * path_weight.r * brightness;
-                pixel.g += hit_color.g * path_weight.g * brightness;
-                pixel.b += hit_color.b * path_weight.b * brightness;
+                float intensity = brdf;
+                pixel.r += hit_color.r * path_weight.r * intensity;
+                pixel.g += hit_color.g * path_weight.g * intensity;
+                pixel.b += hit_color.b * path_weight.b * intensity;
                 break;
             }
 

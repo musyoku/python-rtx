@@ -81,15 +81,16 @@ group.add(light)
 geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, -math.pi / 2, 0))
 geometry.set_position((box_width / 2 + 5, 0, 0))
-material = rtx.EmissiveMaterial(1.0)
-mapping = rtx.SolidColorMapping((0, 1, 1))
+material = rtx.EmissiveMaterial(0.1)
+mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 group.add(light)
 
 scene.add(group)
 
 # place cylinder
-geometry = rtx.CylinderGeometry(0.5, 1)
+geometry = rtx.CylinderGeometry(0.5, 6)
+geometry.set_position((0, 0, 2))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((0, 1, 0))
 cylinder = rtx.Object(geometry, material, mapping)
@@ -103,12 +104,12 @@ mapping = rtx.SolidColorMapping((1, 0, 0))
 cone = rtx.Object(geometry, material, mapping)
 scene.add(cone)
 
-screen_width = 128
-screen_height = 128
+screen_width = 64
+screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 4096
-rt_args.max_bounce = 4
+rt_args.max_bounce = 3
 rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
 

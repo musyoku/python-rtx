@@ -4,19 +4,19 @@
 #include <cstring>
 
 namespace rtx {
-EmissiveMaterial::EmissiveMaterial(float brightness)
+EmissiveMaterial::EmissiveMaterial(float intensity)
 {
-    _brightness = brightness;
+    _intensity = intensity;
     _visible = true;
 }
-EmissiveMaterial::EmissiveMaterial(float brightness, bool visible)
+EmissiveMaterial::EmissiveMaterial(float intensity, bool visible)
 {
-    _brightness = brightness;
+    _intensity = intensity;
     _visible = visible;
 }
-float EmissiveMaterial::brightness() const
+float EmissiveMaterial::intensity() const
 {
-    return _brightness;
+    return _intensity;
 }
 int EmissiveMaterial::type() const
 {
@@ -29,7 +29,7 @@ int EmissiveMaterial::attribute_bytes() const
 void EmissiveMaterial::serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const
 {
     rtxEmissiveMaterialAttribute attr;
-    attr.brightness = _brightness;
+    attr.intensity = _intensity;
     attr.visible = _visible;
     rtxMaterialAttributeByte* pointer = array.data();
     std::memcpy(&pointer[offset], &attr, sizeof(rtxEmissiveMaterialAttribute));

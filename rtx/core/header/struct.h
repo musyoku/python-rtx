@@ -79,7 +79,7 @@ typedef char RTXMappingAttributeByte;
 typedef char rtxMaterialAttributeByte;
 
 typedef struct rtxEmissiveMaterialAttribute {
-    float brightness;
+    float intensity;
     bool visible;
 } rtxEmissiveMaterialAttribute;
 

@@ -5,13 +5,13 @@
 namespace rtx {
 class EmissiveMaterial : public Material {
 private:
-    float _brightness;
+    float _intensity;
     bool _visible;
 
 public:
-    EmissiveMaterial(float brightness);
-    EmissiveMaterial(float brightness, bool visible);
-    float brightness() const;
+    EmissiveMaterial(float intensity);
+    EmissiveMaterial(float intensity, bool visible);
+    float intensity() const;
     int type() const override;
     int attribute_bytes() const override;
     void serialize_attributes(rtx::array<rtxMaterialAttributeByte>& array, int offset) const override;
