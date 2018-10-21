@@ -597,7 +597,7 @@ void Renderer::launch_nee_kernel()
 }
 void Renderer::render_objects(int height, int width)
 {
-    auto start = std::chrono::system_clock::now();
+    // auto start = std::chrono::system_clock::now();
 
     bool geometry_updated = false;
     bool should_update_render_buffer = false;
@@ -706,25 +706,25 @@ void Renderer::render_objects(int height, int width)
         _screen_width = width;
     }
 
-    auto end = std::chrono::system_clock::now();
-    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    printf("preprocessing: %lf msec\n", elapsed);
+    // auto end = std::chrono::system_clock::now();
+    // double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // printf("preprocessing: %lf msec\n", elapsed);
 
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     if (_rt_args->next_event_estimation_enabled()) {
         launch_nee_kernel();
     } else {
         launch_mcrt_kernel();
     }
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    printf("kernel: %lf msec\n", elapsed);
+    // end = std::chrono::system_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // printf("kernel: %lf msec\n", elapsed);
 
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     rtx_cuda_memcpy_device_to_host((void*)_cpu_render_array.data(), (void*)_gpu_render_array, _cpu_render_array.bytes());
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    printf("memcpy: %lf msec\n", elapsed);
+    // end = std::chrono::system_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // printf("memcpy: %lf msec\n", elapsed);
 
     _scene->set_updated(false);
     _camera->set_updated(false);
@@ -737,7 +737,7 @@ void Renderer::render_objects(int height, int width)
     int num_rays_per_thread = _cuda_args->num_rays_per_thread();
     int num_threads_per_pixel = int(ceilf(float(num_rays_per_pixel) / float(num_rays_per_thread)));
 
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             rtxRGBAPixel pixel_buffer = _cpu_render_buffer_array[y * width * 3 + x * 3];
@@ -756,9 +756,9 @@ void Renderer::render_objects(int height, int width)
             _cpu_render_buffer_array[y * width * 3 + x * 3] = pixel_buffer;
         }
     }
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    printf("reduce_sum: %lf msec\n", elapsed);
+    // end = std::chrono::system_clock::now();
+    // elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // printf("reduce_sum: %lf msec\n", elapsed);
 }
 void Renderer::check_arguments()
 {
