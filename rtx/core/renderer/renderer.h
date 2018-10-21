@@ -58,6 +58,7 @@ private:
     void check_arguments();
     void construct_bvh();
     void transform_objects_to_view_space();
+    void transform_objects_to_view_space_parallel();
     void transform_geometries_to_view_space();
     void transform_lights_to_view_space();
     void serialize_geometries();

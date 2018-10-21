@@ -11,10 +11,10 @@ protected:
     glm::vec3f _position;
     glm::vec3f _rotation_rad;
     glm::vec3f _scale;
-    glm::mat4 _model_matrix;
     bool _updated;
 
 public:
+    glm::mat4 _model_matrix;
     Shape();
     void set_scale(pybind11::tuple scale);
     void set_scale(float (&scale)[3]);

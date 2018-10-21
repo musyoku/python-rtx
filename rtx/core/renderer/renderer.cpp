@@ -45,25 +45,68 @@ Renderer::~Renderer()
 }
 void Renderer::transform_objects_to_view_space()
 {
-    int num_objects = _scene->_object_array.size() + _scene->_object_group_array.size();
+    int num_objects = _scene->_object_array.size();
+    for (auto& group : _scene->_object_group_array) {
+        num_objects += group->_object_array.size();
+    }
     if (num_objects == 0) {
         return;
     }
-    _transformed_object_array = std::vector<std::shared_ptr<Object>>();
-    _transformed_object_array.reserve(num_objects);
-    for (auto& object : _scene->_object_array) {
+    _transformed_object_array = std::vector<std::shared_ptr<Object>>(num_objects);
+
+    for (unsigned int n = 0; n < _scene->_object_array.size(); n++) {
+        auto& object = _scene->_object_array[n];
         auto& geometry = object->geometry();
-        glm::mat4 transformation_matrix = _camera->view_matrix() * geometry->model_matrix();
+        glm::mat4 transformation_matrix = _camera->_view_matrix * geometry->_model_matrix;
         auto transformed_geometry = geometry->transoform(transformation_matrix);
-        _transformed_object_array.emplace_back(std::make_shared<Object>(transformed_geometry, object->material(), object->mapping()));
+        _transformed_object_array.at(n) = std::make_shared<Object>(transformed_geometry, object->material(), object->mapping());
     }
-    for (auto& group : _scene->_object_group_array) {
-        for (auto& object : group->_object_array) {
+    int offset = _scene->_object_array.size();
+    for (unsigned int group_index = 0; group_index < _scene->_object_group_array.size(); group_index++) {
+        auto& group = _scene->_object_group_array[group_index];
+        glm::mat4 view_matrix = _camera->_view_matrix * group->_model_matrix;
+        for (unsigned int n = 0; n < group->_object_array.size(); n++) {
+            auto& object = group->_object_array[n];
             auto& geometry = object->geometry();
-            glm::mat4 transformation_matrix = _camera->view_matrix() * group->model_matrix() * geometry->model_matrix();
+            glm::mat4 transformation_matrix = view_matrix * geometry->_model_matrix;
             auto transformed_geometry = geometry->transoform(transformation_matrix);
-            _transformed_object_array.emplace_back(std::make_shared<Object>(transformed_geometry, object->material(), object->mapping()));
+            _transformed_object_array.at(n + offset) = std::make_shared<Object>(transformed_geometry, object->material(), object->mapping());
         }
+        offset += group->_object_array.size();
+    }
+}
+void Renderer::transform_objects_to_view_space_parallel()
+{
+    int num_objects = _scene->_object_array.size();
+    for (auto& group : _scene->_object_group_array) {
+        num_objects += group->_object_array.size();
+    }
+    if (num_objects == 0) {
+        return;
+    }
+    _transformed_object_array = std::vector<std::shared_ptr<Object>>(num_objects);
+
+#pragma omp parallel for
+    for (unsigned int n = 0; n < _scene->_object_array.size(); n++) {
+        auto& object = _scene->_object_array[n];
+        auto& geometry = object->geometry();
+        glm::mat4 transformation_matrix = _camera->_view_matrix * geometry->_model_matrix;
+        auto transformed_geometry = geometry->transoform(transformation_matrix);
+        _transformed_object_array.at(n) = std::make_shared<Object>(transformed_geometry, object->material(), object->mapping());
+    }
+    int offset = _scene->_object_array.size();
+    for (unsigned int group_index = 0; group_index < _scene->_object_group_array.size(); group_index++) {
+        auto& group = _scene->_object_group_array[group_index];
+        glm::mat4 view_matrix = _camera->_view_matrix * group->_model_matrix;
+#pragma omp parallel for
+        for (unsigned int n = 0; n < group->_object_array.size(); n++) {
+            auto& object = group->_object_array[n];
+            auto& geometry = object->geometry();
+            glm::mat4 transformation_matrix = view_matrix * geometry->_model_matrix;
+            auto transformed_geometry = geometry->transoform(transformation_matrix);
+            _transformed_object_array.at(n + offset) = std::make_shared<Object>(transformed_geometry, object->material(), object->mapping());
+        }
+        offset += group->_object_array.size();
     }
 }
 void Renderer::serialize_geometries()
@@ -632,6 +675,7 @@ void Renderer::render_objects(int height, int width)
             rtx_cuda_malloc((void**)&_gpu_serialized_uv_coordinate_array, _cpu_serialized_uv_coordinate_array.bytes());
         }
     }
+
     if (should_transfer_to_gpu) {
         rtx_cuda_memcpy_host_to_device((void*)_gpu_face_vertex_indices_array, (void*)_cpu_face_vertex_indices_array.data(), _cpu_face_vertex_indices_array.bytes());
         rtx_cuda_memcpy_host_to_device((void*)_gpu_vertex_array, (void*)_cpu_vertex_array.data(), _cpu_vertex_array.bytes());
