@@ -448,7 +448,7 @@ void Renderer::launch_nee_kernel()
         PerspectiveCamera* perspective = static_cast<PerspectiveCamera*>(_camera.get());
         ray_origin_z = 1.0f / tanf(perspective->_fov_rad / 2.0f);
     } else if (_camera->type() == RTXCameraTypeOrthographic) {
-        ray_origin_z = _camera->_eye.z;
+        ray_origin_z = sqrtf(_camera->_eye.x * _camera->_eye.x + _camera->_eye.y * _camera->_eye.y + _camera->_eye.z * _camera->_eye.z);
     }
 
     rtxNEEKernelArguments args;

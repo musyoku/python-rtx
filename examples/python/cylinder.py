@@ -104,13 +104,25 @@ mapping = rtx.SolidColorMapping((1, 0, 0))
 cone = rtx.Object(geometry, material, mapping)
 scene.add(cone)
 
+
+faces, vertices = gm.load("../geometries/bunny")
+bottom = np.amin(vertices, axis=0)
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+geometry.set_position((0, 0, -2))
+geometry.set_scale((3, 3, 3))
+material = rtx.LambertMaterial(0.95)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+bunny = rtx.Object(geometry, material, mapping)
+scene.add(bunny)
+
+
 screen_width = 64
 screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 4096
 rt_args.max_bounce = 3
-rt_args.next_event_estimation_enabled = False
+rt_args.next_event_estimation_enabled = True
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()

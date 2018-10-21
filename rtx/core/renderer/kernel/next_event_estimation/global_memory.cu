@@ -229,6 +229,85 @@ __global__ void nee_global_memory_kernel(
 
                             did_hit_object = true;
                             hit_object = object;
+                        } else if (object.geometry_type == RTXGeometryTypeCylinder) {
+                            rtxFaceVertexIndex face;
+                            int offset = node.assigned_face_index_start + object.serialized_face_index_offset;
+
+                            // Load cylinder parameters
+                            face = global_serialized_face_vertex_indices_array[offset + 0];
+                            const rtxVertex params = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const float radius = params.x;
+                            const float y_max = params.y;
+                            const float y_min = params.z;
+
+                            // Load transformation matrix
+                            face = global_serialized_face_vertex_indices_array[offset + 1];
+                            const rtxVertex trans_a = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_b = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_c = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            // Load inverse transformation matrix
+                            face = global_serialized_face_vertex_indices_array[offset + 2];
+                            const rtxVertex inv_trans_a = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_b = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_c = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            float distance;
+                            __rtx_intersect_cylinder_or_continue(
+                                (*ray),
+                                trans_a, trans_b, trans_c,
+                                inv_trans_a, inv_trans_b, inv_trans_c,
+                                unit_hit_face_normal,
+                                distance,
+                                min_distance);
+                            min_distance = distance;
+
+                            // hit point in view space
+                            hit_point.x = ray->origin.x + distance * ray->direction.x;
+                            hit_point.y = ray->origin.y + distance * ray->direction.y;
+                            hit_point.z = ray->origin.z + distance * ray->direction.z;
+
+                            did_hit_object = true;
+                            hit_object = object;
+                        } else if (object.geometry_type == RTXGeometryTypeCone) {
+                            rtxFaceVertexIndex face;
+                            int offset = node.assigned_face_index_start + object.serialized_face_index_offset;
+
+                            // Load cylinder parameters
+                            face = global_serialized_face_vertex_indices_array[offset + 0];
+                            const rtxVertex params = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const float radius = params.x;
+                            const float height = params.y;
+
+                            // Load transformation matrix
+                            face = global_serialized_face_vertex_indices_array[offset + 1];
+                            const rtxVertex trans_a = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_b = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex trans_c = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            // Load inverse transformation matrix
+                            face = global_serialized_face_vertex_indices_array[offset + 2];
+                            const rtxVertex inv_trans_a = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_b = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                            const rtxVertex inv_trans_c = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                            float distance;
+                            __rtx_intersect_cone_or_continue(
+                                (*ray),
+                                trans_a, trans_b, trans_c,
+                                inv_trans_a, inv_trans_b, inv_trans_c,
+                                unit_hit_face_normal,
+                                distance,
+                                min_distance);
+                            min_distance = distance;
+
+                            // hit point in view space
+                            hit_point.x = ray->origin.x + distance * ray->direction.x;
+                            hit_point.y = ray->origin.y + distance * ray->direction.y;
+                            hit_point.z = ray->origin.z + distance * ray->direction.z;
+
+                            did_hit_object = true;
+                            hit_object = object;
                         }
                     }
 
