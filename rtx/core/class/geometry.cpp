@@ -68,13 +68,13 @@ bool Shape::updated()
 {
     return _updated;
 }
+void Shape::set_updated(bool updated)
+{
+    _updated = updated;
+}
 glm::mat4f Shape::model_matrix()
 {
     return _model_matrix;
-}
-void Geometry::set_updated(bool updated)
-{
-    _updated = updated;
 }
 int Geometry::bvh_max_triangles_per_node() const
 {

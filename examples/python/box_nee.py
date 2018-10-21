@@ -63,7 +63,15 @@ geometry = rtx.PlainGeometry(box_width, box_width)
 geometry.set_rotation((-math.pi / 2, 0, 0))
 geometry.set_position((0, -box_height / 2, 0))
 material = rtx.LambertMaterial(0.95)
-mapping = rtx.SolidColorMapping((1, 1, 1))
+texture = np.array(Image.open("/home/musyoku/sandbox/gqn-dataset-renderer/textures/pink dust.png").convert("RGB"), dtype=np.float32) / 255
+uv_coordinates = np.array(
+    [
+        [0, 0.2],
+        [0.2, 0.2],
+        [0, 0],
+        [0.2, 0],
+    ], dtype=np.float32)
+mapping = rtx.TextureMapping(texture, uv_coordinates)
 ceil = rtx.Object(geometry, material, mapping)
 scene.add(ceil)
 
@@ -111,7 +119,7 @@ screen_height = 64
 rt_args = rtx.RayTracingArguments()
 rt_args.num_rays_per_pixel = 1024
 rt_args.max_bounce = 4
-rt_args.next_event_estimation_enabled = True
+rt_args.next_event_estimation_enabled = False
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
@@ -129,8 +137,8 @@ camera = rtx.PerspectiveCamera(
     z_near=0.01,
     z_far=100)
 
-camera = rtx.OrthographicCamera(
-    eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
+# camera = rtx.OrthographicCamera(
+#     eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
 
 rotation = 0
 
@@ -145,8 +153,8 @@ for n in range(total_iterations):
     plt.title("NEE (1024spp)")
     plt.pause(1e-8)
 
-    group.set_rotation((rotation, 0, 0))
-    rotation += math.pi / 10
+    # group.set_rotation((rotation, 0, 0))
+    # rotation += math.pi / 10
 
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

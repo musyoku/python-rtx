@@ -30,6 +30,7 @@ Renderer::Renderer()
     _gpu_serialized_uv_coordinate_array = NULL;
     _gpu_render_array = NULL;
     _total_frames = 0;
+    rtx_cuda_malloc_texture_objects();
 }
 Renderer::~Renderer()
 {
@@ -42,6 +43,7 @@ Renderer::~Renderer()
     rtx_cuda_free((void**)&_gpu_color_mapping_array);
     rtx_cuda_free((void**)&_gpu_serialized_uv_coordinate_array);
     rtx_cuda_free((void**)&_gpu_render_array);
+    rtx_cuda_free_texture_objects();
 }
 void Renderer::transform_objects_to_view_space()
 {
@@ -669,6 +671,7 @@ void Renderer::render_objects(int height, int width)
                 rtx_cuda_memcpy_to_texture(texture_unit, 0, mapping->width(), mapping->data(), mapping->bytes());
                 rtx_cuda_bind_texture(texture_unit);
             }
+            rtx_cuda_transfer_all_texture_objects();
         }
         if (_cpu_serialized_uv_coordinate_array.size() > 0) {
             rtx_cuda_free((void**)&_gpu_serialized_uv_coordinate_array);

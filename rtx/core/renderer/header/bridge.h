@@ -13,10 +13,13 @@ void rtx_cuda_memcpy_device_to_host(void* cpu_array, void* gpu_array, size_t siz
 void rtx_cuda_free(void** array);
 void rtx_cuda_device_reset();
 
+void rtx_cuda_malloc_texture_objects();
+void rtx_cuda_free_texture_objects();
 void rtx_cuda_malloc_texture(int unit_index, int width, int height);
 void rtx_cuda_free_texture(int unit_index);
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes);
 void rtx_cuda_bind_texture(int unit_index);
+void rtx_cuda_transfer_all_texture_objects();
 
 size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();

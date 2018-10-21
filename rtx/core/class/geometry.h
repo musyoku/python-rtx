@@ -23,13 +23,13 @@ public:
     void set_rotation(pybind11::tuple rotation_rad);
     void set_rotation(float (&rotation)[3]);
     bool updated();
+    void set_updated(bool updated);
     glm::mat4f model_matrix();
 };
 
 class Geometry : public Shape {
 public:
     Geometry(){};
-    void set_updated(bool updated);
     virtual int bvh_max_triangles_per_node() const;
     virtual int type() const = 0;
     virtual int num_faces() const = 0;

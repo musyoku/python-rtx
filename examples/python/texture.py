@@ -8,7 +8,7 @@ from PIL import Image
 import geometry as gm
 import rtx
 
-scene = rtx.Scene()
+scene = rtx.Scene((0, 0, 0))
 
 box_width = 6
 box_height = 6
@@ -53,7 +53,7 @@ geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_width / 2, 0, 0))
 material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
-texture = np.array(Image.open("texture_2.png"), dtype=np.float32) / 255
+texture = np.array(Image.open("/home/musyoku/sandbox/gqn-dataset-renderer/textures/light-grey-terrazzo.png").convert("RGB"), dtype=np.float32) / 255
 uv_coordinates = np.array(
     [
         [0, 1],
@@ -103,8 +103,8 @@ rt_args.max_bounce = 4
 rt_args.next_event_estimation_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()
-cuda_args.num_threads = 256
-cuda_args.num_blocks = 1024
+cuda_args.num_threads = 64
+cuda_args.num_rays_per_thread = 64
 
 renderer = rtx.Renderer()
 

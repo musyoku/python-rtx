@@ -41,12 +41,19 @@ void rtx_cuda_device_reset()
 {
     cudaDeviceReset();
 }
+void rtx_cuda_malloc_texture_objects()
+{
+    cudaCheckError(cudaMalloc((void**)&g_gpu_serialized_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS));
+}
+void rtx_cuda_free_texture_objects()
+{
+    cudaCheckError(cudaFree((void**)&g_gpu_serialized_mapping_texture_object_array));
+}
 void rtx_cuda_malloc_texture(int unit_index, int width, int height)
 {
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<float4>();
     cudaArray** array = &g_gpu_serialized_mapping_texture_cudaArray_ptr_array[unit_index];
     cudaCheckError(cudaMallocArray(array, &desc, width, height));
-    cudaCheckError(cudaMalloc((void**)&g_gpu_serialized_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS));
 }
 void rtx_cuda_memcpy_to_texture(int unit_index, int width_offset, int height_offset, void* data, size_t bytes)
 {
@@ -69,6 +76,9 @@ void rtx_cuda_bind_texture(int unit_index)
     tex.addressMode[0] = cudaAddressModeWrap;
     tex.addressMode[1] = cudaAddressModeWrap;
     cudaCheckError(cudaCreateTextureObject(&g_cpu_serialized_mapping_texture_object_array[unit_index], &resource, &tex, NULL));
+}
+void rtx_cuda_transfer_all_texture_objects()
+{
     cudaCheckError(cudaMemcpy(g_gpu_serialized_mapping_texture_object_array, g_cpu_serialized_mapping_texture_object_array, sizeof(cudaTextureObject_t) * RTX_CUDA_MAX_TEXTURE_UNITS, cudaMemcpyHostToDevice));
 }
 void rtx_cuda_free_texture(int unit_index)
