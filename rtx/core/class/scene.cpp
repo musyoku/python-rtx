@@ -47,12 +47,23 @@ void Scene::set_updated(bool updated)
     for (auto& object : _object_array) {
         object->geometry()->set_updated(updated);
     }
+    for (auto& group : _object_group_array) {
+        for (auto& object : group->_object_array) {
+            object->geometry()->set_updated(updated);
+        }
+        group->set_updated(updated);
+    }
 }
 int Scene::num_triangles()
 {
     int num_triangles = 0;
     for (auto& object : _object_array) {
         num_triangles += object->geometry()->num_faces();
+    }
+    for (auto& group : _object_group_array) {
+        for (auto& object : group->_object_array) {
+            num_triangles += object->geometry()->num_faces();
+        }
     }
     return num_triangles;
 }
