@@ -22,8 +22,8 @@ size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();
 
 int rtx_get_device_count();
-int rtx_set_device(int device);
-int rtx_print_device_properties(int device);
+void rtx_set_device(int device);
+void rtx_print_device_properties(int device);
 
 // 引数が同じ関数を作るのでプリプロセッサで行う
 #define rtx_define_cuda_mcrt_kernel_launcher_function(memory_type)   \

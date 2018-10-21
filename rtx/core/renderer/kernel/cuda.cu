@@ -93,11 +93,11 @@ int rtx_get_device_count()
     cudaCheckError(cudaGetDeviceCount(&count));
     return count;
 }
-int rtx_set_device(int device)
+void rtx_set_device(int device)
 {
     cudaCheckError(cudaSetDevice(device));
 }
-int rtx_print_device_properties(int device)
+void rtx_print_device_properties(int device)
 {
     cudaDeviceProp dev;
     cudaCheckError(cudaGetDeviceProperties(&dev, 0));
@@ -109,5 +109,6 @@ int rtx_print_device_properties(int device)
     printf("texturePitchAlignment:	%zu\n", dev.texturePitchAlignment);
     printf("totalGlobalMem:	%zu\n", dev.totalGlobalMem);
     printf("totalConstMem:	%zu\n", dev.totalConstMem);
+    printf("regsPerBlock:	%d\n", dev.regsPerBlock);
     printf("warpSize:	%d\n", dev.warpSize);
 }
