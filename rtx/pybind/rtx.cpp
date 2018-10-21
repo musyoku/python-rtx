@@ -19,6 +19,7 @@
 #include "../core/material/oren_nayar.h"
 #include "../core/renderer/arguments/cuda_kernel.h"
 #include "../core/renderer/arguments/ray_tracing.h"
+#include "../core/renderer/header/bridge.h"
 #include "../core/renderer/renderer.h"
 #include <pybind11/pybind11.h>
 
@@ -114,4 +115,9 @@ PYBIND11_MODULE(rtx, module)
     py::class_<Renderer, std::shared_ptr<Renderer>>(module, "Renderer")
         .def(py::init<>())
         .def("render", (void (Renderer::*)(std::shared_ptr<Scene>, std::shared_ptr<Camera>, std::shared_ptr<RayTracingArguments>, std::shared_ptr<CUDAKernelLaunchArguments>, py::array_t<float, py::array::c_style>)) & Renderer::render, py::arg("scene"), py::arg("camera"), py::arg("rt_args"), py::arg("cuda_args"), py::arg("render_buffer"));
+
+    // Utils
+    module.def("get_device_count", &rtx_get_device_count);
+    module.def("set_device", &rtx_set_device);
+    module.def("print_device_properties", &rtx_print_device_properties);
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "../../header/struct.h"
+#include <cstddef>
 
 #define THREADED_BVH_TERMINAL_NODE -1
 #define THREADED_BVH_INNER_NODE -1
@@ -19,6 +20,10 @@ void rtx_cuda_bind_texture(int unit_index);
 
 size_t rtx_cuda_get_available_shared_memory_bytes();
 size_t rtx_cuda_get_cudaTextureObject_t_bytes();
+
+int rtx_get_device_count();
+int rtx_set_device(int device);
+int rtx_print_device_properties(int device);
 
 // 引数が同じ関数を作るのでプリプロセッサで行う
 #define rtx_define_cuda_mcrt_kernel_launcher_function(memory_type)   \

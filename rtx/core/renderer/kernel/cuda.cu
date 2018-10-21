@@ -83,6 +83,31 @@ size_t rtx_cuda_get_available_shared_memory_bytes()
     cudaGetDeviceProperties(&dev, 0);
     return dev.sharedMemPerBlock;
 }
-size_t rtx_cuda_get_cudaTextureObject_t_bytes(){
+size_t rtx_cuda_get_cudaTextureObject_t_bytes()
+{
     return sizeof(cudaTextureObject_t);
+}
+int rtx_get_device_count()
+{
+    int count = 0;
+    cudaCheckError(cudaGetDeviceCount(&count));
+    return count;
+}
+int rtx_set_device(int device)
+{
+    cudaCheckError(cudaSetDevice(device));
+}
+int rtx_print_device_properties(int device)
+{
+    cudaDeviceProp dev;
+    cudaCheckError(cudaGetDeviceProperties(&dev, 0));
+    printf("maxGridSize:	[%d, %d, %d]\n", dev.maxGridSize[0], dev.maxGridSize[1], dev.maxGridSize[2]);
+    printf("maxTexture1D:	%d\n", dev.maxTexture1D);
+    printf("maxThreadsDim:	[%d, %d, %d]\n", dev.maxThreadsDim[0], dev.maxThreadsDim[1], dev.maxThreadsDim[2]);
+    printf("maxThreadsPerBlock:	%d\n", dev.maxThreadsPerBlock);
+    printf("memPitch:	%zu\n", dev.memPitch);
+    printf("texturePitchAlignment:	%zu\n", dev.texturePitchAlignment);
+    printf("totalGlobalMem:	%zu\n", dev.totalGlobalMem);
+    printf("totalConstMem:	%zu\n", dev.totalConstMem);
+    printf("warpSize:	%d\n", dev.warpSize);
 }
