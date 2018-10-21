@@ -72,7 +72,7 @@ group = rtx.ObjectGroup()
 
 geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, math.pi / 2, 0))
-geometry.set_position((- box_width / 2 - 5, 0, 0))
+geometry.set_position((-box_width / 2 - 5, 0, 0))
 material = rtx.EmissiveMaterial(1.0)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
@@ -128,11 +128,16 @@ camera = rtx.PerspectiveCamera(
     z_near=0.01,
     z_far=100)
 
-camera = rtx.OrthographicCamera(
-    eye=(5, 5, 5), center=(0, 0, 0), up=(0, 1, 0))
-
 view_radius = 5
 rotation = 0.0
+
+rotation = math.pi / 12
+camera = rtx.OrthographicCamera(
+    eye=(view_radius * math.sin(rotation), view_radius,
+         view_radius * math.cos(rotation)),
+    center=(0, 0, 0),
+    up=(0, 1, 0))
+
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 300
 for n in range(total_iterations):
@@ -140,7 +145,7 @@ for n in range(total_iterations):
             view_radius * math.cos(rotation))
     center = (0, 0, 0)
     camera.look_at(eye, center, up=(0, 1, 0))
-            
+
     renderer.render(scene, camera, rt_args, cuda_args, render_buffer)
     # linear -> sRGB
     pixels = np.power(np.clip(render_buffer, 0, 1), 1.0 / 2.2)
@@ -151,7 +156,6 @@ for n in range(total_iterations):
 
     rotation += math.pi / 36
     # group.set_rotation((0, 0, rotation))
-
 
 image = Image.fromarray(np.uint8(pixels * 255))
 image.save("result.png")

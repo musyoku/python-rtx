@@ -77,7 +77,7 @@
         if (discrim <= 0) {                                                                                                        \
             continue;                                                                                                              \
         }                                                                                                                          \
-        const float root = sqrt(discrim);                                                                                          \
+        const float root = sqrtf(discrim);                                                                                          \
         t = (-b - root) / (2.0f * a);                                                                                              \
         if (t <= 0.001f) {                                                                                                         \
             t = (-b + root) / (2.0f * a);                                                                                          \
@@ -88,6 +88,88 @@
         if (min_distance <= t) {                                                                                                   \
             continue;                                                                                                              \
         }                                                                                                                          \
+    }
+
+// http://woo4.me/wootracer/cylinder-intersection/
+#define __rtx_intersect_cylinder_or_continue(ray, trans_a, trans_b, trans_c, inv_trans_a, inv_trans_b, inv_trans_c, unit_hit_face_normal, t, min_distance) \
+    {                                                                                                                                                      \
+        /* 方向ベクトルの変換では平行移動の成分を無視する */                                                                        \
+        float3 d = {                                                                                                                                       \
+            ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,                                           \
+            ray.direction.x * inv_trans_b.x + ray.direction.y * inv_trans_b.y + ray.direction.z * inv_trans_b.z,                                           \
+            ray.direction.x * inv_trans_c.x + ray.direction.y * inv_trans_c.y + ray.direction.z * inv_trans_c.z,                                           \
+        };                                                                                                                                                 \
+        float3 o = {                                                                                                                                       \
+            ray.origin.x * inv_trans_a.x + ray.origin.y * inv_trans_a.y + ray.origin.z * inv_trans_a.z + inv_trans_a.w,                                    \
+            ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z + inv_trans_b.w,                                    \
+            ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z + inv_trans_c.w,                                    \
+        };                                                                                                                                                 \
+        const float a = d.x * d.x + d.z * d.z;                                                                                                             \
+        const float b = 2.0f * (d.x * o.x + d.z * o.z);                                                                                                    \
+        const float c = (o.x * o.x + o.z * o.z) - radius * radius;                                                                                         \
+        const float discrim = b * b - 4.0f * a * c;                                                                                                        \
+        if (discrim <= 0) {                                                                                                                                \
+            continue;                                                                                                                                      \
+        }                                                                                                                                                  \
+        const float root = sqrtf(discrim);                                                                                                                 \
+        float t0 = (-b + root) / (2.0f * a);                                                                                                               \
+        float t1 = (-b - root) / (2.0f * a);                                                                                                               \
+        if (t0 > t1) {                                                                                                                                     \
+            __swapf(t0, t1);                                                                                                                               \
+        }                                                                                                                                                  \
+        if (min_distance <= t0) {                                                                                                                          \
+            continue;                                                                                                                                      \
+        }                                                                                                                                                  \
+        float y0 = o.y + t0 * d.y;                                                                                                                         \
+        float y1 = o.y + t1 * d.y;                                                                                                                         \
+        float3 p_hit;                                                                                                                                      \
+        /* face normal in model space */                                                                                                                   \
+        float3 normal;                                                                                                                                     \
+        if (y0 < y_min) {                                                                                                                                  \
+            if (y1 < y_min) {                                                                                                                              \
+                continue;                                                                                                                                  \
+            }                                                                                                                                              \
+            float th = t0 + (t1 - t0) * (y0 - y_min) / (y0 - y1);                                                                                          \
+            if (th <= 0.0f) {                                                                                                                              \
+                continue;                                                                                                                                  \
+            }                                                                                                                                              \
+            __rtx_make_ray(p_hit, o, th, d);                                                                                                               \
+            normal.x = 0.0f;                                                                                                                               \
+            normal.y = -1.0f;                                                                                                                              \
+            normal.z = 0.0f;                                                                                                                               \
+            t = th;                                                                                                                                        \
+        } else if (y0 >= y_min && y0 <= y_max) {                                                                                                           \
+            if (t0 <= 0.001f) {                                                                                                                            \
+                continue;                                                                                                                                  \
+            }                                                                                                                                              \
+            __rtx_make_ray(p_hit, o, t0, d);                                                                                                               \
+            normal.x = p_hit.x;                                                                                                                            \
+            normal.y = 0.0f;                                                                                                                               \
+            normal.z = p_hit.z;                                                                                                                            \
+            const float norm = sqrtf(normal.x * normal.x + normal.z * normal.z);                                                                           \
+            normal.x /= norm;                                                                                                                              \
+            normal.z /= norm;                                                                                                                              \
+            t = t0;                                                                                                                                        \
+        } else if (y0 > y_max) {                                                                                                                           \
+            if (y1 > y_max) {                                                                                                                              \
+                continue;                                                                                                                                  \
+            }                                                                                                                                              \
+            float th = t0 + (t1 - t0) * (y0 - y_max) / (y0 - y1);                                                                                          \
+            if (th <= 0) {                                                                                                                                 \
+                continue;                                                                                                                                  \
+            }                                                                                                                                              \
+            __rtx_make_ray(p_hit, o, th, d);                                                                                                               \
+            normal.x = 0.0f;                                                                                                                               \
+            normal.y = 1.0f;                                                                                                                               \
+            normal.z = 0.0f;                                                                                                                               \
+            t = th;                                                                                                                                        \
+        } else {                                                                                                                                           \
+            continue;                                                                                                                                      \
+        }                                                                                                                                                  \
+        /* face normal in view space*/                                                                                                                     \
+        unit_hit_face_normal.x = normal.x * trans_a.x + normal.y * trans_a.y + normal.z * trans_a.z;                                                       \
+        unit_hit_face_normal.y = normal.x * trans_b.x + normal.y * trans_b.y + normal.z * trans_b.z;                                                       \
+        unit_hit_face_normal.z = normal.x * trans_c.x + normal.y * trans_c.y + normal.z * trans_c.z;                                                       \
     }
 
 #define __rtx_bvh_traversal_one_step_or_continue(ray, node, ray_direction_inv, bvh_current_node_index)                         \
@@ -271,7 +353,7 @@
                 -(unit_current_ray_direction.z * hit_face_normal.x - unit_current_ray_direction.x * hit_face_normal.z),                                                                       \
                 -(unit_current_ray_direction.x * hit_face_normal.y - unit_current_ray_direction.y * hit_face_normal.x),                                                                       \
             };                                                                                                                                                                                \
-            float norm = sqrt(cross_view.x * cross_view.x + cross_view.y * cross_view.y + cross_view.z * cross_view.z);                                                                       \
+            float norm = sqrtf(cross_view.x * cross_view.x + cross_view.y * cross_view.y + cross_view.z * cross_view.z);                                                                       \
             cross_view.x /= norm;                                                                                                                                                             \
             cross_view.y /= norm;                                                                                                                                                             \
             cross_view.z /= norm;                                                                                                                                                             \
@@ -280,7 +362,7 @@
                 unit_next_ray_direction.z * hit_face_normal.x - unit_next_ray_direction.x * hit_face_normal.z,                                                                                \
                 unit_next_ray_direction.x * hit_face_normal.y - unit_next_ray_direction.y * hit_face_normal.x,                                                                                \
             };                                                                                                                                                                                \
-            norm = sqrt(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                   \
+            norm = sqrtf(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                   \
             cross_ref.x /= norm;                                                                                                                                                              \
             cross_ref.y /= norm;                                                                                                                                                              \
             cross_ref.z /= norm;                                                                                                                                                              \
@@ -309,7 +391,7 @@
     curand_state)                                                                                                                                  \
     {                                                                                                                                              \
         float4 unit_diffuse = curand_normal4(&curand_state);                                                                                       \
-        float norm = sqrt(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);                    \
+        float norm = sqrtf(unit_diffuse.x * unit_diffuse.x + unit_diffuse.y * unit_diffuse.y + unit_diffuse.z * unit_diffuse.z);                    \
         unit_diffuse.x /= norm;                                                                                                                    \
         unit_diffuse.y /= norm;                                                                                                                    \
         unit_diffuse.z /= norm;                                                                                                                    \
