@@ -4,6 +4,9 @@ namespace rtx {
 RayTracingArguments::RayTracingArguments()
 {
     _num_rays_per_pixel = 1;
+    _max_bounce = 0;
+    _next_event_estimation_enabled = false;
+    _supersampling_enabled = true;
 }
 int RayTracingArguments::num_rays_per_pixel()
 {

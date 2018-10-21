@@ -320,7 +320,7 @@ __global__ void nee_texture_memory_kernel(
             }
 
             if (did_hit_object == false) {
-                if (bounce == 0){
+                if (iter == 0){
                     pixel.r += args.ambient_color.r;
                     pixel.g += args.ambient_color.g;
                     pixel.b += args.ambient_color.b;
