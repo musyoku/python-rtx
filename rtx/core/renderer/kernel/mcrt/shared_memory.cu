@@ -291,6 +291,17 @@ __global__ void mcrt_shared_memory_kernel(
                             const rtxVertex inv_trans_b = shared_vertex_array[face.b + object.serialized_vertex_index_offset];
                             const rtxVertex inv_trans_c = shared_vertex_array[face.c + object.serialized_vertex_index_offset];
 
+                            // float distance;
+                            // __rtx_intersect_cone_or_continue(
+                            //     ray,
+                            //     trans_a, trans_b, trans_c,
+                            //     inv_trans_a, inv_trans_b, inv_trans_c,
+                            //     unit_hit_face_normal,
+                            //     distance,
+                            //     min_distance);
+                            // min_distance = distance;
+
+
                             // 方向ベクトルの変換では平行移動の成分を無視する
                             float3 d = {
                                 ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,
@@ -311,7 +322,7 @@ __global__ void mcrt_shared_memory_kernel(
                                 continue;
                             }
                             float t0, t1;
-                            if (fabs(a) <= 0.0001f) {   /* 誤差対策 */
+                            if (fabs(a) <= 1e-6) {   /* 誤差対策 */
                                 t0 = -c / b;
                                 t1 = 9999.0f;
                             } else {

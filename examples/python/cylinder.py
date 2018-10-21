@@ -73,7 +73,7 @@ group = rtx.ObjectGroup()
 geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, math.pi / 2, 0))
 geometry.set_position((-box_width / 2 - 5, 0, 0))
-material = rtx.EmissiveMaterial(1.0)
+material = rtx.EmissiveMaterial(1.0, visible=False)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 group.add(light)
@@ -81,7 +81,7 @@ group.add(light)
 geometry = rtx.PlainGeometry(100, 100)
 geometry.set_rotation((0, -math.pi / 2, 0))
 geometry.set_position((box_width / 2 + 5, 0, 0))
-material = rtx.EmissiveMaterial(0.1)
+material = rtx.EmissiveMaterial(0.1, visible=False)
 mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 group.add(light)
@@ -128,21 +128,15 @@ camera = rtx.PerspectiveCamera(
     z_near=0.01,
     z_far=100)
 
+camera = rtx.OrthographicCamera(eye=(5, 5, 0), center=(0, 0, 0), up=(0, 1, 0))
+
 view_radius = 5
 rotation = 0.0
-
-rotation = math.pi / 12
-camera = rtx.OrthographicCamera(
-    eye=(view_radius * math.sin(rotation), view_radius,
-         view_radius * math.cos(rotation)),
-    center=(0, 0, 0),
-    up=(0, 1, 0))
-
 render_buffer = np.zeros((screen_height, screen_width, 3), dtype="float32")
 total_iterations = 300
 for n in range(total_iterations):
     eye = (view_radius * math.sin(rotation), view_radius,
-            view_radius * math.cos(rotation))
+           view_radius * math.cos(rotation))
     center = (0, 0, 0)
     camera.look_at(eye, center, up=(0, 1, 0))
 
