@@ -89,6 +89,10 @@ public:
     {
         return sizeof(T) * _size;
     }
+    int alignment() const
+    {
+        return sizeof(T);
+    }
     T* data()
     {
         return _array;
