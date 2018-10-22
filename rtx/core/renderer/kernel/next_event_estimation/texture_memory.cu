@@ -396,11 +396,11 @@ __global__ void nee_texture_memory_kernel(
                 }
 
                 // 入射方向のサンプリング
-                float3 unit_next_ray_direction;
+                float3 unit_next_path_direction;
                 float cosine_term;
                 __rtx_sample_ray_direction(
                     unit_hit_face_normal,
-                    unit_next_ray_direction,
+                    unit_next_path_direction,
                     cosine_term,
                     curand_state);
 
@@ -410,7 +410,7 @@ __global__ void nee_texture_memory_kernel(
                     hit_object,
                     hit_face,
                     primary_ray.direction,
-                    unit_next_ray_direction,
+                    unit_next_path_direction,
                     shared_serialized_material_attribute_byte_array,
                     input_ray_brdf);
 
@@ -419,14 +419,13 @@ __global__ void nee_texture_memory_kernel(
                 next_path_weight.g = path_weight.g * input_ray_brdf * hit_object_color.g * cosine_term * inv_pdf;
                 next_path_weight.b = path_weight.b * input_ray_brdf * hit_object_color.b * cosine_term * inv_pdf;
 
+                float4 random_uniform4 = curand_uniform4(&curand_state);
+
                 // 光源のサンプリング
-                float2 uniform2;
-                __xorshift_uniform(uniform2.x, xors_x, xors_y, xors_z, xors_w);
-                __xorshift_uniform(uniform2.y, xors_x, xors_y, xors_z, xors_w);
-                const int table_index = floorf(uniform2.x * float(args.light_sampling_table_size));
+                const int table_index = floorf(random_uniform4.x * float(args.light_sampling_table_size));
                 const int object_index = shared_light_sampling_table[table_index];
                 rtxObject object = shared_serialized_object_array[object_index];
-                const int face_index = floorf(uniform2.y * float(object.num_faces));
+                const int face_index = floorf(random_uniform4.y * float(object.num_faces));
                 const int serialized_face_index = face_index + object.serialized_face_index_offset;
                 const int4 face = tex1Dfetch(g_serialized_face_vertex_index_array_texture_ref, serialized_face_index);
                 const float4 va = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
@@ -435,10 +434,8 @@ __global__ void nee_texture_memory_kernel(
 
                 // 面上の一点の一様なサンプリング
                 // http://www.cs.princeton.edu/~funk/tog02.pdf
-                float r1, r2;
-                __xorshift_uniform(r1, xors_x, xors_y, xors_z, xors_w);
-                __xorshift_uniform(r2, xors_x, xors_y, xors_z, xors_w);
-                r1 = sqrtf(r1);
+                float r1 = sqrtf(random_uniform4.z);
+                float r2 = random_uniform4.w;
                 const float3 random_point = {
                     (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
                     (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
@@ -471,9 +468,9 @@ __global__ void nee_texture_memory_kernel(
                 primary_ray.origin.x = hit_point.x;
                 primary_ray.origin.y = hit_point.y;
                 primary_ray.origin.z = hit_point.z;
-                primary_ray.direction.x = unit_next_ray_direction.x;
-                primary_ray.direction.y = unit_next_ray_direction.y;
-                primary_ray.direction.z = unit_next_ray_direction.z;
+                primary_ray.direction.x = unit_next_path_direction.x;
+                primary_ray.direction.y = unit_next_path_direction.y;
+                primary_ray.direction.z = unit_next_path_direction.z;
 
                 const float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
                     + shadow_ray.direction.y * unit_hit_face_normal.y

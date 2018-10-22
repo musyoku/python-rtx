@@ -183,9 +183,9 @@
             ray.direction.x * inv_trans_c.x + ray.direction.y * inv_trans_c.y + ray.direction.z * inv_trans_c.z,                                       \
         };                                                                                                                                             \
         float3 o = {                                                                                                                                   \
-            ray.origin.x * inv_trans_a.x + ray.origin.y * inv_trans_a.y + ray.origin.z * inv_trans_a.z + inv_trans_a.w,                                \
-            ray.origin.x * inv_trans_b.x + ray.origin.y * inv_trans_b.y + ray.origin.z * inv_trans_b.z + inv_trans_b.w,                                \
-            ray.origin.x * inv_trans_c.x + ray.origin.y * inv_trans_c.y + ray.origin.z * inv_trans_c.z + inv_trans_c.w,                                \
+            ray.origin.x * inv_trans_a.x + oy * inv_trans_a.y + ray.origin.z * inv_trans_a.z + inv_trans_a.w,                                          \
+            ray.origin.x * inv_trans_b.x + oy * inv_trans_b.y + ray.origin.z * inv_trans_b.z + inv_trans_b.w,                                          \
+            ray.origin.x * inv_trans_c.x + oy * inv_trans_c.y + ray.origin.z * inv_trans_c.z + inv_trans_c.w,                                          \
         };                                                                                                                                             \
         const float coeff = (height * height) / (radius * radius);                                                                                     \
         const float a = coeff * (d.x * d.x + d.z * d.z) - (d.y * d.y);                                                                                 \
@@ -429,14 +429,14 @@
     hit_object,                                                                                                                                                                               \
     hit_face,                                                                                                                                                                                 \
     unit_current_ray_direction,                                                                                                                                                               \
-    unit_next_ray_direction,                                                                                                                                                                  \
+    unit_next_path_direction,                                                                                                                                                                  \
     material_attribute_byte_array,                                                                                                                                                            \
     brdf)                                                                                                                                                                                     \
     {                                                                                                                                                                                         \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                         \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                        \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                            \
-            float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;                    \
+            float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;                    \
             brdf = attr.albedo * cos_ref / M_PI;                                                                                                                                              \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                               \
             /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                          \
@@ -445,7 +445,7 @@
             const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                 \
             const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                       \
             const float cos_view = -(hit_face_normal.x * unit_current_ray_direction.x + hit_face_normal.y * unit_current_ray_direction.y + hit_face_normal.z * unit_current_ray_direction.z); \
-            const float cos_ref = hit_face_normal.x * unit_next_ray_direction.x + hit_face_normal.y * unit_next_ray_direction.y + hit_face_normal.z * unit_next_ray_direction.z;              \
+            const float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;              \
             const float theta_view = acos(cos_view);                                                                                                                                          \
             const float theta_ref = acos(cos_ref);                                                                                                                                            \
             const float sin_alpha = sin(max(theta_view, theta_ref));                                                                                                                          \
@@ -460,9 +460,9 @@
             cross_view.y /= norm;                                                                                                                                                             \
             cross_view.z /= norm;                                                                                                                                                             \
             float3 cross_ref = {                                                                                                                                                              \
-                unit_next_ray_direction.y * hit_face_normal.z - unit_next_ray_direction.z * hit_face_normal.y,                                                                                \
-                unit_next_ray_direction.z * hit_face_normal.x - unit_next_ray_direction.x * hit_face_normal.z,                                                                                \
-                unit_next_ray_direction.x * hit_face_normal.y - unit_next_ray_direction.y * hit_face_normal.x,                                                                                \
+                unit_next_path_direction.y * hit_face_normal.z - unit_next_path_direction.z * hit_face_normal.y,                                                                                \
+                unit_next_path_direction.z * hit_face_normal.x - unit_next_path_direction.x * hit_face_normal.z,                                                                                \
+                unit_next_path_direction.x * hit_face_normal.y - unit_next_path_direction.y * hit_face_normal.x,                                                                                \
             };                                                                                                                                                                                \
             norm = sqrtf(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                  \
             cross_ref.x /= norm;                                                                                                                                                              \
@@ -513,14 +513,14 @@
     ray,                                              \
     ray_direction_inv,                                \
     hit_point,                                        \
-    unit_next_ray_direction)                          \
+    unit_next_path_direction)                          \
     {                                                 \
         ray.origin.x = hit_point.x;                   \
         ray.origin.y = hit_point.y;                   \
         ray.origin.z = hit_point.z;                   \
-        ray.direction.x = unit_next_ray_direction.x;  \
-        ray.direction.y = unit_next_ray_direction.y;  \
-        ray.direction.z = unit_next_ray_direction.z;  \
+        ray.direction.x = unit_next_path_direction.x;  \
+        ray.direction.y = unit_next_path_direction.y;  \
+        ray.direction.z = unit_next_path_direction.z;  \
         ray_direction_inv.x = 1.0f / ray.direction.x; \
         ray_direction_inv.y = 1.0f / ray.direction.y; \
         ray_direction_inv.z = 1.0f / ray.direction.z; \
@@ -602,4 +602,12 @@
         ray.direction.x = 0.0f;                                                                                                              \
         ray.direction.y = 0.0f;                                                                                                              \
         ray.direction.z = -1.0f;                                                                                                             \
+    }
+
+#define __rtx_normalize_vector(vec)                                        \
+    {                                                                      \
+        float norm = sqrtf(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z); \
+        vec.x /= norm;                                                     \
+        vec.y /= norm;                                                     \
+        vec.z /= norm;                                                     \
     }

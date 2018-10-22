@@ -6,12 +6,11 @@
 namespace rtx {
 class SphereGeometry : public Geometry {
 protected:
-    glm::vec4f _radius;
-    glm::vec4f _center;
+    float _radius;
 
 public:
     SphereGeometry(float radius);
-    glm::vec4f radius();
+    float radius();
     glm::vec4f center();
     int type() const override;
     int num_faces() const override;

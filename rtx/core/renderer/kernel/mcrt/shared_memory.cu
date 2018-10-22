@@ -365,11 +365,11 @@ __global__ void mcrt_shared_memory_kernel(
             }
 
             // 反射方向のサンプリング
-            float3 unit_next_ray_direction;
+            float3 unit_next_path_direction;
             float cosine_term;
             __rtx_sample_ray_direction(
                 unit_hit_face_normal,
-                unit_next_ray_direction,
+                unit_next_path_direction,
                 cosine_term,
                 curand_state);
 
@@ -379,7 +379,7 @@ __global__ void mcrt_shared_memory_kernel(
                 hit_object,
                 hit_face,
                 ray.direction,
-                unit_next_ray_direction,
+                unit_next_path_direction,
                 shared_serialized_material_attribute_byte_array,
                 brdf);
 
@@ -387,7 +387,7 @@ __global__ void mcrt_shared_memory_kernel(
                 ray,
                 ray_direction_inv,
                 hit_point,
-                unit_next_ray_direction);
+                unit_next_path_direction);
 
             // 経路のウェイトを更新
             float inv_pdf = 2.0f * M_PI;

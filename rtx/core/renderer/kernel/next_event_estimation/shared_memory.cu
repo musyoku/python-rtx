@@ -249,16 +249,10 @@ __global__ void nee_shared_memory_kernel(
                             hit_point.y = ray->origin.y + distance * ray->direction.y;
                             hit_point.z = ray->origin.z + distance * ray->direction.z;
 
-                            const float3 normal = {
-                                hit_point.x - center.x,
-                                hit_point.y - center.y,
-                                hit_point.z - center.z,
-                            };
-                            const float norm = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-
-                            unit_hit_face_normal.x = normal.x / norm;
-                            unit_hit_face_normal.y = normal.y / norm;
-                            unit_hit_face_normal.z = normal.z / norm;
+                            unit_hit_face_normal.x = hit_point.x - center.x;
+                            unit_hit_face_normal.y = hit_point.y - center.y;
+                            unit_hit_face_normal.z = hit_point.z - center.z;
+                            __rtx_normalize_vector(unit_hit_face_normal);
 
                             did_hit_object = true;
                             hit_object = object;
@@ -353,7 +347,7 @@ __global__ void nee_shared_memory_kernel(
             }
 
             if (did_hit_object == false) {
-                if (iter == 0){
+                if (iter == 0) {
                     pixel.r += args.ambient_color.r;
                     pixel.g += args.ambient_color.g;
                     pixel.b += args.ambient_color.b;
@@ -362,6 +356,7 @@ __global__ void nee_shared_memory_kernel(
             }
 
             if (is_shadow_ray) {
+
                 // 光源に当たった場合寄与を加算
                 rtxRGBAColor hit_light_color;
                 int material_type = hit_object.layerd_material_types.outside;
@@ -423,11 +418,11 @@ __global__ void nee_shared_memory_kernel(
                 }
 
                 // 入射方向のサンプリング
-                float3 unit_next_ray_direction;
+                float3 unit_next_path_direction;
                 float cosine_term;
                 __rtx_sample_ray_direction(
                     unit_hit_face_normal,
-                    unit_next_ray_direction,
+                    unit_next_path_direction,
                     cosine_term,
                     curand_state);
 
@@ -437,7 +432,7 @@ __global__ void nee_shared_memory_kernel(
                     hit_object,
                     hit_face,
                     primary_ray.direction,
-                    unit_next_ray_direction,
+                    unit_next_path_direction,
                     shared_serialized_material_attribute_byte_array,
                     input_ray_brdf);
 
@@ -446,43 +441,114 @@ __global__ void nee_shared_memory_kernel(
                 next_path_weight.g = path_weight.g * input_ray_brdf * hit_object_color.g * cosine_term * inv_pdf;
                 next_path_weight.b = path_weight.b * input_ray_brdf * hit_object_color.b * cosine_term * inv_pdf;
 
+                float4 random_uniform4 = curand_uniform4(&curand_state);
+
                 // 光源のサンプリング
-                float2 uniform2;
-                __xorshift_uniform(uniform2.x, xors_x, xors_y, xors_z, xors_w);
-                __xorshift_uniform(uniform2.y, xors_x, xors_y, xors_z, xors_w);
-                const int table_index = floorf(uniform2.x * float(args.light_sampling_table_size));
+                const int table_index = floorf(random_uniform4.x * float(args.light_sampling_table_size));
                 const int object_index = shared_light_sampling_table[table_index];
                 rtxObject object = shared_serialized_object_array[object_index];
-                const int face_index = floorf(uniform2.y * float(object.num_faces));
-                const int serialized_face_index = face_index + object.serialized_face_index_offset;
-                const rtxFaceVertexIndex face = shared_serialized_face_vertex_indices_array[serialized_face_index];
-                const rtxVertex va = shared_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
-                const rtxVertex vb = shared_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
-                const rtxVertex vc = shared_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                // 面上の一点の一様なサンプリング
-                // http://www.cs.princeton.edu/~funk/tog02.pdf
-                float r1, r2;
-                __xorshift_uniform(r1, xors_x, xors_y, xors_z, xors_w);
-                __xorshift_uniform(r2, xors_x, xors_y, xors_z, xors_w);
-                r1 = sqrtf(r1);
-                const float3 random_point = {
-                    (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
-                    (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
-                    (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
-                };
+                float light_distance;
+                float3 unit_light_normal;
+                if (object.geometry_type == RTXGeometryTypeStandard) {
+                    const int face_index = floorf(random_uniform4.y * float(object.num_faces));
+                    const int serialized_face_index = face_index + object.serialized_face_index_offset;
+                    const rtxFaceVertexIndex face = shared_serialized_face_vertex_indices_array[serialized_face_index];
+                    const rtxVertex va = shared_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                    const rtxVertex vb = shared_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                    const rtxVertex vc = shared_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+
+                    // 面上の一点の一様なサンプリング
+                    // http://www.cs.princeton.edu/~funk/tog02.pdf
+                    float r1 = sqrtf(random_uniform4.z);
+                    float r2 = random_uniform4.w;
+                    const float3 random_point = {
+                        (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
+                        (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
+                        (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
+                    };
+
+                    shadow_ray.direction.x = random_point.x - hit_point.x;
+                    shadow_ray.direction.y = random_point.y - hit_point.y;
+                    shadow_ray.direction.z = random_point.z - hit_point.z;
+
+                    light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
+
+                    shadow_ray.direction.x /= light_distance;
+                    shadow_ray.direction.y /= light_distance;
+                    shadow_ray.direction.z /= light_distance;
+
+                    const float3 edge_ba = {
+                        vb.x - va.x,
+                        vb.y - va.y,
+                        vb.z - va.z,
+                    };
+                    const float3 edge_ca = {
+                        vc.x - va.x,
+                        vc.y - va.y,
+                        vc.z - va.z,
+                    };
+                    unit_light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
+                    unit_light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
+                    unit_light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
+                    __rtx_normalize_vector(unit_light_normal);
+                } else if (object.geometry_type == RTXGeometryTypeSphere) {
+                    const int serialized_array_index = object.serialized_face_index_offset;
+                    const rtxFaceVertexIndex face = shared_serialized_face_vertex_indices_array[serialized_array_index];
+                    const rtxVertex center = shared_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                    const rtxVertex radius = shared_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+
+                    // 球上の一点をサンプリング
+                    // 球の半径によらず正規化しておく（本来なら半径を掛ける必要がある）
+                    float4 unit_random_point = curand_normal4(&curand_state);
+                    __rtx_normalize_vector(unit_random_point);
+
+                    // シャドウレイの始点から見てサンプリング点が球の裏側にあれば反転する
+                    float3 unit_d = {
+                        hit_point.x - center.x,
+                        hit_point.y - center.y,
+                        hit_point.z - center.z,
+                    };
+                    __rtx_normalize_vector(unit_d);
+
+                    const float dot = unit_d.x * unit_random_point.x + unit_d.y * unit_random_point.y + unit_d.z * unit_random_point.z;
+                    if (dot < 0.0f) {
+                        unit_random_point.x *= -1.0f;
+                        unit_random_point.y *= -1.0f;
+                        unit_random_point.z *= -1.0f;
+                    }
+
+                    unit_light_normal.x = unit_random_point.x;
+                    unit_light_normal.y = unit_random_point.y;
+                    unit_light_normal.z = unit_random_point.z;
+
+                    shadow_ray.direction.x = center.x + unit_random_point.x * radius.x - hit_point.x;
+                    shadow_ray.direction.y = center.y + unit_random_point.y * radius.x - hit_point.y;
+                    shadow_ray.direction.z = center.z + unit_random_point.z * radius.x - hit_point.z;
+
+                    light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
+
+                    shadow_ray.direction.x /= light_distance;
+                    shadow_ray.direction.y /= light_distance;
+                    shadow_ray.direction.z /= light_distance;
+                }
+
+                const float dot_ray_face = shadow_ray.direction.x * unit_hit_face_normal.x
+                    + shadow_ray.direction.y * unit_hit_face_normal.y
+                    + shadow_ray.direction.z * unit_hit_face_normal.z;
+
+                if (dot_ray_face <= 0.0f) {
+                    ray = &primary_ray;
+                    iter += 1;
+                    path_weight.r = next_path_weight.r;
+                    path_weight.g = next_path_weight.g;
+                    path_weight.b = next_path_weight.b;
+                    continue;
+                }
 
                 shadow_ray.origin.x = hit_point.x;
                 shadow_ray.origin.y = hit_point.y;
                 shadow_ray.origin.z = hit_point.z;
-
-                shadow_ray.direction.x = random_point.x - hit_point.x;
-                shadow_ray.direction.y = random_point.y - hit_point.y;
-                shadow_ray.direction.z = random_point.z - hit_point.z;
-                const float light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
-                shadow_ray.direction.x /= light_distance;
-                shadow_ray.direction.y /= light_distance;
-                shadow_ray.direction.z /= light_distance;
 
                 shadow_ray_brdf = 0.0f;
                 __rtx_compute_brdf(
@@ -498,45 +564,16 @@ __global__ void nee_shared_memory_kernel(
                 primary_ray.origin.x = hit_point.x;
                 primary_ray.origin.y = hit_point.y;
                 primary_ray.origin.z = hit_point.z;
-                primary_ray.direction.x = unit_next_ray_direction.x;
-                primary_ray.direction.y = unit_next_ray_direction.y;
-                primary_ray.direction.z = unit_next_ray_direction.z;
+                primary_ray.direction.x = unit_next_path_direction.x;
+                primary_ray.direction.y = unit_next_path_direction.y;
+                primary_ray.direction.z = unit_next_path_direction.z;
 
-                const float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
-                    + shadow_ray.direction.y * unit_hit_face_normal.y
-                    + shadow_ray.direction.z * unit_hit_face_normal.z;
-                if (dot1 <= 0.0f) {
-                    ray = &primary_ray;
-                    iter += 1;
-                    path_weight.r = next_path_weight.r;
-                    path_weight.g = next_path_weight.g;
-                    path_weight.b = next_path_weight.b;
-                    continue;
-                }
-
-                const float3 edge_ba = {
-                    vb.x - va.x,
-                    vb.y - va.y,
-                    vb.z - va.z,
-                };
-                const float3 edge_ca = {
-                    vc.x - va.x,
-                    vc.y - va.y,
-                    vc.z - va.z,
-                };
-                float3 light_normal;
-                light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
-                light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
-                light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
-                const float norm = sqrtf(light_normal.x * light_normal.x + light_normal.y * light_normal.y + light_normal.z * light_normal.z);
-                light_normal.x /= norm;
-                light_normal.y /= norm;
-                light_normal.z /= norm;
-                const float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
+                const float dot_ray_light = fabsf(shadow_ray.direction.x * unit_light_normal.x + shadow_ray.direction.y * unit_light_normal.y + shadow_ray.direction.z * unit_light_normal.z);
 
                 // ハック
                 const float r = max(light_distance, 0.5f);
-                g_term = dot1 * dot2 / (r * r);
+                g_term = dot_ray_face * dot_ray_light / (r * r);
+
                 ray = &shadow_ray;
             }
         }

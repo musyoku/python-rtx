@@ -86,7 +86,23 @@ mapping = rtx.SolidColorMapping((1, 1, 1))
 light = rtx.Object(geometry, material, mapping)
 group.add(light)
 
-scene.add(group)
+# scene.add(group)
+
+geometry = rtx.SphereGeometry(2)
+geometry.set_position((0, 4, 0))
+material = rtx.EmissiveMaterial(1, visible=True)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+light = rtx.Object(geometry, material, mapping)
+scene.add(light)
+
+geometry = rtx.PlainGeometry(2, 2)
+geometry.set_rotation((math.pi / 2, 0, 0))
+geometry.set_position((0, 5, 0))
+material = rtx.EmissiveMaterial(1, visible=True)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+light = rtx.Object(geometry, material, mapping)
+# scene.add(light)
+
 
 # place cylinder
 geometry = rtx.CylinderGeometry(0.5, 6)
@@ -108,9 +124,9 @@ screen_width = 64
 screen_height = 64
 
 rt_args = rtx.RayTracingArguments()
-rt_args.num_rays_per_pixel = 4096
+rt_args.num_rays_per_pixel = 512
 rt_args.max_bounce = 3
-rt_args.next_event_estimation_enabled = False
+rt_args.next_event_estimation_enabled = True
 rt_args.supersampling_enabled = True
 
 cuda_args = rtx.CUDAKernelLaunchArguments()

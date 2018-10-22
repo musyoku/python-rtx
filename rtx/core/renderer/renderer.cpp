@@ -199,10 +199,14 @@ void Renderer::serialize_light_sampling_table()
             continue;
         }
         auto& geometry = object->geometry();
-        if (geometry->type() != RTXGeometryTypeStandard) {
+        if (geometry->type() == RTXGeometryTypeStandard) {
+            num_lights++;
             continue;
         }
-        num_lights++;
+        if (geometry->type() == RTXGeometryTypeSphere) {
+            num_lights++;
+            continue;
+        }
     }
     int table_index = 0;
     _cpu_light_sampling_table = rtx::array<int>(num_lights);
@@ -213,11 +217,16 @@ void Renderer::serialize_light_sampling_table()
             continue;
         }
         auto& geometry = object->geometry();
-        if (geometry->type() != RTXGeometryTypeStandard) {
+        if (geometry->type() == RTXGeometryTypeStandard) {
+            _cpu_light_sampling_table[table_index] = object_index;
+            table_index++;
             continue;
         }
-        _cpu_light_sampling_table[table_index] = object_index;
-        table_index++;
+        if (geometry->type() == RTXGeometryTypeSphere) {
+            _cpu_light_sampling_table[table_index] = object_index;
+            table_index++;
+            continue;
+        }
     }
 }
 void Renderer::serialize_color_mappings()
@@ -358,6 +367,10 @@ void Renderer::compute_face_area_of_lights()
                 _total_light_face_area += area;
             }
         }
+        if (geometry->type() == RTXGeometryTypeSphere) {
+            SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
+            _total_light_face_area += M_PI * sphere->radius() * sphere->radius();
+        }
     }
 }
 void Renderer::launch_mcrt_kernel()
@@ -439,7 +452,7 @@ void Renderer::launch_mcrt_kernel()
             required_shared_memory_bytes);
         return;
     }
-    
+
     required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_object_array.bytes();
     required_shared_memory_bytes += required_shared_memory_bytes % _cpu_material_attribute_byte_array.alignment();
