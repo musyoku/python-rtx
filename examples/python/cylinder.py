@@ -120,6 +120,28 @@ mapping = rtx.SolidColorMapping((1, 0, 0))
 cone = rtx.Object(geometry, material, mapping)
 scene.add(cone)
 
+# place bunny
+group = rtx.ObjectGroup()
+faces, vertices = gm.load("../geometries/bunny")
+bottom = np.amin(vertices, axis=0)
+
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+geometry.set_position((0, 0, 0.5))
+material = rtx.LambertMaterial(0.95)
+mapping = rtx.SolidColorMapping((1, 1, 1))
+bunny = rtx.Object(geometry, material, mapping)
+group.add(bunny)
+
+geometry = rtx.StandardGeometry(faces, vertices, 25)
+geometry.set_position((0, 0, -0.5))
+bunny = rtx.Object(geometry, material, mapping)
+group.add(bunny)
+
+group.set_position((0, 0, 0))
+group.set_scale((3, 3, 3))
+scene.add(group)
+
+
 screen_width = 64
 screen_height = 64
 

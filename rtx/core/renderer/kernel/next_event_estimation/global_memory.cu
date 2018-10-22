@@ -113,7 +113,7 @@ __global__ void nee_global_memory_kernel(
         rtxObject hit_object;
         rtxRGBAColor hit_object_color;
         float g_term;
-        float brdf;
+        float shadow_ray_brdf;
 
         // レイの生成
         __rtx_generate_ray(primary_ray, args, aspect_ratio);
@@ -352,9 +352,9 @@ __global__ void nee_global_memory_kernel(
                     rtxEmissiveMaterialAttribute attr = ((rtxEmissiveMaterialAttribute*)&shared_serialized_material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];
                     float emission = attr.intensity;
                     float inv_pdf = args.total_light_face_area;
-                    pixel.r += path_weight.r * emission * brdf * hit_light_color.r * hit_object_color.r * inv_pdf * g_term;
-                    pixel.g += path_weight.g * emission * brdf * hit_light_color.g * hit_object_color.g * inv_pdf * g_term;
-                    pixel.b += path_weight.b * emission * brdf * hit_light_color.b * hit_object_color.b * inv_pdf * g_term;
+                    pixel.r += path_weight.r * emission * shadow_ray_brdf * hit_light_color.r * hit_object_color.r * inv_pdf * g_term;
+                    pixel.g += path_weight.g * emission * shadow_ray_brdf * hit_light_color.g * hit_object_color.g * inv_pdf * g_term;
+                    pixel.b += path_weight.b * emission * shadow_ray_brdf * hit_light_color.b * hit_object_color.b * inv_pdf * g_term;
                 }
 
                 path_weight.r = next_path_weight.r;
@@ -404,7 +404,7 @@ __global__ void nee_global_memory_kernel(
                     cosine_term,
                     curand_state);
 
-                float brdf = 0.0f;
+                float input_ray_brdf = 0.0f;
                 __rtx_compute_brdf(
                     unit_hit_face_normal,
                     hit_object,
@@ -412,7 +412,7 @@ __global__ void nee_global_memory_kernel(
                     ray->direction,
                     unit_next_path_direction,
                     shared_serialized_material_attribute_byte_array,
-                    brdf);
+                    input_ray_brdf);
 
                 // 入射方向のサンプリング
                 ray->origin.x = hit_point.x;
@@ -423,9 +423,9 @@ __global__ void nee_global_memory_kernel(
                 ray->direction.z = unit_next_path_direction.z;
 
                 float inv_pdf = 2.0f * M_PI;
-                next_path_weight.r = path_weight.r * brdf * hit_object_color.r * cosine_term * inv_pdf;
-                next_path_weight.g = path_weight.g * brdf * hit_object_color.g * cosine_term * inv_pdf;
-                next_path_weight.b = path_weight.b * brdf * hit_object_color.b * cosine_term * inv_pdf;
+                next_path_weight.r = path_weight.r * input_ray_brdf * hit_object_color.r * cosine_term * inv_pdf;
+                next_path_weight.g = path_weight.g * input_ray_brdf * hit_object_color.g * cosine_term * inv_pdf;
+                next_path_weight.b = path_weight.b * input_ray_brdf * hit_object_color.b * cosine_term * inv_pdf;
 
                 float4 random_uniform4 = curand_uniform4(&curand_state);
 
@@ -433,39 +433,30 @@ __global__ void nee_global_memory_kernel(
                 const int table_index = floorf(random_uniform4.x * float(args.light_sampling_table_size));
                 const int object_index = shared_light_sampling_table[table_index];
                 rtxObject object = shared_serialized_object_array[object_index];
-                const int face_index = floorf(random_uniform4.y * float(object.num_faces));
-                const int serialized_face_index = face_index + object.serialized_face_index_offset;
-                const rtxFaceVertexIndex face = global_serialized_face_vertex_indices_array[serialized_face_index];
-                const rtxVertex va = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
-                const rtxVertex vb = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
-                const rtxVertex vc = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
 
-                // 面上の一点の一様なサンプリング
-                // http://www.cs.princeton.edu/~funk/tog02.pdf
-                float r1 = sqrtf(random_uniform4.z);
-                float r2 = random_uniform4.w;
-                const float3 random_point = {
-                    (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
-                    (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
-                    (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
-                };
+                float light_distance;
+                float3 unit_light_normal;
+                if (object.geometry_type == RTXGeometryTypeStandard) {
+                    const int face_index = floorf(random_uniform4.y * float(object.num_faces));
+                    const int serialized_face_index = face_index + object.serialized_face_index_offset;
+                    const rtxFaceVertexIndex face = global_serialized_face_vertex_indices_array[serialized_face_index];
+                    const rtxVertex va = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                    const rtxVertex vb = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                    const rtxVertex vc = global_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
+                    __rtx_nee_sample_point_in_triangle(random_uniform4, va, vb, vc, shadow_ray, light_distance, unit_light_normal);
+                } else if (object.geometry_type == RTXGeometryTypeSphere) {
+                    const int serialized_array_index = object.serialized_face_index_offset;
+                    const rtxFaceVertexIndex face = global_serialized_face_vertex_indices_array[serialized_array_index];
+                    const rtxVertex center = global_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
+                    const rtxVertex radius = global_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
+                    __rtx_nee_sample_point_in_sphere(curand_state, unit_light_normal, shadow_ray, light_distance);
+                }
 
-                shadow_ray.origin.x = hit_point.x;
-                shadow_ray.origin.y = hit_point.y;
-                shadow_ray.origin.z = hit_point.z;
-
-                shadow_ray.direction.x = random_point.x - hit_point.x;
-                shadow_ray.direction.y = random_point.y - hit_point.y;
-                shadow_ray.direction.z = random_point.z - hit_point.z;
-                const float light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
-                shadow_ray.direction.x /= light_distance;
-                shadow_ray.direction.y /= light_distance;
-                shadow_ray.direction.z /= light_distance;
-
-                const float dot1 = shadow_ray.direction.x * unit_hit_face_normal.x
+                const float dot_ray_face = shadow_ray.direction.x * unit_hit_face_normal.x
                     + shadow_ray.direction.y * unit_hit_face_normal.y
                     + shadow_ray.direction.z * unit_hit_face_normal.z;
-                if (dot1 <= 0.0f) {
+
+                if (dot_ray_face <= 0.0f) {
                     ray = &primary_ray;
                     iter += 1;
                     path_weight.r = next_path_weight.r;
@@ -474,29 +465,34 @@ __global__ void nee_global_memory_kernel(
                     continue;
                 }
 
-                const float3 edge_ba = {
-                    vb.x - va.x,
-                    vb.y - va.y,
-                    vb.z - va.z,
-                };
-                const float3 edge_ca = {
-                    vc.x - va.x,
-                    vc.y - va.y,
-                    vc.z - va.z,
-                };
-                float3 light_normal;
-                light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
-                light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
-                light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
-                const float norm = sqrtf(light_normal.x * light_normal.x + light_normal.y * light_normal.y + light_normal.z * light_normal.z);
-                light_normal.x /= norm;
-                light_normal.y /= norm;
-                light_normal.z /= norm;
-                const float dot2 = fabsf(shadow_ray.direction.x * light_normal.x + shadow_ray.direction.y * light_normal.y + shadow_ray.direction.z * light_normal.z);
+                shadow_ray.origin.x = hit_point.x;
+                shadow_ray.origin.y = hit_point.y;
+                shadow_ray.origin.z = hit_point.z;
+
+                shadow_ray_brdf = 0.0f;
+                __rtx_compute_brdf(
+                    unit_hit_face_normal,
+                    hit_object,
+                    hit_face,
+                    primary_ray.direction,
+                    shadow_ray.direction,
+                    shared_serialized_material_attribute_byte_array,
+                    shadow_ray_brdf);
+
+                // 次のパス
+                primary_ray.origin.x = hit_point.x;
+                primary_ray.origin.y = hit_point.y;
+                primary_ray.origin.z = hit_point.z;
+                primary_ray.direction.x = unit_next_path_direction.x;
+                primary_ray.direction.y = unit_next_path_direction.y;
+                primary_ray.direction.z = unit_next_path_direction.z;
+
+                const float dot_ray_light = fabsf(shadow_ray.direction.x * unit_light_normal.x + shadow_ray.direction.y * unit_light_normal.y + shadow_ray.direction.z * unit_light_normal.z);
 
                 // ハック
                 const float r = max(light_distance, 0.5f);
-                g_term = dot1 * dot2 / (r * r);
+                g_term = dot_ray_face * dot_ray_light / (r * r);
+
                 ray = &shadow_ray;
             }
         }

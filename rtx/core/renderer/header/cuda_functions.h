@@ -429,14 +429,14 @@
     hit_object,                                                                                                                                                                               \
     hit_face,                                                                                                                                                                                 \
     unit_current_ray_direction,                                                                                                                                                               \
-    unit_next_path_direction,                                                                                                                                                                  \
+    unit_next_path_direction,                                                                                                                                                                 \
     material_attribute_byte_array,                                                                                                                                                            \
     brdf)                                                                                                                                                                                     \
     {                                                                                                                                                                                         \
         int material_type = hit_object.layerd_material_types.outside;                                                                                                                         \
         if (material_type == RTXMaterialTypeLambert) {                                                                                                                                        \
             rtxLambertMaterialAttribute attr = ((rtxLambertMaterialAttribute*)&material_attribute_byte_array[hit_object.material_attribute_byte_array_offset])[0];                            \
-            float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;                    \
+            float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;                 \
             brdf = attr.albedo * cos_ref / M_PI;                                                                                                                                              \
         } else if (material_type == RTXMaterialTypeOrenNayar) {                                                                                                                               \
             /* https://en.wikipedia.org/wiki/Oren%E2%80%93Nayar_reflectance_model */                                                                                                          \
@@ -445,7 +445,7 @@
             const float a = 1.0f - 0.5f * ((squared_roughness) / (squared_roughness + 0.33));                                                                                                 \
             const float b = 0.45f * ((squared_roughness) / (squared_roughness + 0.09));                                                                                                       \
             const float cos_view = -(hit_face_normal.x * unit_current_ray_direction.x + hit_face_normal.y * unit_current_ray_direction.y + hit_face_normal.z * unit_current_ray_direction.z); \
-            const float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;              \
+            const float cos_ref = hit_face_normal.x * unit_next_path_direction.x + hit_face_normal.y * unit_next_path_direction.y + hit_face_normal.z * unit_next_path_direction.z;           \
             const float theta_view = acos(cos_view);                                                                                                                                          \
             const float theta_ref = acos(cos_ref);                                                                                                                                            \
             const float sin_alpha = sin(max(theta_view, theta_ref));                                                                                                                          \
@@ -460,9 +460,9 @@
             cross_view.y /= norm;                                                                                                                                                             \
             cross_view.z /= norm;                                                                                                                                                             \
             float3 cross_ref = {                                                                                                                                                              \
-                unit_next_path_direction.y * hit_face_normal.z - unit_next_path_direction.z * hit_face_normal.y,                                                                                \
-                unit_next_path_direction.z * hit_face_normal.x - unit_next_path_direction.x * hit_face_normal.z,                                                                                \
-                unit_next_path_direction.x * hit_face_normal.y - unit_next_path_direction.y * hit_face_normal.x,                                                                                \
+                unit_next_path_direction.y * hit_face_normal.z - unit_next_path_direction.z * hit_face_normal.y,                                                                              \
+                unit_next_path_direction.z * hit_face_normal.x - unit_next_path_direction.x * hit_face_normal.z,                                                                              \
+                unit_next_path_direction.x * hit_face_normal.y - unit_next_path_direction.y * hit_face_normal.x,                                                                              \
             };                                                                                                                                                                                \
             norm = sqrtf(cross_ref.x * cross_ref.x + cross_ref.y * cross_ref.y + cross_ref.z * cross_ref.z);                                                                                  \
             cross_ref.x /= norm;                                                                                                                                                              \
@@ -513,14 +513,14 @@
     ray,                                              \
     ray_direction_inv,                                \
     hit_point,                                        \
-    unit_next_path_direction)                          \
+    unit_next_path_direction)                         \
     {                                                 \
         ray.origin.x = hit_point.x;                   \
         ray.origin.y = hit_point.y;                   \
         ray.origin.z = hit_point.z;                   \
-        ray.direction.x = unit_next_path_direction.x;  \
-        ray.direction.y = unit_next_path_direction.y;  \
-        ray.direction.z = unit_next_path_direction.z;  \
+        ray.direction.x = unit_next_path_direction.x; \
+        ray.direction.y = unit_next_path_direction.y; \
+        ray.direction.z = unit_next_path_direction.z; \
         ray_direction_inv.x = 1.0f / ray.direction.x; \
         ray_direction_inv.y = 1.0f / ray.direction.y; \
         ray_direction_inv.z = 1.0f / ray.direction.z; \
@@ -611,3 +611,67 @@
         vec.y /= norm;                                                     \
         vec.z /= norm;                                                     \
     }
+
+// 面上の一点の一様なサンプリング
+// http://www.cs.princeton.edu/~funk/tog02.pdf
+#define __rtx_nee_sample_point_in_triangle(random_uniform4, va, vb, vc, shadow_ray, light_distance, unit_light_normal)                                                           \
+    float r1 = sqrtf(random_uniform4.z);                                                                                                                                         \
+    float r2 = random_uniform4.w;                                                                                                                                                \
+    const float3 random_point = {                                                                                                                                                \
+        (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,                                                                                                       \
+        (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,                                                                                                       \
+        (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,                                                                                                       \
+    };                                                                                                                                                                           \
+    shadow_ray.direction.x = random_point.x - hit_point.x;                                                                                                                       \
+    shadow_ray.direction.y = random_point.y - hit_point.y;                                                                                                                       \
+    shadow_ray.direction.z = random_point.z - hit_point.z;                                                                                                                       \
+    light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z); \
+    shadow_ray.direction.x /= light_distance;                                                                                                                                    \
+    shadow_ray.direction.y /= light_distance;                                                                                                                                    \
+    shadow_ray.direction.z /= light_distance;                                                                                                                                    \
+    const float3 edge_ba = {                                                                                                                                                     \
+        vb.x - va.x,                                                                                                                                                             \
+        vb.y - va.y,                                                                                                                                                             \
+        vb.z - va.z,                                                                                                                                                             \
+    };                                                                                                                                                                           \
+    const float3 edge_ca = {                                                                                                                                                     \
+        vc.x - va.x,                                                                                                                                                             \
+        vc.y - va.y,                                                                                                                                                             \
+        vc.z - va.z,                                                                                                                                                             \
+    };                                                                                                                                                                           \
+    unit_light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;                                                                                                         \
+    unit_light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;                                                                                                         \
+    unit_light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;                                                                                                         \
+    __rtx_normalize_vector(unit_light_normal);
+
+// 球上の一点をサンプリング
+#define __rtx_nee_sample_point_in_sphere(curand_state, unit_light_normal, shadow_ray, light_distance)                                                                                \
+    {                                                                                                                                                                                \
+        /* 球の半径によらず正規化しておく（本来なら半径を掛ける必要がある） */                                                                       \
+        float4 unit_random_point = curand_normal4(&curand_state);                                                                                                                    \
+        __rtx_normalize_vector(unit_random_point);                                                                                                                                   \
+        /* シャドウレイの始点から見てサンプリング点が球の裏側にあれば反転する */                                                                    \
+        float3 unit_d = {                                                                                                                                                            \
+            hit_point.x - center.x,                                                                                                                                                  \
+            hit_point.y - center.y,                                                                                                                                                  \
+            hit_point.z - center.z,                                                                                                                                                  \
+        };                                                                                                                                                                           \
+        __rtx_normalize_vector(unit_d);                                                                                                                                              \
+        const float dot = unit_d.x * unit_random_point.x + unit_d.y * unit_random_point.y + unit_d.z * unit_random_point.z;                                                          \
+        if (dot < 0.0f) {                                                                                                                                                            \
+            unit_random_point.x *= -1.0f;                                                                                                                                            \
+            unit_random_point.y *= -1.0f;                                                                                                                                            \
+            unit_random_point.z *= -1.0f;                                                                                                                                            \
+        }                                                                                                                                                                            \
+        unit_light_normal.x = unit_random_point.x;                                                                                                                                   \
+        unit_light_normal.y = unit_random_point.y;                                                                                                                                   \
+        unit_light_normal.z = unit_random_point.z;                                                                                                                                   \
+        shadow_ray.direction.x = center.x + unit_random_point.x * radius.x - hit_point.x;                                                                                            \
+        shadow_ray.direction.y = center.y + unit_random_point.y * radius.x - hit_point.y;                                                                                            \
+        shadow_ray.direction.z = center.z + unit_random_point.z * radius.x - hit_point.z;                                                                                            \
+        light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z); \
+        shadow_ray.direction.x /= light_distance;                                                                                                                                    \
+        shadow_ray.direction.y /= light_distance;                                                                                                                                    \
+        shadow_ray.direction.z /= light_distance;                                                                                                                                    \
+    }
+    

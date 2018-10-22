@@ -457,80 +457,13 @@ __global__ void nee_shared_memory_kernel(
                     const rtxVertex va = shared_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
                     const rtxVertex vb = shared_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
                     const rtxVertex vc = shared_serialized_vertex_array[face.c + object.serialized_vertex_index_offset];
-
-                    // 面上の一点の一様なサンプリング
-                    // http://www.cs.princeton.edu/~funk/tog02.pdf
-                    float r1 = sqrtf(random_uniform4.z);
-                    float r2 = random_uniform4.w;
-                    const float3 random_point = {
-                        (1.0f - r1) * va.x + (r1 * (1.0f - r2)) * vb.x + (r1 * r2) * vc.x,
-                        (1.0f - r1) * va.y + (r1 * (1.0f - r2)) * vb.y + (r1 * r2) * vc.y,
-                        (1.0f - r1) * va.z + (r1 * (1.0f - r2)) * vb.z + (r1 * r2) * vc.z,
-                    };
-
-                    shadow_ray.direction.x = random_point.x - hit_point.x;
-                    shadow_ray.direction.y = random_point.y - hit_point.y;
-                    shadow_ray.direction.z = random_point.z - hit_point.z;
-
-                    light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
-
-                    shadow_ray.direction.x /= light_distance;
-                    shadow_ray.direction.y /= light_distance;
-                    shadow_ray.direction.z /= light_distance;
-
-                    const float3 edge_ba = {
-                        vb.x - va.x,
-                        vb.y - va.y,
-                        vb.z - va.z,
-                    };
-                    const float3 edge_ca = {
-                        vc.x - va.x,
-                        vc.y - va.y,
-                        vc.z - va.z,
-                    };
-                    unit_light_normal.x = edge_ba.y * edge_ca.z - edge_ba.z * edge_ca.y;
-                    unit_light_normal.y = edge_ba.z * edge_ca.x - edge_ba.x * edge_ca.z;
-                    unit_light_normal.z = edge_ba.x * edge_ca.y - edge_ba.y * edge_ca.x;
-                    __rtx_normalize_vector(unit_light_normal);
+                    __rtx_nee_sample_point_in_triangle(random_uniform4, va, vb, vc, shadow_ray, light_distance, unit_light_normal);
                 } else if (object.geometry_type == RTXGeometryTypeSphere) {
                     const int serialized_array_index = object.serialized_face_index_offset;
                     const rtxFaceVertexIndex face = shared_serialized_face_vertex_indices_array[serialized_array_index];
                     const rtxVertex center = shared_serialized_vertex_array[face.a + object.serialized_vertex_index_offset];
                     const rtxVertex radius = shared_serialized_vertex_array[face.b + object.serialized_vertex_index_offset];
-
-                    // 球上の一点をサンプリング
-                    // 球の半径によらず正規化しておく（本来なら半径を掛ける必要がある）
-                    float4 unit_random_point = curand_normal4(&curand_state);
-                    __rtx_normalize_vector(unit_random_point);
-
-                    // シャドウレイの始点から見てサンプリング点が球の裏側にあれば反転する
-                    float3 unit_d = {
-                        hit_point.x - center.x,
-                        hit_point.y - center.y,
-                        hit_point.z - center.z,
-                    };
-                    __rtx_normalize_vector(unit_d);
-
-                    const float dot = unit_d.x * unit_random_point.x + unit_d.y * unit_random_point.y + unit_d.z * unit_random_point.z;
-                    if (dot < 0.0f) {
-                        unit_random_point.x *= -1.0f;
-                        unit_random_point.y *= -1.0f;
-                        unit_random_point.z *= -1.0f;
-                    }
-
-                    unit_light_normal.x = unit_random_point.x;
-                    unit_light_normal.y = unit_random_point.y;
-                    unit_light_normal.z = unit_random_point.z;
-
-                    shadow_ray.direction.x = center.x + unit_random_point.x * radius.x - hit_point.x;
-                    shadow_ray.direction.y = center.y + unit_random_point.y * radius.x - hit_point.y;
-                    shadow_ray.direction.z = center.z + unit_random_point.z * radius.x - hit_point.z;
-
-                    light_distance = sqrtf(shadow_ray.direction.x * shadow_ray.direction.x + shadow_ray.direction.y * shadow_ray.direction.y + shadow_ray.direction.z * shadow_ray.direction.z);
-
-                    shadow_ray.direction.x /= light_distance;
-                    shadow_ray.direction.y /= light_distance;
-                    shadow_ray.direction.z /= light_distance;
+                    __rtx_nee_sample_point_in_sphere(curand_state, unit_light_normal, shadow_ray, light_distance);
                 }
 
                 const float dot_ray_face = shadow_ray.direction.x * unit_hit_face_normal.x
