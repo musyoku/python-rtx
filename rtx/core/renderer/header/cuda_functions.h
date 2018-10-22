@@ -175,6 +175,7 @@
 // http://www.pbr-book.org/3ed-2018/Shapes/Other_Quadrics.html
 #define __rtx_intersect_cone_or_continue(ray, trans_a, trans_b, trans_c, inv_trans_a, inv_trans_b, inv_trans_c, unit_hit_face_normal, t, min_distance) \
     {                                                                                                                                                  \
+        const float oy = ray.origin.y + height / 2.0f;                                                                                                 \
         /* 方向ベクトルの変換では平行移動の成分を無視する */                                                                    \
         float3 d = {                                                                                                                                   \
             ray.direction.x * inv_trans_a.x + ray.direction.y * inv_trans_a.y + ray.direction.z * inv_trans_a.z,                                       \
