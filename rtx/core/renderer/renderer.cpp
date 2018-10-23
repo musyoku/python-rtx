@@ -369,7 +369,7 @@ void Renderer::compute_face_area_of_lights()
         }
         if (geometry->type() == RTXGeometryTypeSphere) {
             SphereGeometry* sphere = static_cast<SphereGeometry*>(geometry.get());
-            _total_light_face_area += M_PI * sphere->radius() * sphere->radius();
+            _total_light_face_area += 2.0f * M_PI * sphere->radius() * sphere->radius();
         }
     }
 }

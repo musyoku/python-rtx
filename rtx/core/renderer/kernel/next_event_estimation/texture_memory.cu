@@ -418,14 +418,14 @@ __global__ void nee_texture_memory_kernel(
                 float4 random_uniform4 = curand_uniform4(&curand_state);
 
                 // 光源のサンプリング
-                const int table_index = floorf(random_uniform4.x * float(args.light_sampling_table_size));
+                const int table_index = min(int(floorf(random_uniform4.x * float(args.light_sampling_table_size))), args.light_sampling_table_size - 1);
                 const int object_index = shared_light_sampling_table[table_index];
                 rtxObject object = shared_serialized_object_array[object_index];
 
                 float light_distance;
                 float3 unit_light_normal;
                 if (object.geometry_type == RTXGeometryTypeStandard) {
-                    const int face_index = floorf(random_uniform4.y * float(object.num_faces));
+                    const int face_index = min(int(floorf(random_uniform4.y * float(object.num_faces))), object.num_faces - 1);
                     const int serialized_face_index = face_index + object.serialized_face_index_offset;
                     const int4 face = tex1Dfetch(g_serialized_face_vertex_index_array_texture_ref, serialized_face_index);
                     const float4 va = tex1Dfetch(g_serialized_vertex_array_texture_ref, face.x + object.serialized_vertex_index_offset);
