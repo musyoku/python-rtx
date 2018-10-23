@@ -28,23 +28,20 @@ __global__ void mcrt_texture_memory_kernel(
     // グローバルメモリの直列データを共有メモリにコピーする
     int offset = 0;
     rtxObject* shared_serialized_object_array = (rtxObject*)&shared_memory[offset];
-    offset += offset % sizeof(rtxObject);
     offset += sizeof(rtxObject) * args.object_array_size;
 
     rtxMaterialAttributeByte* shared_serialized_material_attribute_byte_array = (rtxMaterialAttributeByte*)&shared_memory[offset];
-    offset += offset % sizeof(rtxMaterialAttributeByte);
     offset += sizeof(rtxMaterialAttributeByte) * args.material_attribute_byte_array_size;
 
     rtxThreadedBVH* shared_serialized_threaded_bvh_array = (rtxThreadedBVH*)&shared_memory[offset];
-    offset += offset % sizeof(rtxThreadedBVH);
     offset += sizeof(rtxThreadedBVH) * args.threaded_bvh_array_size;
 
     rtxRGBAColor* shared_serialized_color_mapping_array = (rtxRGBAColor*)&shared_memory[offset];
-    offset += offset % sizeof(rtxRGBAColor);
     offset += sizeof(rtxRGBAColor) * args.color_mapping_array_size;
 
+    // cudaTextureObject_tは8バイトなのでアライメントに気をつける
+    offset += sizeof(cudaTextureObject_t) - offset % sizeof(cudaTextureObject_t);
     cudaTextureObject_t* shared_serialized_texture_object_array = (cudaTextureObject_t*)&shared_memory[offset];
-    offset += offset % sizeof(cudaTextureObject_t);
     offset += sizeof(cudaTextureObject_t) * args.num_active_texture_units;
 
     // ブロック内のどれか1スレッドが代表して共有メモリに内容をコピー

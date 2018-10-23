@@ -105,7 +105,7 @@ light = rtx.Object(geometry, material, mapping)
 
 
 # place cylinder
-geometry = rtx.CylinderGeometry(0.5, 6)
+geometry = rtx.SphereGeometry(1)
 geometry.set_position((0, 0, 2))
 material = rtx.LambertMaterial(0.95)
 mapping = rtx.SolidColorMapping((0, 1, 0))

@@ -549,22 +549,17 @@ void Renderer::launch_nee_kernel()
     // アライメントに気をつける
     size_t required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_face_vertex_indices_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_vertex_array.alignment();
     required_shared_memory_bytes += _cpu_vertex_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_object_array.alignment();
     required_shared_memory_bytes += _cpu_object_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_material_attribute_byte_array.alignment();
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_threaded_bvh_array.alignment();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_threaded_bvh_node_array.alignment();
     required_shared_memory_bytes += _cpu_threaded_bvh_node_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_color_mapping_array.alignment();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_serialized_uv_coordinate_array.alignment();
     required_shared_memory_bytes += _cpu_serialized_uv_coordinate_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % rtx_cuda_get_cudaTextureObject_t_bytes();
+    // cudaTextureObject_tは8バイトなのでアライメントに気をつける
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() - required_shared_memory_bytes % rtx_cuda_get_cudaTextureObject_t_bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         rtx_cuda_launch_nee_shared_memory_kernel(
@@ -587,14 +582,12 @@ void Renderer::launch_nee_kernel()
 
     required_shared_memory_bytes = 0;
     required_shared_memory_bytes += _cpu_object_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_material_attribute_byte_array.alignment();
     required_shared_memory_bytes += _cpu_material_attribute_byte_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_threaded_bvh_array.alignment();
     required_shared_memory_bytes += _cpu_threaded_bvh_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % _cpu_color_mapping_array.alignment();
     required_shared_memory_bytes += _cpu_color_mapping_array.bytes();
-    required_shared_memory_bytes += required_shared_memory_bytes % rtx_cuda_get_cudaTextureObject_t_bytes();
+    required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() - required_shared_memory_bytes % rtx_cuda_get_cudaTextureObject_t_bytes();
     required_shared_memory_bytes += rtx_cuda_get_cudaTextureObject_t_bytes() * num_active_texture_units;
+    required_shared_memory_bytes += _cpu_light_sampling_table.bytes();
 
     if (required_shared_memory_bytes <= available_shared_memory_bytes) {
         // テクスチャメモリに直列データを入れる場合
